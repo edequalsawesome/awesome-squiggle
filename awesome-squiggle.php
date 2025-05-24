@@ -6,8 +6,8 @@
  * Version: 1.0.0
  * Author: eD! Thomas
  * Author URI: https://edequalsaweso.me
- * License: GPL-2.0-or-later
- * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * License: GPL-3.0-or-later
+ * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  * Text Domain: awesome-squiggle
  * Requires at least: 6.0
  * Tested up to: 6.4
