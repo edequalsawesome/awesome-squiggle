@@ -5,7 +5,7 @@
  * Description: Adds animated squiggle variations to the core WordPress separator block
  * Version: 1.0.0
  * Author: eD! Thomas
- * Author URI: https://edequalsawesome.com
+ * Author URI: https://edequalsaweso.me
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: awesome-squiggle
