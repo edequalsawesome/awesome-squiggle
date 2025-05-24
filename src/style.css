@@ -1,0 +1,136 @@
+.awesome-squiggle-wave {
+    display: block;
+    width: 100%;
+    height: 100px;
+    overflow: hidden;
+    position: relative;
+    background-color: transparent !important; /* Container always transparent */
+}
+
+.awesome-squiggle-wave svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Default squiggle animation */
+.awesome-squiggle-wave .squiggle-path {
+    transform-origin: center;
+    animation: squiggle-flow 1.6s linear infinite;
+}
+
+.awesome-squiggle-wave.is-paused .squiggle-path {
+    animation-play-state: paused;
+}
+
+/* Ensure each squiggle instance gets its own animation context */
+.wp-block-separator.is-style-animated-squiggle .squiggle-path {
+    transform-origin: center;
+    animation: squiggle-flow 1.6s linear infinite;
+}
+
+.wp-block-separator.is-style-static-squiggle .squiggle-path {
+    animation: none;
+}
+
+/* Frontend-specific selectors to ensure styles apply */
+div.wp-block-separator.awesome-squiggle-wave .squiggle-path {
+    transform-origin: center;
+    animation: squiggle-flow 1.6s linear infinite;
+}
+
+div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path {
+    animation: none;
+}
+
+/* Force transparent background for all squiggle containers */
+.wp-block-separator.awesome-squiggle-wave {
+    background-color: transparent !important; /* Always transparent */
+    padding: 0;
+    border: none;
+}
+
+/* Even when WordPress adds background classes, keep container transparent */
+.wp-block-separator.awesome-squiggle-wave.has-background {
+    background-color: transparent !important;
+}
+
+/* Remove any default border styles that might interfere */
+.wp-block-separator.awesome-squiggle-wave.has-background,
+.wp-block-separator.awesome-squiggle-wave.has-text-color {
+    border: none !important;
+}
+
+/* Improved responsive height handling */
+.awesome-squiggle-wave,
+.wp-block-separator.awesome-squiggle-wave {
+    min-height: 50px;
+    height: auto;
+}
+
+/* Main squiggle animation */
+@keyframes squiggle-flow {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-80px); /* Exactly 2 wavelengths */
+    }
+}
+
+/* Reverse squiggle animation */
+@keyframes squiggle-flow-reverse {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(80px); /* Exactly 2 wavelengths in opposite direction */
+    }
+}
+
+/* Improved spacing controls support */
+.wp-block-separator.awesome-squiggle-wave {
+    margin: 1.5em auto; /* Default margin that can be overridden by spacing controls */
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+    .awesome-squiggle-wave {
+        min-height: 60px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .awesome-squiggle-wave {
+        min-height: 50px;
+    }
+    
+    /* Reduce squiggle complexity on very small screens for performance */
+    .awesome-squiggle-wave .squiggle-path {
+        stroke-width: 2px;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .awesome-squiggle-wave .squiggle-path {
+        stroke-width: 3px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .awesome-squiggle-wave .squiggle-path {
+        animation-duration: 10s; /* Much slower */
+    }
+    
+    .awesome-squiggle-wave.is-style-static-squiggle .squiggle-path,
+    .wp-block-separator.is-style-static-squiggle .squiggle-path {
+        animation: none;
+    }
+}
+
+/* Editor-specific styles */
+.wp-block-awesome-squiggle-animated-squiggle-divider {
+    margin: 2em 0;
+} 
