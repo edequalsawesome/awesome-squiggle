@@ -1,10 +1,12 @@
 .awesome-squiggle-wave {
     display: block;
-    width: 100%;
     height: 100px;
     overflow: hidden;
     position: relative;
     background-color: transparent !important; /* Container always transparent */
+    /* Prevent flash of incorrect sizing */
+    min-width: 0; /* Allow shrinking in flex containers */
+    box-sizing: border-box;
 }
 
 .awesome-squiggle-wave svg {
@@ -48,6 +50,8 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path {
     background-color: transparent !important; /* Always transparent */
     padding: 0;
     border: none;
+    /* Prevent layout flash by ensuring immediate proper sizing */
+    transition: none !important; /* Disable any transitions that might cause flash */
 }
 
 /* Even when WordPress adds background classes, keep container transparent */
@@ -93,6 +97,17 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path {
     margin: 1.5em auto; /* Default margin that can be overridden by spacing controls */
 }
 
+/* Ensure squiggle respects WordPress separator width settings */
+.wp-block-separator.awesome-squiggle-wave.is-style-wide {
+    width: 100%;
+    max-width: none;
+}
+
+/* Support for custom widths set via WordPress controls */
+.wp-block-separator.awesome-squiggle-wave[style*="width"] {
+    max-width: none; /* Allow custom width to take precedence */
+}
+
 /* Responsive adjustments */
 @media screen and (max-width: 768px) {
     .awesome-squiggle-wave {
@@ -133,4 +148,11 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path {
 /* Editor-specific styles */
 .wp-block-awesome-squiggle-animated-squiggle-divider {
     margin: 2em 0;
+}
+
+/* Hide unstyled squiggle separators to prevent flash */
+.wp-block-separator.is-style-animated-squiggle:not(.awesome-squiggle-wave),
+.wp-block-separator.is-style-static-squiggle:not(.awesome-squiggle-wave) {
+    opacity: 0;
+    visibility: hidden;
 } 

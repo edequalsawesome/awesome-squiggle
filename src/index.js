@@ -74,10 +74,6 @@ addFilter(
                     type: 'number',
                     default: undefined
                 },
-                isPaused: {
-                    type: 'boolean',
-                    default: undefined
-                },
                 squiggleHeight: {
                     type: 'string',
                     default: undefined
@@ -110,7 +106,6 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             strokeWidth, 
             animationSpeed, 
             squiggleAmplitude, 
-            isPaused,
             squiggleHeight,
             animationId,
             isReversed,
@@ -130,7 +125,6 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                 strokeWidth: 1,
                 animationSpeed: 1.6,
                 squiggleAmplitude: 10,
-                isPaused: false,
                 squiggleHeight: '100px',
                 animationId: newAnimationId,
                 isReversed: false
@@ -194,7 +188,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
         }
 
         // Determine if animation should be paused based on style
-        let finalPaused = isPaused;
+        let finalPaused = false;
         if (className && className.includes('is-style-static-squiggle')) {
             finalPaused = true;
         }
@@ -212,39 +206,48 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             return <BlockEdit {...props} />;
         }
 
-        // For squiggle styles, render both the original block edit AND our custom squiggle preview
+        // For squiggle styles, render our custom squiggle directly instead of overlay approach
+        // This works better inside Group/Row/Stack blocks that use flexbox
+        const blockProps = useBlockProps({
+            className: `wp-block-separator awesome-squiggle-wave ${className || ''}`.trim(),
+            style: {
+                height: squiggleHeight || '100px',
+                backgroundColor: 'transparent',
+                minHeight: '50px'
+            }
+        });
+
         return (
-            <div style={{ position: 'relative' }}>
-                {/* Render the original block edit to preserve all standard WordPress controls */}
-                <div style={{ opacity: 0, pointerEvents: 'none' }}>
+            <>
+                {/* Render the original block edit hidden to preserve all standard WordPress controls */}
+                <div style={{ display: 'none' }}>
                     <BlockEdit {...props} />
                 </div>
                 
-                {/* Add our custom squiggle preview overlay */}
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 1 }}>
-                    <style>
-                        {`
-                            @keyframes squiggle-flow {
-                                0% { transform: translateX(0); }
-                                100% { transform: translateX(-80px); }
-                            }
-                            @keyframes squiggle-flow-reverse {
-                                0% { transform: translateX(0); }
-                                100% { transform: translateX(80px); }
-                            }
-                            .awesome-squiggle-editor-preview .squiggle-path {
-                                transform-origin: center;
-                            }
-                        `}
-                    </style>
+                <style>
+                    {`
+                        @keyframes squiggle-flow {
+                            0% { transform: translateX(0); }
+                            100% { transform: translateX(-80px); }
+                        }
+                        @keyframes squiggle-flow-reverse {
+                            0% { transform: translateX(0); }
+                            100% { transform: translateX(80px); }
+                        }
+                        .awesome-squiggle-editor-preview .squiggle-path {
+                            transform-origin: center;
+                        }
+                    `}
+                </style>
+                <div {...blockProps}>
                     <div 
                         className="awesome-squiggle-editor-preview"
                         style={{
-                            position: 'relative',
                             width: '100%',
-                            height: squiggleHeight || '100px',
+                            height: '100%',
                             backgroundColor: 'transparent',
-                            minHeight: '50px'
+                            display: 'flex',
+                            alignItems: 'center'
                         }}
                     >
                         <svg
@@ -300,12 +303,6 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                             help={__('Adjust the height of the squiggle peaks', 'awesome-squiggle')}
                         />
                         <ToggleControl
-                            label={__('Pause Animation', 'awesome-squiggle')}
-                            checked={isPaused || false}
-                            onChange={() => setAttributes({ isPaused: !isPaused })}
-                            help={__('Stop the squiggle animation', 'awesome-squiggle')}
-                        />
-                        <ToggleControl
                             label={__('Reverse Animation', 'awesome-squiggle')}
                             checked={isReversed || false}
                             onChange={() => setAttributes({ isReversed: !isReversed })}
@@ -337,7 +334,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                         />
                     </PanelBody>
                 </InspectorControls>
-            </div>
+            </>
         );
     };
 }, 'withSquiggleControls');
@@ -370,7 +367,6 @@ addFilter(
             strokeWidth = 1,
             animationSpeed = 1.6,
             squiggleAmplitude = 10,
-            isPaused = false,
             squiggleHeight = '100px',
             animationId = generateAnimationId(),
             isReversed,
@@ -403,7 +399,7 @@ addFilter(
         };
 
         // Determine if animation should be paused based on style
-        let finalPaused = isPaused;
+        let finalPaused = false;
         if (className && className.includes('is-style-static-squiggle')) {
             finalPaused = true;
         }
