@@ -21,7 +21,14 @@
     animation: squiggle-flow 1.6s linear infinite;
 }
 
-.awesome-squiggle-wave.is-paused .squiggle-path {
+/* Default zig-zag animation */
+.awesome-squiggle-wave .zigzag-path {
+    transform-origin: center;
+    animation: zigzag-flow 1.6s linear infinite;
+}
+
+.awesome-squiggle-wave.is-paused .squiggle-path,
+.awesome-squiggle-wave.is-paused .zigzag-path {
     animation-play-state: paused;
 }
 
@@ -35,13 +42,29 @@
     animation: none;
 }
 
+/* Ensure each zig-zag instance gets its own animation context */
+.wp-block-separator.is-style-animated-zigzag .zigzag-path {
+    transform-origin: center;
+    animation: zigzag-flow 1.6s linear infinite;
+}
+
+.wp-block-separator.is-style-static-zigzag .zigzag-path {
+    animation: none;
+}
+
 /* Frontend-specific selectors to ensure styles apply */
 div.wp-block-separator.awesome-squiggle-wave .squiggle-path {
     transform-origin: center;
     animation: squiggle-flow 1.6s linear infinite;
 }
 
-div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path {
+div.wp-block-separator.awesome-squiggle-wave .zigzag-path {
+    transform-origin: center;
+    animation: zigzag-flow 1.6s linear infinite;
+}
+
+div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path,
+div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
     animation: none;
 }
 
@@ -92,6 +115,26 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path {
     }
 }
 
+/* Main zig-zag animation (Charlie Brown stripe style) */
+@keyframes zigzag-flow {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-60px); /* Exactly 2 wavelengths for zig-zag */
+    }
+}
+
+/* Reverse zig-zag animation */
+@keyframes zigzag-flow-reverse {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(60px); /* Exactly 2 wavelengths in opposite direction */
+    }
+}
+
 /* Improved spacing controls support */
 .wp-block-separator.awesome-squiggle-wave {
     margin: 1.5em auto; /* Default margin that can be overridden by spacing controls */
@@ -135,12 +178,15 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path {
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-    .awesome-squiggle-wave .squiggle-path {
+    .awesome-squiggle-wave .squiggle-path,
+    .awesome-squiggle-wave .zigzag-path {
         animation-duration: 10s; /* Much slower */
     }
     
     .awesome-squiggle-wave.is-style-static-squiggle .squiggle-path,
-    .wp-block-separator.is-style-static-squiggle .squiggle-path {
+    .wp-block-separator.is-style-static-squiggle .squiggle-path,
+    .awesome-squiggle-wave.is-style-static-zigzag .zigzag-path,
+    .wp-block-separator.is-style-static-zigzag .zigzag-path {
         animation: none;
     }
 }
@@ -150,9 +196,11 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path {
     margin: 2em 0;
 }
 
-/* Hide unstyled squiggle separators to prevent flash */
+/* Hide unstyled squiggle and zig-zag separators to prevent flash */
 .wp-block-separator.is-style-animated-squiggle:not(.awesome-squiggle-wave),
-.wp-block-separator.is-style-static-squiggle:not(.awesome-squiggle-wave) {
+.wp-block-separator.is-style-static-squiggle:not(.awesome-squiggle-wave),
+.wp-block-separator.is-style-animated-zigzag:not(.awesome-squiggle-wave),
+.wp-block-separator.is-style-static-zigzag:not(.awesome-squiggle-wave) {
     opacity: 0;
     visibility: hidden;
 } 

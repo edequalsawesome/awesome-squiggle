@@ -39,12 +39,53 @@ const generateSquigglePath = (amplitude = 10) => {
     return d;
 };
 
+// Generate SVG path data for the zig-zag (Charlie Brown stripe style)
+const generateZigzagPath = (amplitude = 15) => {
+    const wavelength = 30; // Narrower than squiggle for more angular feel
+    const width = 800;
+    const height = 100;
+    const midY = height / 2;
+    
+    // Create sharp zig-zag pattern using straight lines
+    let d = `M-${wavelength * 2},${midY}`;
+    
+    // Generate zig-zag segments
+    for (let x = -wavelength * 2; x <= width + wavelength * 2; x += wavelength) {
+        // Alternate between up and down peaks for sharp angles
+        const isUpPeak = Math.floor((x + wavelength * 2) / wavelength) % 2 === 0;
+        const peakY = isUpPeak ? midY - amplitude : midY + amplitude;
+        
+        // Sharp angle to peak
+        const peakX = x + wavelength / 2;
+        d += ` L${peakX},${peakY}`;
+        
+        // Sharp angle back to center at end of segment
+        const endX = x + wavelength;
+        d += ` L${endX},${midY}`;
+    }
+    
+    return d;
+};
+
 // Helper function to check if current style is a squiggle style
 const isSquiggleStyle = (className) => {
     return className && (
         className.includes('is-style-animated-squiggle') ||
         className.includes('is-style-static-squiggle')
     );
+};
+
+// Helper function to check if current style is a zig-zag style
+const isZigzagStyle = (className) => {
+    return className && (
+        className.includes('is-style-animated-zigzag') ||
+        className.includes('is-style-static-zigzag')
+    );
+};
+
+// Helper function to check if current style is any custom style (squiggle or zig-zag)
+const isCustomStyle = (className) => {
+    return isSquiggleStyle(className) || isZigzagStyle(className);
 };
 
 // Add squiggle-specific attributes to separator block (only when needed)
@@ -117,14 +158,17 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
         } = attributes;
         
         const isSquiggle = isSquiggleStyle(className);
+        const isZigzag = isZigzagStyle(className);
+        const isCustom = isCustomStyle(className);
 
-        // Initialize squiggle attributes when squiggle style is applied
-        if (isSquiggle && strokeWidth === undefined) {
+        // Initialize custom style attributes when custom style is applied
+        if (isCustom && strokeWidth === undefined) {
             const newAnimationId = generateAnimationId();
+            const defaultAmplitude = isZigzag ? 15 : 10; // Zig-zag gets slightly larger default amplitude
             setAttributes({
                 strokeWidth: 1,
                 animationSpeed: 1.6,
-                squiggleAmplitude: 10,
+                squiggleAmplitude: defaultAmplitude,
                 squiggleHeight: '100px',
                 animationId: newAnimationId,
                 isReversed: false
@@ -132,7 +176,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
         }
 
         // Ensure each block has a unique animation ID
-        if (isSquiggle && !animationId) {
+        if (isCustom && !animationId) {
             setAttributes({ animationId: generateAnimationId() });
         }
 
@@ -157,39 +201,39 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             return null;
         };
 
-        // Get squiggle line color for editor preview - same priority order as save function
-        let squiggleColor = 'currentColor';
-        let editorSquiggleColor = 'currentColor';
+        // Get line color for editor preview - same priority order as save function
+        let lineColor = 'currentColor';
+        let editorLineColor = 'currentColor';
         
-        if (isSquiggle) {
+        if (isCustom) {
             console.log('🎨 DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className });
             
             if (backgroundColor) {
-                squiggleColor = `var(--wp--preset--color--${backgroundColor})`;
+                lineColor = `var(--wp--preset--color--${backgroundColor})`;
             } else if (customBackgroundColor) {
-                squiggleColor = customBackgroundColor;
+                lineColor = customBackgroundColor;
             } else if (style?.color?.background) {
-                squiggleColor = style.color.background;
+                lineColor = style.color.background;
             } else {
                 const classNameColor = extractColorFromClassName(className);
                 if (classNameColor) {
-                    squiggleColor = classNameColor;
+                    lineColor = classNameColor;
                 } else if (textColor) {
-                    squiggleColor = `var(--wp--preset--color--${textColor})`;
+                    lineColor = `var(--wp--preset--color--${textColor})`;
                 } else if (customTextColor) {
-                    squiggleColor = customTextColor;
+                    lineColor = customTextColor;
                 } else if (style?.color?.text) {
-                    squiggleColor = style.color.text;
+                    lineColor = style.color.text;
                 }
             }
             
-            editorSquiggleColor = squiggleColor;
-            console.log('🎨 Final editor color:', editorSquiggleColor);
+            editorLineColor = lineColor;
+            console.log('🎨 Final editor color:', editorLineColor);
         }
 
         // Determine if animation should be paused based on style
         let finalPaused = false;
-        if (className && className.includes('is-style-static-squiggle')) {
+        if (className && (className.includes('is-style-static-squiggle') || className.includes('is-style-static-zigzag'))) {
             finalPaused = true;
         }
 
@@ -201,12 +245,12 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             setAttributes({ className: cleanClassName });
         }
 
-        // If not a squiggle style, just return the normal block edit without any interference
-        if (!isSquiggle) {
+        // If not a custom style, just return the normal block edit without any interference
+        if (!isCustom) {
             return <BlockEdit {...props} />;
         }
 
-        // For squiggle styles, render our custom squiggle directly instead of overlay approach
+        // For custom styles, render our custom pattern directly instead of overlay approach
         // This works better inside Group/Row/Stack blocks that use flexbox
         const blockProps = useBlockProps({
             className: `wp-block-separator awesome-squiggle-wave ${className || ''}`.trim(),
@@ -234,7 +278,16 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                             0% { transform: translateX(0); }
                             100% { transform: translateX(80px); }
                         }
-                        .awesome-squiggle-editor-preview .squiggle-path {
+                        @keyframes zigzag-flow {
+                            0% { transform: translateX(0); }
+                            100% { transform: translateX(-60px); }
+                        }
+                        @keyframes zigzag-flow-reverse {
+                            0% { transform: translateX(0); }
+                            100% { transform: translateX(60px); }
+                        }
+                        .awesome-squiggle-editor-preview .squiggle-path,
+                        .awesome-squiggle-editor-preview .zigzag-path {
                             transform-origin: center;
                         }
                     `}
@@ -262,19 +315,19 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                             role="presentation"
                         >
                             <path
-                                d={generateSquigglePath(squiggleAmplitude || 10)}
+                                d={isZigzag ? generateZigzagPath(squiggleAmplitude || 15) : generateSquigglePath(squiggleAmplitude || 10)}
                                 fill="none"
-                                stroke={editorSquiggleColor}
+                                stroke={editorLineColor}
                                 strokeWidth={strokeWidth || 1}
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                className={`squiggle-path squiggle-path-${animationId || 'default'}`}
+                                className={`${isZigzag ? 'zigzag' : 'squiggle'}-path ${isZigzag ? 'zigzag' : 'squiggle'}-path-${animationId || 'default'}`}
                                 style={{
                                     animation: finalPaused 
                                         ? 'none' 
-                                        : `${isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow'} ${animationSpeed || 1.6}s linear infinite`,
+                                        : `${isZigzag ? (isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow') : (isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow')} ${animationSpeed || 1.6}s linear infinite`,
                                     transformOrigin: 'center',
-                                    stroke: editorSquiggleColor,
+                                    stroke: editorLineColor,
                                     display: 'block'
                                 }}
                             />
@@ -282,9 +335,9 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                     </div>
                 </div>
 
-                {/* Add our custom squiggle-specific controls to the inspector */}
+                {/* Add our custom pattern-specific controls to the inspector */}
                 <InspectorControls group="settings">
-                    <PanelBody title={__('Squiggle Settings', 'awesome-squiggle')} initialOpen={true}>
+                    <PanelBody title={__(isZigzag ? 'Zig-Zag Settings' : 'Squiggle Settings', 'awesome-squiggle')} initialOpen={true}>
                         <RangeControl
                             label={__('Animation Speed', 'awesome-squiggle')}
                             value={animationSpeed || 1.6}
@@ -292,34 +345,34 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                             min={0.5}
                             max={5}
                             step={0.1}
-                            help={__('Control how fast the squiggle animates', 'awesome-squiggle')}
+                            help={__(isZigzag ? 'Control how fast the zig-zag animates' : 'Control how fast the squiggle animates', 'awesome-squiggle')}
                         />
                         <RangeControl
-                            label={__('Squiggle Amplitude', 'awesome-squiggle')}
-                            value={squiggleAmplitude || 10}
+                            label={__(isZigzag ? 'Zig-Zag Amplitude' : 'Squiggle Amplitude', 'awesome-squiggle')}
+                            value={squiggleAmplitude || (isZigzag ? 15 : 10)}
                             onChange={(value) => setAttributes({ squiggleAmplitude: value })}
                             min={5}
                             max={25}
-                            help={__('Adjust the height of the squiggle peaks', 'awesome-squiggle')}
+                            help={__(isZigzag ? 'Adjust the height of the zig-zag peaks' : 'Adjust the height of the squiggle peaks', 'awesome-squiggle')}
                         />
                         <ToggleControl
                             label={__('Reverse Animation', 'awesome-squiggle')}
                             checked={isReversed || false}
                             onChange={() => setAttributes({ isReversed: !isReversed })}
-                            help={__('Make the squiggle animate in the opposite direction', 'awesome-squiggle')}
+                            help={__(isZigzag ? 'Make the zig-zag animate in the opposite direction' : 'Make the squiggle animate in the opposite direction', 'awesome-squiggle')}
                         />
                     </PanelBody>
-                    <PanelBody title={__('Squiggle Dimensions', 'awesome-squiggle')} initialOpen={false}>
+                    <PanelBody title={__(isZigzag ? 'Zig-Zag Dimensions' : 'Squiggle Dimensions', 'awesome-squiggle')} initialOpen={false}>
                         <RangeControl
                             label={__('Stroke Width', 'awesome-squiggle')}
                             value={strokeWidth || 1}
                             onChange={(value) => setAttributes({ strokeWidth: value })}
                             min={1}
                             max={8}
-                            help={__('Adjust the thickness of the squiggle line', 'awesome-squiggle')}
+                            help={__(isZigzag ? 'Adjust the thickness of the zig-zag line' : 'Adjust the thickness of the squiggle line', 'awesome-squiggle')}
                         />
                         <SelectControl
-                            label={__('Squiggle Height', 'awesome-squiggle')}
+                            label={__(isZigzag ? 'Zig-Zag Height' : 'Squiggle Height', 'awesome-squiggle')}
                             value={squiggleHeight || '100px'}
                             options={[
                                 { label: '50px', value: '50px' },
@@ -330,7 +383,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                                 { label: '200px', value: '200px' }
                             ]}
                             onChange={(value) => setAttributes({ squiggleHeight: value })}
-                            help={__('Set the height of the squiggle container', 'awesome-squiggle')}
+                            help={__(isZigzag ? 'Set the height of the zig-zag container' : 'Set the height of the squiggle container', 'awesome-squiggle')}
                         />
                     </PanelBody>
                 </InspectorControls>
@@ -358,15 +411,17 @@ addFilter(
 
         const { className } = attributes;
         const isSquiggle = isSquiggleStyle(className);
+        const isZigzag = isZigzagStyle(className);
+        const isCustom = isCustomStyle(className);
         
-        if (!isSquiggle) {
+        if (!isCustom) {
             return element;
         }
 
         const {
             strokeWidth = 1,
             animationSpeed = 1.6,
-            squiggleAmplitude = 10,
+            squiggleAmplitude = isZigzag ? 15 : 10,
             squiggleHeight = '100px',
             animationId = generateAnimationId(),
             isReversed,
@@ -400,37 +455,37 @@ addFilter(
 
         // Determine if animation should be paused based on style
         let finalPaused = false;
-        if (className && className.includes('is-style-static-squiggle')) {
+        if (className && (className.includes('is-style-static-squiggle') || className.includes('is-style-static-zigzag'))) {
             finalPaused = true;
         }
 
-        // Get squiggle line color - prioritize background color settings for the line
-        let squiggleColor = 'currentColor';
+        // Get line color - prioritize background color settings for the line
+        let lineColor = 'currentColor';
 
         console.log('🎨 SAVE DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className });
 
         // Check all possible color sources in priority order
         if (backgroundColor) {
-            squiggleColor = `var(--wp--preset--color--${backgroundColor})`;
+            lineColor = `var(--wp--preset--color--${backgroundColor})`;
         } else if (customBackgroundColor) {
-            squiggleColor = customBackgroundColor;
+            lineColor = customBackgroundColor;
         } else if (style?.color?.background) {
-            squiggleColor = style.color.background;
+            lineColor = style.color.background;
         } else {
             // Try to extract color from className
             const classNameColor = extractColorFromClassName(className);
             if (classNameColor) {
-                squiggleColor = classNameColor;
+                lineColor = classNameColor;
             } else if (textColor) {
-                squiggleColor = `var(--wp--preset--color--${textColor})`;
+                lineColor = `var(--wp--preset--color--${textColor})`;
             } else if (customTextColor) {
-                squiggleColor = customTextColor;
+                lineColor = customTextColor;
             } else if (style?.color?.text) {
-                squiggleColor = style.color.text;
+                lineColor = style.color.text;
             }
         }
 
-        console.log('🎨 SAVE Final color:', squiggleColor);
+        console.log('🎨 SAVE Final color:', lineColor);
 
         // Build class names that preserve WordPress's color support
         // Clean up duplicate class names and ensure proper ordering
@@ -458,7 +513,7 @@ addFilter(
             height: squiggleHeight,
             backgroundColor: 'transparent', // Container background always transparent
             [`--animation-duration-${animationId}`]: `${animationSpeed}s`,
-            [`--squiggle-color-${animationId}`]: squiggleColor, // Custom CSS variable for this instance
+            [`--line-color-${animationId}`]: lineColor, // Custom CSS variable for this instance
         };
 
         // Merge any existing styles but override background to stay transparent
@@ -484,19 +539,19 @@ addFilter(
                     role="presentation"
                 >
                     <path
-                        d={generateSquigglePath(squiggleAmplitude)}
+                        d={isZigzag ? generateZigzagPath(squiggleAmplitude) : generateSquigglePath(squiggleAmplitude)}
                         fill="none"
-                        stroke={squiggleColor}
+                        stroke={lineColor}
                         strokeWidth={strokeWidth}
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className={`squiggle-path squiggle-path-${animationId}`}
+                        className={`${isZigzag ? 'zigzag' : 'squiggle'}-path ${isZigzag ? 'zigzag' : 'squiggle'}-path-${animationId}`}
                         style={{
                             animation: finalPaused 
                                 ? 'none' 
-                                : `${isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow'} ${animationSpeed}s linear infinite`,
+                                : `${isZigzag ? (isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow') : (isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow')} ${animationSpeed}s linear infinite`,
                             transformOrigin: 'center',
-                            stroke: squiggleColor // Explicit stroke color override
+                            stroke: lineColor // Explicit stroke color override
                         }}
                     />
                 </svg>
@@ -506,7 +561,7 @@ addFilter(
     20
 );
 
-// Register block styles for squiggle options
+// Register block styles for squiggle and zig-zag options
 wp.domReady(() => {
     // Animated Squiggle Style
     registerBlockStyle('core/separator', {
@@ -519,6 +574,20 @@ wp.domReady(() => {
     registerBlockStyle('core/separator', {
         name: 'static-squiggle',
         label: __('Static Squiggle', 'awesome-squiggle'),
+        isDefault: false
+    });
+
+    // Animated Zig-Zag Style
+    registerBlockStyle('core/separator', {
+        name: 'animated-zigzag',
+        label: __('Animated Zig-Zag', 'awesome-squiggle'),
+        isDefault: false
+    });
+
+    // Static Zig-Zag Style  
+    registerBlockStyle('core/separator', {
+        name: 'static-zigzag',
+        label: __('Static Zig-Zag', 'awesome-squiggle'),
         isDefault: false
     });
 }); 

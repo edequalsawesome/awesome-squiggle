@@ -3,7 +3,7 @@
  * Plugin Name: Awesome Squiggle
  * Plugin URI: https://github.com/edequalsawesome/awesome-squiggle
  * Description: Adds animated squiggle variations to the core WordPress separator block
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: eD! Thomas
  * Author URI: https://edequalsaweso.me
  * License: GPL-3.0-or-later
@@ -44,7 +44,7 @@ function awesome_squiggle_enqueue_frontend_styles() {
         'awesome-squiggle-frontend',
         plugin_dir_url(__FILE__) . 'build/style-index.css',
         array(),
-        '1.0.0'
+        '1.1.0'
     );
 }
 add_action('wp_enqueue_scripts', 'awesome_squiggle_enqueue_frontend_styles');
@@ -57,12 +57,12 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
         return $block_content;
     }
     
-    // Check if this is a squiggle separator
+    // Check if this is a squiggle or zig-zag separator
     $attrs = $block['attrs'] ?? array();
     $className = $attrs['className'] ?? '';
     
     if (strpos($className, 'is-style-') !== false && 
-        (strpos($className, 'squiggle') !== false)) {
+        (strpos($className, 'squiggle') !== false || strpos($className, 'zigzag') !== false)) {
         
         // Ensure our CSS class is included
         if (strpos($block_content, 'awesome-squiggle-wave') === false) {
