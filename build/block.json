@@ -5,10 +5,11 @@
   "version": "1.1.0",
   "title": "Awesome Squiggle Variations",
   "category": "design",
-  "description": "Adds animated squiggle variations to the core separator block.",
+  "description": "Adds animated squiggle and zig-zag variations to the core separator block.",
   "keywords": [
     "divider",
     "squiggle",
+    "zigzag",
     "animated",
     "separator"
   ],
