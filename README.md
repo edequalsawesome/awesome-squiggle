@@ -78,9 +78,39 @@ npm start
 
 # Build for production
 npm run build
+
+# Secure production build (recommended for deployment)
+npm run build:production
 ```
 
+## Security Features
+
+Version 1.2.5 includes comprehensive security enhancements:
+
+- **Input Validation**: All user inputs are validated and bounded to prevent malicious data
+- **Production Security**: Debug code is automatically stripped from production builds
+- **Pattern Validation**: IDs and identifiers follow strict alphanumeric patterns
+- **File Security**: Enhanced PHP file validation and JSON parsing with proper error handling
+- **WordPress Integration**: Uses WordPress sanitization functions for maximum compatibility
+- **Development vs Production**: Clear separation between development debugging and production deployments
+
+For production deployments, always use:
+```bash
+npm run build:production
+```
+
+This ensures all debugging code is removed and the plugin is optimized for security and performance.
+
 ## Changelog
+
+### Version 1.2.5
+- **Security Enhancements**: Comprehensive security improvements across the entire plugin
+- **Input Validation**: Added robust validation for all user inputs with bounds checking
+- **Production Builds**: Implemented secure production builds that strip debug code
+- **PHP Security**: Enhanced file validation, JSON parsing, and input sanitization
+- **JavaScript Security**: Added secure attribute handling and pattern validation
+- **Development Tools**: New production build script for secure deployments
+- **Documentation**: Added comprehensive security documentation and maintenance guidelines
 
 ### Version 1.2.1
 - **Gradient Auto-Detection**: Fixed gradient functionality for zigzag patterns

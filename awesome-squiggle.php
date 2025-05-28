@@ -3,7 +3,7 @@
  * Plugin Name: Awesome Squiggle
  * Plugin URI: https://github.com/edequalsawesome/awesome-squiggle
  * Description: Adds animated squiggle variations to the core WordPress separator block
- * Version: 1.2.1
+ * Version: 1.2.5
  * Author: eD! Thomas
  * Author URI: https://edequalsaweso.me
  * License: GPL-3.0-or-later
@@ -23,15 +23,28 @@ if (!defined('ABSPATH')) {
  * Initialize the Awesome Squiggle plugin
  */
 function awesome_squiggle_init() {
-    // Register our block variation and filters
-    $block_json = json_decode(file_get_contents(__DIR__ . '/build/block.json'), true);
+    // Security improvement: Check if file exists before reading
+    $block_json_path = __DIR__ . '/build/block.json';
     
-    if (!$block_json) {
-        error_log('Awesome Squiggle: Failed to load block.json');
+    if (!file_exists($block_json_path)) {
+        error_log('Awesome Squiggle: block.json file not found at ' . $block_json_path);
+        return;
+    }
+    
+    // Security improvement: Validate file contents
+    $block_json_content = file_get_contents($block_json_path);
+    if ($block_json_content === false) {
+        error_log('Awesome Squiggle: Failed to read block.json');
+        return;
+    }
+    
+    $block_json = json_decode($block_json_content, true);
+    if (!$block_json || json_last_error() !== JSON_ERROR_NONE) {
+        error_log('Awesome Squiggle: Invalid JSON in block.json - ' . json_last_error_msg());
         return;
     }
 
-    // Register our enhancement scripts and styles
+    // Register our block variation and filters
     register_block_type(__DIR__ . '/build');
 }
 add_action('init', 'awesome_squiggle_init');
@@ -44,7 +57,7 @@ function awesome_squiggle_enqueue_frontend_styles() {
         'awesome-squiggle-frontend',
         plugin_dir_url(__FILE__) . 'build/style-index.css',
         array(),
-        '1.2.0'
+        '1.2.5'
     );
 }
 add_action('wp_enqueue_scripts', 'awesome_squiggle_enqueue_frontend_styles');
@@ -60,6 +73,9 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
     // Check if this is a squiggle or zig-zag separator
     $attrs = $block['attrs'] ?? array();
     $className = $attrs['className'] ?? '';
+    
+    // Security improvement: Sanitize className before processing
+    $className = sanitize_html_class($className);
     
     if (strpos($className, 'is-style-') !== false && 
         (strpos($className, 'squiggle') !== false || strpos($className, 'zigzag') !== false)) {

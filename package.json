@@ -1,9 +1,10 @@
 {
   "name": "awesome-squiggle",
-  "version": "1.2.1",
+  "version": "1.2.5",
   "description": "WordPress plugin that adds animated squiggle styles to the core Separator block",
   "scripts": {
     "build": "wp-scripts build",
+    "build:production": "NODE_ENV=production wp-scripts build",
     "start": "wp-scripts start",
     "check-engines": "wp-scripts check-engines",
     "check-licenses": "wp-scripts check-licenses",

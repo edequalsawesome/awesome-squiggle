@@ -6,16 +6,108 @@ import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import './style.css';
 
+// Security validation functions
+const validateNumericInput = (value, min, max, defaultValue) => {
+    if (typeof value !== 'number' || isNaN(value)) {
+        return defaultValue;
+    }
+    return Math.max(min, Math.min(max, value));
+};
+
+const validateStringInput = (value, allowedPattern, maxLength = 100) => {
+    if (typeof value !== 'string') {
+        return '';
+    }
+    
+    // Limit length to prevent DoS
+    value = value.substring(0, maxLength);
+    
+    // Validate against pattern if provided
+    if (allowedPattern && !allowedPattern.test(value)) {
+        return '';
+    }
+    
+    return value;
+};
+
+const validateGradientId = (id) => {
+    // Only allow alphanumeric, dash, and underscore
+    const allowedPattern = /^[a-zA-Z0-9_-]+$/;
+    return validateStringInput(id, allowedPattern, 50);
+};
+
+const validateAnimationId = (id) => {
+    // Only allow alphanumeric, dash, and underscore
+    const allowedPattern = /^[a-zA-Z0-9_-]+$/;
+    return validateStringInput(id, allowedPattern, 50);
+};
+
+// Development-only logging
+const debugLog = (message, ...args) => {
+    if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
+        console.log(message, ...args);
+    }
+};
+
+// Secure attribute setter
+const setSecureAttributes = (setAttributes, updates) => {
+    const secureUpdates = {};
+    
+    for (const [key, value] of Object.entries(updates)) {
+        switch (key) {
+            case 'strokeWidth':
+                secureUpdates[key] = validateNumericInput(value, 1, 8, 1);
+                break;
+            case 'animationSpeed':
+                secureUpdates[key] = validateNumericInput(value, 0.5, 5, 1.6);
+                break;
+            case 'squiggleAmplitude':
+                secureUpdates[key] = validateNumericInput(value, 5, 25, 10);
+                break;
+            case 'animationId':
+                secureUpdates[key] = validateAnimationId(value);
+                break;
+            case 'gradientId':
+                secureUpdates[key] = validateGradientId(value);
+                break;
+            case 'squiggleHeight':
+                // Validate against allowed height values
+                const allowedHeights = ['50px', '75px', '100px', '125px', '150px', '200px'];
+                secureUpdates[key] = allowedHeights.includes(value) ? value : '100px';
+                break;
+            case 'isReversed':
+                secureUpdates[key] = value === true;
+                break;
+            case 'useGradient':
+                secureUpdates[key] = value === true;
+                break;
+            case 'gradient':
+                secureUpdates[key] = value;
+                break;
+            default:
+                secureUpdates[key] = value;
+        }
+    }
+    
+    setAttributes(secureUpdates);
+};
+
 // Debug logging
-console.log('🌊 Awesome Squiggle plugin loaded!');
+debugLog('🌊 Awesome Squiggle plugin loaded!');
 
 // Generate unique animation ID for each block instance
 let animationCounter = 0;
-const generateAnimationId = () => `squiggle-animation-${++animationCounter}`;
+const generateAnimationId = () => {
+    const id = `squiggle-animation-${++animationCounter}`;
+    return validateAnimationId(id);
+};
 
 // Generate unique gradient ID for each block instance
 let gradientCounter = 0;
-const generateGradientId = (patternType = 'squiggle') => `${patternType}-gradient-${++gradientCounter}`;
+const generateGradientId = (patternType = 'squiggle') => {
+    const id = `${patternType}-gradient-${++gradientCounter}`;
+    return validateGradientId(id);
+};
 
 // WordPress default gradients mapping with optimized versions
 const wpDefaultGradients = {
@@ -63,7 +155,7 @@ const parseGradient = (gradientString) => {
     const linearMatch = gradientString.match(/linear-gradient\((.*)\)$/);
     if (linearMatch) {
         const content = linearMatch[1];
-        console.log('🔍 Parsing gradient content:', content);
+        debugLog('🔍 Parsing gradient content:', content);
         
         // Split by commas but be careful about commas inside rgb() functions
         const parts = [];
@@ -86,7 +178,7 @@ const parseGradient = (gradientString) => {
             parts.push(currentPart.trim());
         }
         
-        console.log('🔍 Gradient parts:', parts);
+        debugLog('🔍 Gradient parts:', parts);
         
         const stops = [];
         
@@ -103,7 +195,7 @@ const parseGradient = (gradientString) => {
                 const color = colorMatch[1];
                 const offset = percentMatch ? percentMatch[1] : (stops.length === 0 ? '0%' : '100%');
                 stops.push({ color, offset });
-                console.log('🔍 Found stop:', { color, offset });
+                debugLog('🔍 Found stop:', { color, offset });
             }
         }
         
@@ -122,17 +214,17 @@ const parseGradient = (gradientString) => {
                     { ...middleStop, offset: '50%' }, // Normalize middle to 50%
                     lastStop
                 ];
-                console.log('🔍 Simplified gradient from', stops.length, 'to', finalStops.length, 'stops');
+                debugLog('🔍 Simplified gradient from', stops.length, 'to', finalStops.length, 'stops');
             }
             
-            console.log('🔍 Returning parsed stops:', finalStops);
+            debugLog('🔍 Returning parsed stops:', finalStops);
             return {
                 type: 'linear',
                 stops: finalStops
             };
         }
         
-        console.log('🔍 Fallback: not enough stops found');
+        debugLog('🔍 Fallback: not enough stops found');
     }
     
     // Fallback for any other format
@@ -146,20 +238,23 @@ const parseGradient = (gradientString) => {
 };
 
 // Test gradient parsing
-console.log('🧪 Testing gradient parsing:');
+debugLog('🧪 Testing gradient parsing:');
 const testGradient1 = parseGradient('luminous-vivid-amber-to-luminous-vivid-orange');
 const testGradient2 = parseGradient('cool-to-warm-spectrum');
-console.log('luminous-vivid-amber-to-luminous-vivid-orange:', testGradient1);
-console.log('  stops:', testGradient1?.stops);
-console.log('cool-to-warm-spectrum:', testGradient2);
-console.log('  stops:', testGradient2?.stops);
+debugLog('luminous-vivid-amber-to-luminous-vivid-orange:', testGradient1);
+debugLog('  stops:', testGradient1?.stops);
+debugLog('cool-to-warm-spectrum:', testGradient2);
+debugLog('  stops:', testGradient2?.stops);
 
 // Test the actual CSS gradient parsing
 const testCss = 'linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%)';
-console.log('Direct CSS test:', parseGradient(testCss));
+debugLog('Direct CSS test:', parseGradient(testCss));
 
 // Generate SVG path data for the squiggle
 const generateSquigglePath = (amplitude = 10) => {
+    // Security: Validate amplitude bounds
+    amplitude = validateNumericInput(amplitude, 5, 25, 10);
+    
     const wavelength = 40;
     const width = 800;
     const height = 100;
@@ -186,6 +281,9 @@ const generateSquigglePath = (amplitude = 10) => {
 
 // Generate SVG path data for the zig-zag (Charlie Brown stripe style)
 const generateZigzagPath = (amplitude = 15) => {
+    // Security: Validate amplitude bounds
+    amplitude = validateNumericInput(amplitude, 5, 25, 15);
+    
     const wavelength = 30; // Narrower than squiggle for more angular feel
     const width = 800;
     const height = 100;
@@ -326,7 +424,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             const newAnimationId = generateAnimationId();
             const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle');
             const defaultAmplitude = isZigzag ? 15 : 10; // Zig-zag gets slightly larger default amplitude
-            setAttributes({
+            setSecureAttributes(setAttributes, {
                 strokeWidth: 1,
                 animationSpeed: 1.6,
                 squiggleAmplitude: defaultAmplitude,
@@ -340,12 +438,12 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
 
         // Ensure each block has a unique animation ID
         if (isCustom && !animationId) {
-            setAttributes({ animationId: generateAnimationId() });
+            setSecureAttributes(setAttributes, { animationId: generateAnimationId() });
         }
 
         // Ensure each block has a unique gradient ID
         if (isCustom && !gradientId) {
-            setAttributes({ gradientId: generateGradientId(isZigzag ? 'zigzag' : 'squiggle') });
+            setSecureAttributes(setAttributes, { gradientId: generateGradientId(isZigzag ? 'zigzag' : 'squiggle') });
         }
 
         // Regenerate gradient ID when switching between squiggle and zigzag to avoid conflicts
@@ -354,8 +452,8 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             (isZigzag && gradientId.includes('squiggle'))
         )) {
             const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle');
-            setAttributes({ gradientId: newGradientId });
-            console.log('🔄 Regenerated gradient ID for style switch:', newGradientId);
+            setSecureAttributes(setAttributes, { gradientId: newGradientId });
+            debugLog('🔄 Regenerated gradient ID for style switch:', newGradientId);
         }
 
         // Extract color information from WordPress classes (same logic as save)
@@ -385,22 +483,22 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
         let finalGradient = null;
         
         if (isCustom) {
-            console.log('🎨 DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, useGradient, gradient });
-            console.log('🎨 DEBUG: Pattern type:', { isSquiggle, isZigzag, gradientId });
+            debugLog('🎨 DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, useGradient, gradient });
+            debugLog('🎨 DEBUG: Pattern type:', { isSquiggle, isZigzag, gradientId });
             
                     // Check if gradient should be used - auto-enable if gradient is present
         if ((useGradient || gradient) && gradient) {
             finalGradient = gradient;
             editorLineColor = `url(#${gradientId})`;
             const parsedGradient = parseGradient(gradient);
-            console.log('🎨 GRADIENT DEBUG: Using gradient:', gradient, 'Parsed:', parsedGradient);
-            console.log('🎨 GRADIENT STOPS:', parsedGradient?.stops);
-            console.log('🎨 GRADIENT ID for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE', ':', gradientId);
+            debugLog('🎨 GRADIENT DEBUG: Using gradient:', gradient, 'Parsed:', parsedGradient);
+            debugLog('🎨 GRADIENT STOPS:', parsedGradient?.stops);
+            debugLog('🎨 GRADIENT ID for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE', ':', gradientId);
             
             // Auto-enable useGradient if gradient is present but useGradient is undefined
             if (useGradient === undefined && gradient) {
-                setAttributes({ useGradient: true });
-                console.log('🎨 Auto-enabled gradient mode for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE');
+                setSecureAttributes(setAttributes, { useGradient: true });
+                debugLog('🎨 Auto-enabled gradient mode for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE');
             }
         } else {
                 // Use solid color logic
@@ -425,7 +523,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                 editorLineColor = lineColor;
             }
             
-            console.log('🎨 Final editor color:', editorLineColor, 'Gradient:', finalGradient);
+            debugLog('🎨 Final editor color:', editorLineColor, 'Gradient:', finalGradient);
         }
 
         // Determine if animation should be paused based on style
@@ -513,13 +611,13 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                         >
                             {finalGradient && (() => {
                                 const gradientData = parseGradient(finalGradient);
-                                console.log('🎨 SVG GRADIENT DATA:', gradientData);
-                                console.log('🎨 SVG GRADIENT ID:', gradientId);
+                                debugLog('🎨 SVG GRADIENT DATA:', gradientData);
+                                debugLog('🎨 SVG GRADIENT ID:', gradientId);
                                 return (
                                     <defs>
                                         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
                                             {gradientData?.stops?.length > 0 ? gradientData.stops.map((stop, index) => {
-                                                console.log(`🎨 SVG STOP ${index}:`, stop);
+                                                debugLog(`🎨 SVG STOP ${index}:`, stop);
                                                 return <stop key={index} offset={stop.offset} stopColor={stop.color} />;
                                             }) : [
                                                 <stop key="fallback-0" offset="0%" stopColor="#ff6b35" />,
@@ -556,7 +654,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                         <RangeControl
                             label={__('Animation Speed', 'awesome-squiggle')}
                             value={animationSpeed || 1.6}
-                            onChange={(value) => setAttributes({ animationSpeed: value })}
+                            onChange={(value) => setSecureAttributes(setAttributes, { animationSpeed: value })}
                             min={0.5}
                             max={5}
                             step={0.1}
@@ -565,7 +663,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                         <RangeControl
                             label={__(isZigzag ? 'Zig-Zag Amplitude' : 'Squiggle Amplitude', 'awesome-squiggle')}
                             value={squiggleAmplitude || (isZigzag ? 15 : 10)}
-                            onChange={(value) => setAttributes({ squiggleAmplitude: value })}
+                            onChange={(value) => setSecureAttributes(setAttributes, { squiggleAmplitude: value })}
                             min={5}
                             max={25}
                             help={__(isZigzag ? 'Adjust the height of the zig-zag peaks' : 'Adjust the height of the squiggle peaks', 'awesome-squiggle')}
@@ -573,7 +671,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                         <ToggleControl
                             label={__('Reverse Animation', 'awesome-squiggle')}
                             checked={isReversed || false}
-                            onChange={() => setAttributes({ isReversed: !isReversed })}
+                            onChange={() => setSecureAttributes(setAttributes, { isReversed: !isReversed })}
                             help={__(isZigzag ? 'Make the zig-zag animate in the opposite direction' : 'Make the squiggle animate in the opposite direction', 'awesome-squiggle')}
                         />
                     </PanelBody>
@@ -581,7 +679,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                         <RangeControl
                             label={__('Stroke Width', 'awesome-squiggle')}
                             value={strokeWidth || 1}
-                            onChange={(value) => setAttributes({ strokeWidth: value })}
+                            onChange={(value) => setSecureAttributes(setAttributes, { strokeWidth: value })}
                             min={1}
                             max={8}
                             help={__(isZigzag ? 'Adjust the thickness of the zig-zag line' : 'Adjust the thickness of the squiggle line', 'awesome-squiggle')}
@@ -597,7 +695,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                                 { label: '150px', value: '150px' },
                                 { label: '200px', value: '200px' }
                             ]}
-                            onChange={(value) => setAttributes({ squiggleHeight: value })}
+                            onChange={(value) => setSecureAttributes(setAttributes, { squiggleHeight: value })}
                             help={__(isZigzag ? 'Set the height of the zig-zag container' : 'Set the height of the squiggle container', 'awesome-squiggle')}
                         />
                     </PanelBody>
@@ -605,14 +703,14 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                         <ToggleControl
                             label={__('Use Gradient', 'awesome-squiggle')}
                             checked={useGradient || false}
-                            onChange={(value) => setAttributes({ useGradient: value })}
+                            onChange={(value) => setSecureAttributes(setAttributes, { useGradient: value })}
                             help={__('Enable gradient colors instead of solid colors', 'awesome-squiggle')}
                         />
                         {useGradient && (
                             <GradientPickerControl
                                 label={__('Gradient', 'awesome-squiggle')}
                                 value={gradient}
-                                onChange={(value) => setAttributes({ gradient: value })}
+                                onChange={(value) => setSecureAttributes(setAttributes, { gradient: value })}
                                 gradients={[
                                     {
                                         name: 'Ocean Blue',
@@ -713,17 +811,17 @@ addFilter(
         let lineColor = 'currentColor';
         let finalGradient = null;
 
-        console.log('🎨 SAVE DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, useGradient, gradient });
-        console.log('🎨 SAVE DEBUG: Pattern type:', { isSquiggle, isZigzag, gradientId });
+        debugLog('🎨 SAVE DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, useGradient, gradient });
+        debugLog('🎨 SAVE DEBUG: Pattern type:', { isSquiggle, isZigzag, gradientId });
 
         // Check if gradient should be used - auto-enable if gradient is present
         if ((useGradient || gradient) && gradient) {
             finalGradient = gradient;
             lineColor = `url(#${gradientId})`;
             const parsedGradient = parseGradient(gradient);
-            console.log('🎨 SAVE GRADIENT DEBUG: Using gradient:', gradient, 'Parsed:', parsedGradient);
-            console.log('🎨 SAVE GRADIENT STOPS:', parsedGradient?.stops);
-            console.log('🎨 SAVE GRADIENT ID for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE', ':', gradientId);
+            debugLog('🎨 SAVE GRADIENT DEBUG: Using gradient:', gradient, 'Parsed:', parsedGradient);
+            debugLog('🎨 SAVE GRADIENT STOPS:', parsedGradient?.stops);
+            debugLog('🎨 SAVE GRADIENT ID for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE', ':', gradientId);
         } else {
             // Check all possible color sources in priority order
             if (backgroundColor) {
@@ -747,7 +845,7 @@ addFilter(
             }
         }
 
-        console.log('🎨 SAVE Final color:', lineColor, 'Gradient:', finalGradient);
+        debugLog('🎨 SAVE Final color:', lineColor, 'Gradient:', finalGradient);
 
         // Build class names that preserve WordPress's color support
         // Clean up duplicate class names and ensure proper ordering
@@ -802,13 +900,13 @@ addFilter(
                 >
                     {finalGradient && (() => {
                         const gradientData = parseGradient(finalGradient);
-                        console.log('🎨 SAVE SVG GRADIENT DATA:', gradientData);
-                        console.log('🎨 SAVE SVG GRADIENT ID:', gradientId);
+                        debugLog('🎨 SAVE SVG GRADIENT DATA:', gradientData);
+                        debugLog('🎨 SAVE SVG GRADIENT ID:', gradientId);
                         return (
                             <defs>
                                 <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
                                     {gradientData?.stops?.length > 0 ? gradientData.stops.map((stop, index) => {
-                                        console.log(`🎨 SAVE SVG STOP ${index}:`, stop);
+                                        debugLog(`🎨 SAVE SVG STOP ${index}:`, stop);
                                         return <stop key={index} offset={stop.offset} stopColor={stop.color} />;
                                     }) : [
                                         <stop key="fallback-0" offset="0%" stopColor="#ff6b35" />,
