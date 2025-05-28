@@ -1,7 +1,7 @@
 {
   "name": "awesome-squiggle",
-  "version": "1.2.0",
-  "description": "Animated wave divider block for WordPress",
+  "version": "1.2.1",
+  "description": "WordPress plugin that adds animated squiggle styles to the core Separator block",
   "scripts": {
     "build": "wp-scripts build",
     "start": "wp-scripts start",

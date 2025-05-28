@@ -15,7 +15,7 @@ const generateAnimationId = () => `squiggle-animation-${++animationCounter}`;
 
 // Generate unique gradient ID for each block instance
 let gradientCounter = 0;
-const generateGradientId = () => `squiggle-gradient-${++gradientCounter}`;
+const generateGradientId = (patternType = 'squiggle') => `${patternType}-gradient-${++gradientCounter}`;
 
 // WordPress default gradients mapping with optimized versions
 const wpDefaultGradients = {
@@ -324,7 +324,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
         // Initialize custom style attributes when custom style is applied
         if (isCustom && strokeWidth === undefined) {
             const newAnimationId = generateAnimationId();
-            const newGradientId = generateGradientId();
+            const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle');
             const defaultAmplitude = isZigzag ? 15 : 10; // Zig-zag gets slightly larger default amplitude
             setAttributes({
                 strokeWidth: 1,
@@ -345,7 +345,17 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
 
         // Ensure each block has a unique gradient ID
         if (isCustom && !gradientId) {
-            setAttributes({ gradientId: generateGradientId() });
+            setAttributes({ gradientId: generateGradientId(isZigzag ? 'zigzag' : 'squiggle') });
+        }
+
+        // Regenerate gradient ID when switching between squiggle and zigzag to avoid conflicts
+        if (isCustom && gradientId && (
+            (isSquiggle && gradientId.includes('zigzag')) || 
+            (isZigzag && gradientId.includes('squiggle'))
+        )) {
+            const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle');
+            setAttributes({ gradientId: newGradientId });
+            console.log('🔄 Regenerated gradient ID for style switch:', newGradientId);
         }
 
         // Extract color information from WordPress classes (same logic as save)
@@ -376,14 +386,22 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
         
         if (isCustom) {
             console.log('🎨 DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, useGradient, gradient });
+            console.log('🎨 DEBUG: Pattern type:', { isSquiggle, isZigzag, gradientId });
             
-                    // Check if gradient should be used
-        if (useGradient && gradient) {
+                    // Check if gradient should be used - auto-enable if gradient is present
+        if ((useGradient || gradient) && gradient) {
             finalGradient = gradient;
             editorLineColor = `url(#${gradientId})`;
             const parsedGradient = parseGradient(gradient);
             console.log('🎨 GRADIENT DEBUG: Using gradient:', gradient, 'Parsed:', parsedGradient);
             console.log('🎨 GRADIENT STOPS:', parsedGradient?.stops);
+            console.log('🎨 GRADIENT ID for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE', ':', gradientId);
+            
+            // Auto-enable useGradient if gradient is present but useGradient is undefined
+            if (useGradient === undefined && gradient) {
+                setAttributes({ useGradient: true });
+                console.log('🎨 Auto-enabled gradient mode for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE');
+            }
         } else {
                 // Use solid color logic
                 if (backgroundColor) {
@@ -661,7 +679,7 @@ addFilter(
             style,
             useGradient,
             gradient,
-            gradientId = generateGradientId()
+            gradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle')
         } = attributes;
 
         // Extract color information from WordPress classes
@@ -696,14 +714,16 @@ addFilter(
         let finalGradient = null;
 
         console.log('🎨 SAVE DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, useGradient, gradient });
+        console.log('🎨 SAVE DEBUG: Pattern type:', { isSquiggle, isZigzag, gradientId });
 
-        // Check if gradient should be used
-        if (useGradient && gradient) {
+        // Check if gradient should be used - auto-enable if gradient is present
+        if ((useGradient || gradient) && gradient) {
             finalGradient = gradient;
             lineColor = `url(#${gradientId})`;
             const parsedGradient = parseGradient(gradient);
             console.log('🎨 SAVE GRADIENT DEBUG: Using gradient:', gradient, 'Parsed:', parsedGradient);
             console.log('🎨 SAVE GRADIENT STOPS:', parsedGradient?.stops);
+            console.log('🎨 SAVE GRADIENT ID for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE', ':', gradientId);
         } else {
             // Check all possible color sources in priority order
             if (backgroundColor) {

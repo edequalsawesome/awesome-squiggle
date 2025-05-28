@@ -82,6 +82,12 @@ npm run build
 
 ## Changelog
 
+### Version 1.2.1
+- **Gradient Auto-Detection**: Fixed gradient functionality for zigzag patterns
+- **Improved Gradient Logic**: Gradients now automatically work when selected from WordPress color controls
+- **Enhanced Pattern Support**: Both squiggle and zigzag patterns now have identical gradient capabilities
+- **Better Debugging**: Added pattern-specific gradient debugging and ID generation
+
 ### Version 1.2.0
 - **Gradient Support**: Added full gradient support with WordPress preset gradients
 - **Performance Optimizations**: Optimized gradient rendering for smooth, instant display
