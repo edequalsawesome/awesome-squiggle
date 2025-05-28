@@ -1,5 +1,5 @@
 import { registerBlockStyle } from '@wordpress/blocks';
-import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
+import { useBlockProps, InspectorControls, __experimentalGradientPickerControl as GradientPickerControl } from '@wordpress/block-editor';
 import { PanelBody, RangeControl, ToggleControl, SelectControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
@@ -12,6 +12,151 @@ console.log('🌊 Awesome Squiggle plugin loaded!');
 // Generate unique animation ID for each block instance
 let animationCounter = 0;
 const generateAnimationId = () => `squiggle-animation-${++animationCounter}`;
+
+// Generate unique gradient ID for each block instance
+let gradientCounter = 0;
+const generateGradientId = () => `squiggle-gradient-${++gradientCounter}`;
+
+// WordPress default gradients mapping with optimized versions
+const wpDefaultGradients = {
+    'vivid-cyan-blue-to-vivid-purple': 'linear-gradient(135deg,rgba(6,147,227,1) 0%,rgb(155,81,224) 100%)',
+    'light-green-cyan-to-vivid-green-cyan': 'linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%)',
+    'luminous-vivid-amber-to-luminous-vivid-orange': 'linear-gradient(135deg,rgba(252,185,0,1) 0%,rgba(255,105,0,1) 100%)',
+    'luminous-vivid-orange-to-vivid-red': 'linear-gradient(135deg,rgba(255,105,0,1) 0%,rgb(207,46,46) 100%)',
+    'very-light-gray-to-cyan-bluish-gray': 'linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%)',
+    'cool-to-warm-spectrum': 'linear-gradient(135deg,rgb(74,234,220) 0%,rgb(238,44,130) 50%,rgb(254,248,76) 100%)', // Optimized to 3 stops
+    'blush-light-purple': 'linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%)',
+    'blush-bordeaux': 'linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%)',
+    'luminous-dusk': 'linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%)',
+    'pale-ocean': 'linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%)',
+    'electric-grass': 'linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%)',
+    'midnight': 'linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%)'
+};
+
+// Simple gradient parser for basic linear gradients
+const parseGradient = (gradientString) => {
+    if (!gradientString) return null;
+    
+    // Handle WordPress preset gradient slugs directly
+    if (wpDefaultGradients[gradientString]) {
+        gradientString = wpDefaultGradients[gradientString];
+    }
+    
+    // Handle WordPress preset gradients (var(--wp--preset--gradient--name))
+    if (gradientString.startsWith('var(--wp--preset--gradient--')) {
+        const gradientName = gradientString.match(/var\(--wp--preset--gradient--([^)]+)\)/)?.[1];
+        if (gradientName && wpDefaultGradients[gradientName]) {
+            gradientString = wpDefaultGradients[gradientName];
+        } else {
+            // Fallback for unknown preset gradients
+            return {
+                type: 'linear',
+                stops: [
+                    { color: '#667eea', offset: '0%' },
+                    { color: '#764ba2', offset: '100%' }
+                ]
+            };
+        }
+    }
+    
+    // Handle CSS linear-gradient syntax - improved regex to handle nested parentheses
+    const linearMatch = gradientString.match(/linear-gradient\((.*)\)$/);
+    if (linearMatch) {
+        const content = linearMatch[1];
+        console.log('🔍 Parsing gradient content:', content);
+        
+        // Split by commas but be careful about commas inside rgb() functions
+        const parts = [];
+        let currentPart = '';
+        let parenDepth = 0;
+        
+        for (let i = 0; i < content.length; i++) {
+            const char = content[i];
+            if (char === '(') parenDepth++;
+            if (char === ')') parenDepth--;
+            
+            if (char === ',' && parenDepth === 0) {
+                parts.push(currentPart.trim());
+                currentPart = '';
+            } else {
+                currentPart += char;
+            }
+        }
+        if (currentPart.trim()) {
+            parts.push(currentPart.trim());
+        }
+        
+        console.log('🔍 Gradient parts:', parts);
+        
+        const stops = [];
+        
+        // Process each part to extract color and percentage
+        for (const part of parts) {
+            // Skip direction part (like "135deg")
+            if (part.includes('deg') || part.includes('to ')) continue;
+            
+            // Improved color matching - handle rgb(), rgba(), hsl(), hsla(), and hex colors
+            const colorMatch = part.match(/(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/);
+            const percentMatch = part.match(/(\d+%)/);
+            
+            if (colorMatch) {
+                const color = colorMatch[1];
+                const offset = percentMatch ? percentMatch[1] : (stops.length === 0 ? '0%' : '100%');
+                stops.push({ color, offset });
+                console.log('🔍 Found stop:', { color, offset });
+            }
+        }
+        
+        if (stops.length >= 2) {
+            // Simplify gradients with more than 3 stops to improve performance
+            let finalStops = stops;
+            if (stops.length > 3) {
+                // Keep first, middle, and last stops for smooth performance
+                const firstStop = stops[0];
+                const middleIndex = Math.floor(stops.length / 2);
+                const middleStop = stops[middleIndex];
+                const lastStop = stops[stops.length - 1];
+                
+                finalStops = [
+                    firstStop,
+                    { ...middleStop, offset: '50%' }, // Normalize middle to 50%
+                    lastStop
+                ];
+                console.log('🔍 Simplified gradient from', stops.length, 'to', finalStops.length, 'stops');
+            }
+            
+            console.log('🔍 Returning parsed stops:', finalStops);
+            return {
+                type: 'linear',
+                stops: finalStops
+            };
+        }
+        
+        console.log('🔍 Fallback: not enough stops found');
+    }
+    
+    // Fallback for any other format
+    return {
+        type: 'linear',
+        stops: [
+            { color: '#667eea', offset: '0%' },
+            { color: '#764ba2', offset: '100%' }
+        ]
+    };
+};
+
+// Test gradient parsing
+console.log('🧪 Testing gradient parsing:');
+const testGradient1 = parseGradient('luminous-vivid-amber-to-luminous-vivid-orange');
+const testGradient2 = parseGradient('cool-to-warm-spectrum');
+console.log('luminous-vivid-amber-to-luminous-vivid-orange:', testGradient1);
+console.log('  stops:', testGradient1?.stops);
+console.log('cool-to-warm-spectrum:', testGradient2);
+console.log('  stops:', testGradient2?.stops);
+
+// Test the actual CSS gradient parsing
+const testCss = 'linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%)';
+console.log('Direct CSS test:', parseGradient(testCss));
 
 // Generate SVG path data for the squiggle
 const generateSquigglePath = (amplitude = 10) => {
@@ -126,6 +271,18 @@ addFilter(
                 isReversed: {
                     type: 'boolean',
                     default: undefined
+                },
+                useGradient: {
+                    type: 'boolean',
+                    default: undefined
+                },
+                gradient: {
+                    type: 'string',
+                    default: undefined
+                },
+                gradientId: {
+                    type: 'string',
+                    default: undefined
                 }
             }
         };
@@ -154,7 +311,10 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             customTextColor,
             backgroundColor, 
             customBackgroundColor,
-            style
+            style,
+            useGradient,
+            gradient,
+            gradientId
         } = attributes;
         
         const isSquiggle = isSquiggleStyle(className);
@@ -164,6 +324,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
         // Initialize custom style attributes when custom style is applied
         if (isCustom && strokeWidth === undefined) {
             const newAnimationId = generateAnimationId();
+            const newGradientId = generateGradientId();
             const defaultAmplitude = isZigzag ? 15 : 10; // Zig-zag gets slightly larger default amplitude
             setAttributes({
                 strokeWidth: 1,
@@ -171,13 +332,20 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                 squiggleAmplitude: defaultAmplitude,
                 squiggleHeight: '100px',
                 animationId: newAnimationId,
-                isReversed: false
+                isReversed: false,
+                useGradient: false,
+                gradientId: newGradientId
             });
         }
 
         // Ensure each block has a unique animation ID
         if (isCustom && !animationId) {
             setAttributes({ animationId: generateAnimationId() });
+        }
+
+        // Ensure each block has a unique gradient ID
+        if (isCustom && !gradientId) {
+            setAttributes({ gradientId: generateGradientId() });
         }
 
         // Extract color information from WordPress classes (same logic as save)
@@ -204,31 +372,42 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
         // Get line color for editor preview - same priority order as save function
         let lineColor = 'currentColor';
         let editorLineColor = 'currentColor';
+        let finalGradient = null;
         
         if (isCustom) {
-            console.log('🎨 DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className });
+            console.log('🎨 DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, useGradient, gradient });
             
-            if (backgroundColor) {
-                lineColor = `var(--wp--preset--color--${backgroundColor})`;
-            } else if (customBackgroundColor) {
-                lineColor = customBackgroundColor;
-            } else if (style?.color?.background) {
-                lineColor = style.color.background;
-            } else {
-                const classNameColor = extractColorFromClassName(className);
-                if (classNameColor) {
-                    lineColor = classNameColor;
-                } else if (textColor) {
-                    lineColor = `var(--wp--preset--color--${textColor})`;
-                } else if (customTextColor) {
-                    lineColor = customTextColor;
-                } else if (style?.color?.text) {
-                    lineColor = style.color.text;
+                    // Check if gradient should be used
+        if (useGradient && gradient) {
+            finalGradient = gradient;
+            editorLineColor = `url(#${gradientId})`;
+            const parsedGradient = parseGradient(gradient);
+            console.log('🎨 GRADIENT DEBUG: Using gradient:', gradient, 'Parsed:', parsedGradient);
+            console.log('🎨 GRADIENT STOPS:', parsedGradient?.stops);
+        } else {
+                // Use solid color logic
+                if (backgroundColor) {
+                    lineColor = `var(--wp--preset--color--${backgroundColor})`;
+                } else if (customBackgroundColor) {
+                    lineColor = customBackgroundColor;
+                } else if (style?.color?.background) {
+                    lineColor = style.color.background;
+                } else {
+                    const classNameColor = extractColorFromClassName(className);
+                    if (classNameColor) {
+                        lineColor = classNameColor;
+                    } else if (textColor) {
+                        lineColor = `var(--wp--preset--color--${textColor})`;
+                    } else if (customTextColor) {
+                        lineColor = customTextColor;
+                    } else if (style?.color?.text) {
+                        lineColor = style.color.text;
+                    }
                 }
+                editorLineColor = lineColor;
             }
             
-            editorLineColor = lineColor;
-            console.log('🎨 Final editor color:', editorLineColor);
+            console.log('🎨 Final editor color:', editorLineColor, 'Gradient:', finalGradient);
         }
 
         // Determine if animation should be paused based on style
@@ -314,6 +493,24 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                             aria-hidden="true"
                             role="presentation"
                         >
+                            {finalGradient && (() => {
+                                const gradientData = parseGradient(finalGradient);
+                                console.log('🎨 SVG GRADIENT DATA:', gradientData);
+                                console.log('🎨 SVG GRADIENT ID:', gradientId);
+                                return (
+                                    <defs>
+                                        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+                                            {gradientData?.stops?.length > 0 ? gradientData.stops.map((stop, index) => {
+                                                console.log(`🎨 SVG STOP ${index}:`, stop);
+                                                return <stop key={index} offset={stop.offset} stopColor={stop.color} />;
+                                            }) : [
+                                                <stop key="fallback-0" offset="0%" stopColor="#ff6b35" />,
+                                                <stop key="fallback-1" offset="100%" stopColor="#f7931e" />
+                                            ]}
+                                        </linearGradient>
+                                    </defs>
+                                );
+                            })()}
                             <path
                                 d={isZigzag ? generateZigzagPath(squiggleAmplitude || 15) : generateSquigglePath(squiggleAmplitude || 10)}
                                 fill="none"
@@ -386,6 +583,38 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                             help={__(isZigzag ? 'Set the height of the zig-zag container' : 'Set the height of the squiggle container', 'awesome-squiggle')}
                         />
                     </PanelBody>
+                    <PanelBody title={__('Gradient Settings', 'awesome-squiggle')} initialOpen={false}>
+                        <ToggleControl
+                            label={__('Use Gradient', 'awesome-squiggle')}
+                            checked={useGradient || false}
+                            onChange={(value) => setAttributes({ useGradient: value })}
+                            help={__('Enable gradient colors instead of solid colors', 'awesome-squiggle')}
+                        />
+                        {useGradient && (
+                            <GradientPickerControl
+                                label={__('Gradient', 'awesome-squiggle')}
+                                value={gradient}
+                                onChange={(value) => setAttributes({ gradient: value })}
+                                gradients={[
+                                    {
+                                        name: 'Ocean Blue',
+                                        gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                        slug: 'ocean-blue'
+                                    },
+                                    {
+                                        name: 'Sunset',
+                                        gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                                        slug: 'sunset'
+                                    },
+                                    {
+                                        name: 'Forest',
+                                        gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                                        slug: 'forest'
+                                    }
+                                ]}
+                            />
+                        )}
+                    </PanelBody>
                 </InspectorControls>
             </>
         );
@@ -429,7 +658,10 @@ addFilter(
             customTextColor,
             backgroundColor, 
             customBackgroundColor,
-            style
+            style,
+            useGradient,
+            gradient,
+            gradientId = generateGradientId()
         } = attributes;
 
         // Extract color information from WordPress classes
@@ -461,31 +693,41 @@ addFilter(
 
         // Get line color - prioritize background color settings for the line
         let lineColor = 'currentColor';
+        let finalGradient = null;
 
-        console.log('🎨 SAVE DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className });
+        console.log('🎨 SAVE DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, useGradient, gradient });
 
-        // Check all possible color sources in priority order
-        if (backgroundColor) {
-            lineColor = `var(--wp--preset--color--${backgroundColor})`;
-        } else if (customBackgroundColor) {
-            lineColor = customBackgroundColor;
-        } else if (style?.color?.background) {
-            lineColor = style.color.background;
+        // Check if gradient should be used
+        if (useGradient && gradient) {
+            finalGradient = gradient;
+            lineColor = `url(#${gradientId})`;
+            const parsedGradient = parseGradient(gradient);
+            console.log('🎨 SAVE GRADIENT DEBUG: Using gradient:', gradient, 'Parsed:', parsedGradient);
+            console.log('🎨 SAVE GRADIENT STOPS:', parsedGradient?.stops);
         } else {
-            // Try to extract color from className
-            const classNameColor = extractColorFromClassName(className);
-            if (classNameColor) {
-                lineColor = classNameColor;
-            } else if (textColor) {
-                lineColor = `var(--wp--preset--color--${textColor})`;
-            } else if (customTextColor) {
-                lineColor = customTextColor;
-            } else if (style?.color?.text) {
-                lineColor = style.color.text;
+            // Check all possible color sources in priority order
+            if (backgroundColor) {
+                lineColor = `var(--wp--preset--color--${backgroundColor})`;
+            } else if (customBackgroundColor) {
+                lineColor = customBackgroundColor;
+            } else if (style?.color?.background) {
+                lineColor = style.color.background;
+            } else {
+                // Try to extract color from className
+                const classNameColor = extractColorFromClassName(className);
+                if (classNameColor) {
+                    lineColor = classNameColor;
+                } else if (textColor) {
+                    lineColor = `var(--wp--preset--color--${textColor})`;
+                } else if (customTextColor) {
+                    lineColor = customTextColor;
+                } else if (style?.color?.text) {
+                    lineColor = style.color.text;
+                }
             }
         }
 
-        console.log('🎨 SAVE Final color:', lineColor);
+        console.log('🎨 SAVE Final color:', lineColor, 'Gradient:', finalGradient);
 
         // Build class names that preserve WordPress's color support
         // Clean up duplicate class names and ensure proper ordering
@@ -538,6 +780,24 @@ addFilter(
                     aria-hidden="true"
                     role="presentation"
                 >
+                    {finalGradient && (() => {
+                        const gradientData = parseGradient(finalGradient);
+                        console.log('🎨 SAVE SVG GRADIENT DATA:', gradientData);
+                        console.log('🎨 SAVE SVG GRADIENT ID:', gradientId);
+                        return (
+                            <defs>
+                                <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+                                    {gradientData?.stops?.length > 0 ? gradientData.stops.map((stop, index) => {
+                                        console.log(`🎨 SAVE SVG STOP ${index}:`, stop);
+                                        return <stop key={index} offset={stop.offset} stopColor={stop.color} />;
+                                    }) : [
+                                        <stop key="fallback-0" offset="0%" stopColor="#ff6b35" />,
+                                        <stop key="fallback-1" offset="100%" stopColor="#f7931e" />
+                                    ]}
+                                </linearGradient>
+                            </defs>
+                        );
+                    })()}
                     <path
                         d={isZigzag ? generateZigzagPath(squiggleAmplitude) : generateSquigglePath(squiggleAmplitude)}
                         fill="none"
