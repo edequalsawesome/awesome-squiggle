@@ -1,5 +1,5 @@
 import { registerBlockStyle } from '@wordpress/blocks';
-import { useBlockProps, InspectorControls, __experimentalGradientPickerControl as GradientPickerControl } from '@wordpress/block-editor';
+import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
 import { PanelBody, RangeControl, ToggleControl, SelectControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
@@ -76,9 +76,6 @@ const setSecureAttributes = (setAttributes, updates) => {
                 secureUpdates[key] = allowedHeights.includes(value) ? value : '100px';
                 break;
             case 'isReversed':
-                secureUpdates[key] = value === true;
-                break;
-            case 'useGradient':
                 secureUpdates[key] = value === true;
                 break;
             case 'gradient':
@@ -370,10 +367,6 @@ addFilter(
                     type: 'boolean',
                     default: undefined
                 },
-                useGradient: {
-                    type: 'boolean',
-                    default: undefined
-                },
                 gradient: {
                     type: 'string',
                     default: undefined
@@ -410,7 +403,6 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             backgroundColor, 
             customBackgroundColor,
             style,
-            useGradient,
             gradient,
             gradientId
         } = attributes;
@@ -431,7 +423,6 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                 squiggleHeight: '100px',
                 animationId: newAnimationId,
                 isReversed: false,
-                useGradient: false,
                 gradientId: newGradientId
             });
         }
@@ -483,24 +474,18 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
         let finalGradient = null;
         
         if (isCustom) {
-            debugLog('🎨 DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, useGradient, gradient });
+            debugLog('🎨 DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, gradient });
             debugLog('🎨 DEBUG: Pattern type:', { isSquiggle, isZigzag, gradientId });
             
-                    // Check if gradient should be used - auto-enable if gradient is present
-        if ((useGradient || gradient) && gradient) {
-            finalGradient = gradient;
-            editorLineColor = `url(#${gradientId})`;
-            const parsedGradient = parseGradient(gradient);
-            debugLog('🎨 GRADIENT DEBUG: Using gradient:', gradient, 'Parsed:', parsedGradient);
-            debugLog('🎨 GRADIENT STOPS:', parsedGradient?.stops);
-            debugLog('🎨 GRADIENT ID for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE', ':', gradientId);
-            
-            // Auto-enable useGradient if gradient is present but useGradient is undefined
-            if (useGradient === undefined && gradient) {
-                setSecureAttributes(setAttributes, { useGradient: true });
-                debugLog('🎨 Auto-enabled gradient mode for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE');
-            }
-        } else {
+            // Check if gradient should be used - auto-enable if gradient is present
+            if ((gradient) && gradient) {
+                finalGradient = gradient;
+                editorLineColor = `url(#${gradientId})`;
+                const parsedGradient = parseGradient(gradient);
+                debugLog('🎨 GRADIENT DEBUG: Using gradient:', gradient, 'Parsed:', parsedGradient);
+                debugLog('🎨 GRADIENT STOPS:', parsedGradient?.stops);
+                debugLog('🎨 GRADIENT ID for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE', ':', gradientId);
+            } else {
                 // Use solid color logic
                 if (backgroundColor) {
                     lineColor = `var(--wp--preset--color--${backgroundColor})`;
@@ -699,38 +684,6 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                             help={__(isZigzag ? 'Set the height of the zig-zag container' : 'Set the height of the squiggle container', 'awesome-squiggle')}
                         />
                     </PanelBody>
-                    <PanelBody title={__('Gradient Settings', 'awesome-squiggle')} initialOpen={false}>
-                        <ToggleControl
-                            label={__('Use Gradient', 'awesome-squiggle')}
-                            checked={useGradient || false}
-                            onChange={(value) => setSecureAttributes(setAttributes, { useGradient: value })}
-                            help={__('Enable gradient colors instead of solid colors', 'awesome-squiggle')}
-                        />
-                        {useGradient && (
-                            <GradientPickerControl
-                                label={__('Gradient', 'awesome-squiggle')}
-                                value={gradient}
-                                onChange={(value) => setSecureAttributes(setAttributes, { gradient: value })}
-                                gradients={[
-                                    {
-                                        name: 'Ocean Blue',
-                                        gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                        slug: 'ocean-blue'
-                                    },
-                                    {
-                                        name: 'Sunset',
-                                        gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                                        slug: 'sunset'
-                                    },
-                                    {
-                                        name: 'Forest',
-                                        gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                                        slug: 'forest'
-                                    }
-                                ]}
-                            />
-                        )}
-                    </PanelBody>
                 </InspectorControls>
             </>
         );
@@ -775,7 +728,6 @@ addFilter(
             backgroundColor, 
             customBackgroundColor,
             style,
-            useGradient,
             gradient,
             gradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle')
         } = attributes;
@@ -811,11 +763,11 @@ addFilter(
         let lineColor = 'currentColor';
         let finalGradient = null;
 
-        debugLog('🎨 SAVE DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, useGradient, gradient });
+        debugLog('🎨 SAVE DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, gradient });
         debugLog('🎨 SAVE DEBUG: Pattern type:', { isSquiggle, isZigzag, gradientId });
 
         // Check if gradient should be used - auto-enable if gradient is present
-        if ((useGradient || gradient) && gradient) {
+        if ((gradient) && gradient) {
             finalGradient = gradient;
             lineColor = `url(#${gradientId})`;
             const parsedGradient = parseGradient(gradient);

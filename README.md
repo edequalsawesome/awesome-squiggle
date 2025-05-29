@@ -103,6 +103,11 @@ This ensures all debugging code is removed and the plugin is optimized for secur
 
 ## Changelog
 
+### Version 1.2.6
+- **UI Simplification**: Removed manual gradient toggle for improved user experience
+- **Automatic Gradients**: Gradients now work automatically when selected from WordPress color controls
+- **Streamlined Interface**: Simplified settings panel with fewer confusing options
+
 ### Version 1.2.5
 - **Security Enhancements**: Comprehensive security improvements across the entire plugin
 - **Input Validation**: Added robust validation for all user inputs with bounds checking
