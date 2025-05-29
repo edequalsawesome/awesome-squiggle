@@ -18,13 +18,13 @@
 /* Default squiggle animation */
 .awesome-squiggle-wave .squiggle-path {
     transform-origin: center;
-    animation: squiggle-flow 1.6s linear infinite;
+    animation: var(--animation-name, squiggle-flow) var(--animation-duration, 1.6s) linear infinite;
 }
 
 /* Default zig-zag animation */
 .awesome-squiggle-wave .zigzag-path {
     transform-origin: center;
-    animation: zigzag-flow 1.6s linear infinite;
+    animation: var(--animation-name, zigzag-flow) var(--animation-duration, 1.6s) linear infinite;
 }
 
 .awesome-squiggle-wave.is-paused .squiggle-path,
@@ -35,7 +35,7 @@
 /* Ensure each squiggle instance gets its own animation context */
 .wp-block-separator.is-style-animated-squiggle .squiggle-path {
     transform-origin: center;
-    animation: squiggle-flow 1.6s linear infinite;
+    animation: var(--animation-name, squiggle-flow) var(--animation-duration, 1.6s) linear infinite;
 }
 
 .wp-block-separator.is-style-static-squiggle .squiggle-path {
@@ -45,7 +45,7 @@
 /* Ensure each zig-zag instance gets its own animation context */
 .wp-block-separator.is-style-animated-zigzag .zigzag-path {
     transform-origin: center;
-    animation: zigzag-flow 1.6s linear infinite;
+    animation: var(--animation-name, zigzag-flow) var(--animation-duration, 1.6s) linear infinite;
 }
 
 .wp-block-separator.is-style-static-zigzag .zigzag-path {
@@ -55,12 +55,12 @@
 /* Frontend-specific selectors to ensure styles apply */
 div.wp-block-separator.awesome-squiggle-wave .squiggle-path {
     transform-origin: center;
-    animation: squiggle-flow 1.6s linear infinite;
+    animation: var(--animation-name, squiggle-flow) var(--animation-duration, 1.6s) linear infinite;
 }
 
 div.wp-block-separator.awesome-squiggle-wave .zigzag-path {
     transform-origin: center;
-    animation: zigzag-flow 1.6s linear infinite;
+    animation: var(--animation-name, zigzag-flow) var(--animation-duration, 1.6s) linear infinite;
 }
 
 div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path,

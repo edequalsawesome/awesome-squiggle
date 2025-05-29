@@ -59,7 +59,11 @@ const setSecureAttributes = (setAttributes, updates) => {
                 secureUpdates[key] = validateNumericInput(value, 1, 8, 1);
                 break;
             case 'animationSpeed':
-                secureUpdates[key] = validateNumericInput(value, 0.5, 5, 1.6);
+                // Convert slider value (1-10) to duration - higher numbers = faster
+                // Formula: (11 - sliderValue) * 0.5 gives us 0.5s to 5s range
+                const speedValue = validateNumericInput(value, 1, 10, 6);
+                const duration = (11 - speedValue) * 0.5;
+                secureUpdates[key] = duration;
                 break;
             case 'squiggleAmplitude':
                 secureUpdates[key] = validateNumericInput(value, 5, 25, 10);
@@ -323,6 +327,14 @@ const isZigzagStyle = (className) => {
     );
 };
 
+// Helper function to check if current style is animated (not static)
+const isAnimatedStyle = (className) => {
+    return className && (
+        className.includes('is-style-animated-squiggle') ||
+        className.includes('is-style-animated-zigzag')
+    );
+};
+
 // Helper function to check if current style is any custom style (squiggle or zig-zag)
 const isCustomStyle = (className) => {
     return isSquiggleStyle(className) || isZigzagStyle(className);
@@ -410,6 +422,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
         const isSquiggle = isSquiggleStyle(className);
         const isZigzag = isZigzagStyle(className);
         const isCustom = isCustomStyle(className);
+        const isAnimated = isAnimatedStyle(className);
 
         // Initialize custom style attributes when custom style is applied
         if (isCustom && strokeWidth === undefined) {
@@ -418,7 +431,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             const defaultAmplitude = isZigzag ? 15 : 10; // Zig-zag gets slightly larger default amplitude
             setSecureAttributes(setAttributes, {
                 strokeWidth: 1,
-                animationSpeed: 1.6,
+                animationSpeed: 6, // Default to speed level 6 (which converts to 2.5s duration)
                 squiggleAmplitude: defaultAmplitude,
                 squiggleHeight: '100px',
                 animationId: newAnimationId,
@@ -537,7 +550,11 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             style: {
                 height: squiggleHeight || '100px',
                 backgroundColor: 'transparent',
-                minHeight: '50px'
+                minHeight: '50px',
+                [`--animation-duration`]: `${animationSpeed || 1.6}s`,
+                [`--animation-name`]: finalPaused 
+                    ? 'none' 
+                    : (isZigzag ? (isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow') : (isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow'))
             }
         });
 
@@ -569,6 +586,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                         .awesome-squiggle-editor-preview .squiggle-path,
                         .awesome-squiggle-editor-preview .zigzag-path {
                             transform-origin: center;
+                            animation: var(--animation-name, squiggle-flow) var(--animation-duration, 1.6s) linear infinite;
                         }
                     `}
                 </style>
@@ -621,12 +639,12 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                                 strokeLinejoin="round"
                                 className={`${isZigzag ? 'zigzag' : 'squiggle'}-path ${isZigzag ? 'zigzag' : 'squiggle'}-path-${animationId || 'default'}`}
                                 style={{
-                                    animation: finalPaused 
-                                        ? 'none' 
-                                        : `${isZigzag ? (isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow') : (isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow')} ${animationSpeed || 1.6}s linear infinite`,
                                     transformOrigin: 'center',
                                     stroke: editorLineColor,
-                                    display: 'block'
+                                    display: 'block',
+                                    animation: finalPaused 
+                                        ? 'none' 
+                                        : `${isZigzag ? (isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow') : (isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow')} ${animationSpeed || 1.6}s linear infinite`
                                 }}
                             />
                         </svg>
@@ -636,15 +654,25 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                 {/* Add our custom pattern-specific controls to the inspector */}
                 <InspectorControls group="settings">
                     <PanelBody title={__(isZigzag ? 'Zig-Zag Settings' : 'Squiggle Settings', 'awesome-squiggle')} initialOpen={true}>
-                        <RangeControl
-                            label={__('Animation Speed', 'awesome-squiggle')}
-                            value={animationSpeed || 1.6}
-                            onChange={(value) => setSecureAttributes(setAttributes, { animationSpeed: value })}
-                            min={0.5}
-                            max={5}
-                            step={0.1}
-                            help={__(isZigzag ? 'Control how fast the zig-zag animates' : 'Control how fast the squiggle animates', 'awesome-squiggle')}
-                        />
+                        {isAnimated && (
+                            <>
+                                <RangeControl
+                                    label={__('Animation Speed', 'awesome-squiggle')}
+                                    value={animationSpeed ? Math.round(11 - (animationSpeed / 0.5)) : 6}
+                                    onChange={(value) => setSecureAttributes(setAttributes, { animationSpeed: value })}
+                                    min={1}
+                                    max={10}
+                                    step={1}
+                                    help={__(isZigzag ? 'Control how fast the zig-zag animates (higher = faster)' : 'Control how fast the squiggle animates (higher = faster)', 'awesome-squiggle')}
+                                />
+                                <ToggleControl
+                                    label={__('Reverse Animation', 'awesome-squiggle')}
+                                    checked={isReversed || false}
+                                    onChange={() => setSecureAttributes(setAttributes, { isReversed: !isReversed })}
+                                    help={__(isZigzag ? 'Make the zig-zag animate in the opposite direction' : 'Make the squiggle animate in the opposite direction', 'awesome-squiggle')}
+                                />
+                            </>
+                        )}
                         <RangeControl
                             label={__(isZigzag ? 'Zig-Zag Amplitude' : 'Squiggle Amplitude', 'awesome-squiggle')}
                             value={squiggleAmplitude || (isZigzag ? 15 : 10)}
@@ -652,12 +680,6 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                             min={5}
                             max={25}
                             help={__(isZigzag ? 'Adjust the height of the zig-zag peaks' : 'Adjust the height of the squiggle peaks', 'awesome-squiggle')}
-                        />
-                        <ToggleControl
-                            label={__('Reverse Animation', 'awesome-squiggle')}
-                            checked={isReversed || false}
-                            onChange={() => setSecureAttributes(setAttributes, { isReversed: !isReversed })}
-                            help={__(isZigzag ? 'Make the zig-zag animate in the opposite direction' : 'Make the squiggle animate in the opposite direction', 'awesome-squiggle')}
                         />
                     </PanelBody>
                     <PanelBody title={__(isZigzag ? 'Zig-Zag Dimensions' : 'Squiggle Dimensions', 'awesome-squiggle')} initialOpen={false}>
@@ -718,7 +740,7 @@ addFilter(
 
         const {
             strokeWidth = 1,
-            animationSpeed = 1.6,
+            animationSpeed = 2.5, // Default duration for speed level 6
             squiggleAmplitude = isZigzag ? 15 : 10,
             squiggleHeight = '100px',
             animationId = generateAnimationId(),
@@ -821,10 +843,21 @@ addFilter(
         // Remove any duplicates and join
         const combinedClassName = [...new Set(classNames)].join(' ');
 
+        // Determine animation name based on pattern type and direction
+        let animationName;
+        if (finalPaused) {
+            animationName = 'none';
+        } else if (isZigzag) {
+            animationName = isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow';
+        } else {
+            animationName = isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow';
+        }
+
         const inlineStyles = {
             height: squiggleHeight,
             backgroundColor: 'transparent', // Container background always transparent
-            [`--animation-duration-${animationId}`]: `${animationSpeed}s`,
+            [`--animation-duration`]: `${animationSpeed}s`,
+            [`--animation-name`]: animationName,
             [`--line-color-${animationId}`]: lineColor, // Custom CSS variable for this instance
         };
 
@@ -877,11 +910,12 @@ addFilter(
                         strokeLinejoin="round"
                         className={`${isZigzag ? 'zigzag' : 'squiggle'}-path ${isZigzag ? 'zigzag' : 'squiggle'}-path-${animationId}`}
                         style={{
+                            transformOrigin: 'center',
+                            stroke: lineColor,
+                            display: 'block',
                             animation: finalPaused 
                                 ? 'none' 
-                                : `${isZigzag ? (isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow') : (isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow')} ${animationSpeed}s linear infinite`,
-                            transformOrigin: 'center',
-                            stroke: lineColor // Explicit stroke color override
+                                : `${animationName} ${animationSpeed}s linear infinite`
                         }}
                     />
                 </svg>

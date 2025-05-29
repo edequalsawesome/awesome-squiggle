@@ -103,6 +103,11 @@ This ensures all debugging code is removed and the plugin is optimized for secur
 
 ## Changelog
 
+### Version 1.2.7
+- **Animation Speed Enhancement**: Improved animation speed slider logic for more intuitive control
+- **User Experience**: Higher slider values now correspond to faster animations (inverted duration logic)
+- **Performance**: Optimized animation timing calculations for smoother visual feedback
+
 ### Version 1.2.6
 - **UI Simplification**: Removed manual gradient toggle for improved user experience
 - **Automatic Gradients**: Gradients now work automatically when selected from WordPress color controls
