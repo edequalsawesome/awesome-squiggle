@@ -80,7 +80,7 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 
 = 1.2.10 =
 * Animation Direction Enhancement: Reversed default animation directions for improved visual flow
-* User Experience: Standard animations now flow right-to-left, reverse toggle enables left-to-right motion
+* User Experience: Standard animations now flow left-to-right, reverse toggle enables right-to-left motion
 * Consistency Improvement: Both squiggle and zigzag patterns follow the new directional logic
 
 = 1.2.9 =
@@ -117,7 +117,7 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 == Upgrade Notice ==
 
 = 1.2.10 =
-Animation direction enhancement. Standard animations now flow right-to-left for improved visual flow.
+Animation direction enhancement. Standard animations now flow left-to-right for improved visual flow.
 
 = 1.2.9 =
 WordPress Plugin Checker compliance update. Added proper readme.txt file for WordPress.org submission readiness.

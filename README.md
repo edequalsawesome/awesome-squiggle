@@ -103,6 +103,11 @@ This ensures all debugging code is removed and the plugin is optimized for secur
 
 ## Changelog
 
+### Version 1.2.10
+- **Animation Direction Enhancement**: Reversed default animation directions for improved visual flow
+- **User Experience**: Standard animations now flow left-to-right, reverse toggle enables right-to-left motion
+- **Consistency Improvement**: Both squiggle and zigzag patterns follow the new directional logic
+
 ### Version 1.2.9
 - **WordPress Plugin Checker Compliance**: Added proper `readme.txt` file with all required WordPress plugin repository headers
 - **Plugin Repository Ready**: Includes "Tested up to", "License", "Stable Tag", and properly formatted short description
