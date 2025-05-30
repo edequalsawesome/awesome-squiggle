@@ -1,9 +1,9 @@
 === Awesome Squiggle ===
 Contributors: edequalsawesome
 Donate link: https://edequalsaweso.me
-Tags: separator, divider, animation, squiggle, zigzag, svg
+Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.0
-Tested up to: 6.4
+Tested up to: 6.8
 Requires PHP: 7.4
 Stable tag: 1.2.9
 License: GPL-3.0-or-later
