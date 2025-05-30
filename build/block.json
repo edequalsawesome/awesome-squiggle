@@ -1,8 +1,8 @@
 {
   "$schema": "https://schemas.wp.org/trunk/block.json",
   "apiVersion": 3,
-  "name": "awesome-squiggle/squiggle-variations",
-  "version": "1.2.8",
+  "name": "awesome-squiggle/separator-styles",
+  "version": "1.2.9",
   "title": "Awesome Squiggle Variations",
   "category": "design",
   "description": "Adds animated squiggle and zig-zag variations to the core separator block.",
