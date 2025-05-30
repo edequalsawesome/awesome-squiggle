@@ -3,7 +3,7 @@
  * Plugin Name: Awesome Squiggle
  * Plugin URI: https://github.com/edequalsawesome/awesome-squiggle
  * Description: Adds animated squiggle variations to the core WordPress separator block
- * Version: 1.2.7
+ * Version: 1.2.8
  * Author: eD! Thomas
  * Author URI: https://edequalsaweso.me
  * License: GPL-3.0-or-later
@@ -26,22 +26,16 @@ function awesome_squiggle_init() {
     // Security improvement: Check if file exists before reading
     $block_json_path = __DIR__ . '/build/block.json';
     
-    if (!file_exists($block_json_path)) {
-        error_log('Awesome Squiggle: block.json file not found at ' . $block_json_path);
-        return;
+    if (!file_exists($block_json_path)) {        return;
     }
     
     // Security improvement: Validate file contents
     $block_json_content = file_get_contents($block_json_path);
-    if ($block_json_content === false) {
-        error_log('Awesome Squiggle: Failed to read block.json');
-        return;
+    if ($block_json_content === false) {        return;
     }
     
     $block_json = json_decode($block_json_content, true);
-    if (!$block_json || json_last_error() !== JSON_ERROR_NONE) {
-        error_log('Awesome Squiggle: Invalid JSON in block.json - ' . json_last_error_msg());
-        return;
+    if (!$block_json || json_last_error() !== JSON_ERROR_NONE) {        return;
     }
 
     // Register our block variation and filters
@@ -57,7 +51,7 @@ function awesome_squiggle_enqueue_frontend_styles() {
         'awesome-squiggle-frontend',
         plugin_dir_url(__FILE__) . 'build/style-index.css',
         array(),
-        '1.2.7'
+        '1.2.8'
     );
 }
 add_action('wp_enqueue_scripts', 'awesome_squiggle_enqueue_frontend_styles');

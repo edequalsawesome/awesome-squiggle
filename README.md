@@ -103,6 +103,12 @@ This ensures all debugging code is removed and the plugin is optimized for secur
 
 ## Changelog
 
+### Version 1.2.8
+- **Production Build Enhancement**: Added automated debug statement stripping for WordPress Plugin Checker compliance
+- **Development Workflow**: New `npm run build:production` script removes error_log() calls while preserving security checks
+- **Developer Tools**: Added `npm run restore-debug` script for easy development mode restoration
+- **Plugin Compliance**: Eliminates WordPress.org plugin review warnings about logging statements
+
 ### Version 1.2.7
 - **Animation Speed Enhancement**: Improved animation speed slider logic for more intuitive control
 - **User Experience**: Higher slider values now correspond to faster animations (inverted duration logic)
