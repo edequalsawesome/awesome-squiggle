@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.2.9
+Stable tag: 1.2.10
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -78,6 +78,11 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 
 == Changelog ==
 
+= 1.2.10 =
+* Animation Direction Enhancement: Reversed default animation directions for improved visual flow
+* User Experience: Standard animations now flow right-to-left, reverse toggle enables left-to-right motion
+* Consistency Improvement: Both squiggle and zigzag patterns follow the new directional logic
+
 = 1.2.9 =
 * WordPress Plugin Checker Compliance: Added proper readme.txt file with all required WordPress plugin repository headers
 * Plugin Repository Ready: Includes "Tested up to", "License", "Stable Tag", and properly formatted short description
@@ -107,28 +112,12 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 * PHP Security: Enhanced file validation, JSON parsing, and input sanitization
 * JavaScript Security: Added secure attribute handling and pattern validation
 
-= 1.2.1 =
-* Gradient Auto-Detection: Fixed gradient functionality for zigzag patterns
-* Improved Gradient Logic: Gradients now automatically work when selected from WordPress color controls
-* Enhanced Pattern Support: Both squiggle and zigzag patterns now have identical gradient capabilities
-
-= 1.2.0 =
-* Gradient Support: Added full gradient support with WordPress preset gradients
-* Performance Optimizations: Optimized gradient rendering for smooth, instant display
-* Improved Parsing: Fixed gradient parsing issues for complex multi-stop gradients
-* Enhanced UX: Eliminated rendering delays and visual flashes during gradient loading
-
-= 1.1.0 =
-* Zig-Zag Patterns: Added animated and static zig-zag styles
-* Enhanced Controls: Improved customization options and settings panels
-* Color Support: Full WordPress color palette integration
-* Responsive Design: Better handling of different container sizes
-
-= 1.0.0 =
-* Initial Release: Animated and static squiggle separators
-* Core Features: Basic customization and WordPress integration
+*For older version history, see changelog.txt*
 
 == Upgrade Notice ==
+
+= 1.2.10 =
+Animation direction enhancement. Standard animations now flow right-to-left for improved visual flow.
 
 = 1.2.9 =
 WordPress Plugin Checker compliance update. Added proper readme.txt file for WordPress.org submission readiness.

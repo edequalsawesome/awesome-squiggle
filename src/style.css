@@ -101,7 +101,7 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
         transform: translateX(0);
     }
     100% {
-        transform: translateX(-80px); /* Exactly 2 wavelengths */
+        transform: translateX(80px); /* Changed from -80px to 80px for RTL */
     }
 }
 
@@ -111,7 +111,7 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
         transform: translateX(0);
     }
     100% {
-        transform: translateX(80px); /* Exactly 2 wavelengths in opposite direction */
+        transform: translateX(-80px); /* Changed from 80px to -80px for LTR */
     }
 }
 
@@ -121,7 +121,7 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
         transform: translateX(0);
     }
     100% {
-        transform: translateX(-60px); /* Exactly 2 wavelengths for zig-zag */
+        transform: translateX(60px); /* Changed from -60px to 60px for RTL */
     }
 }
 
@@ -131,7 +131,7 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
         transform: translateX(0);
     }
     100% {
-        transform: translateX(60px); /* Exactly 2 wavelengths in opposite direction */
+        transform: translateX(-60px); /* Changed from 60px to -60px for LTR */
     }
 }
 

@@ -569,19 +569,19 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                     {`
                         @keyframes squiggle-flow {
                             0% { transform: translateX(0); }
-                            100% { transform: translateX(-80px); }
+                            100% { transform: translateX(80px); }
                         }
                         @keyframes squiggle-flow-reverse {
                             0% { transform: translateX(0); }
-                            100% { transform: translateX(80px); }
+                            100% { transform: translateX(-80px); }
                         }
                         @keyframes zigzag-flow {
                             0% { transform: translateX(0); }
-                            100% { transform: translateX(-60px); }
+                            100% { transform: translateX(60px); }
                         }
                         @keyframes zigzag-flow-reverse {
                             0% { transform: translateX(0); }
-                            100% { transform: translateX(60px); }
+                            100% { transform: translateX(-60px); }
                         }
                         .awesome-squiggle-editor-preview .squiggle-path,
                         .awesome-squiggle-editor-preview .zigzag-path {
