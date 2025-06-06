@@ -2,6 +2,47 @@
 
 This file contains the complete version history for the Awesome Squiggle WordPress plugin.
 
+= 1.2.11 =
+* WordPress.org Compliance Enhancement: Added comprehensive source code documentation for all compiled JavaScript and CSS files
+* Build Process Documentation: Included detailed build instructions and source file locations in readme.txt
+* Plugin Packaging: Fixed plugin ZIP generation to include source files (`src/` directory) alongside built files
+* Repository Transparency: Added public GitHub repository link for enhanced open source compliance
+* Review Requirements: Addressed all WordPress.org plugin review feedback regarding human-readable code access
+
+= 1.2.10 =
+* Animation Direction Enhancement: Reversed default animation directions for improved visual flow
+* User Experience: Standard animations now flow left-to-right, reverse toggle enables right-to-left motion
+* Consistency Improvement: Both squiggle and zigzag patterns follow the new directional logic
+
+= 1.2.9 =
+* WordPress Plugin Checker Compliance: Added proper readme.txt file with all required WordPress plugin repository headers
+* Plugin Repository Ready: Includes "Tested up to", "License", "Stable Tag", and properly formatted short description
+* Documentation Enhancement: Maintains both GitHub README.md and WordPress readme.txt for complete compatibility
+* Standards Compliance: Meets all WordPress.org plugin submission requirements
+
+= 1.2.8 =
+* Production Build Enhancement: Added automated debug statement stripping for WordPress Plugin Checker compliance
+* Development Workflow: New build:production script removes error_log() calls while preserving security checks
+* Developer Tools: Added restore-debug script for easy development mode restoration
+* Plugin Compliance: Eliminates WordPress.org plugin review warnings about logging statements
+
+= 1.2.7 =
+* Animation Speed Enhancement: Improved animation speed slider logic for more intuitive control
+* User Experience: Higher slider values now correspond to faster animations (inverted duration logic)
+* Performance: Optimized animation timing calculations for smoother visual feedback
+
+= 1.2.6 =
+* UI Simplification: Removed manual gradient toggle for improved user experience
+* Automatic Gradients: Gradients now work automatically when selected from WordPress color controls
+* Streamlined Interface: Simplified settings panel with fewer confusing options
+
+= 1.2.5 =
+* Security Enhancements: Comprehensive security improvements across the entire plugin
+* Input Validation: Added robust validation for all user inputs with bounds checking
+* Production Builds: Implemented secure production builds that strip debug code
+* PHP Security: Enhanced file validation, JSON parsing, and input sanitization
+* JavaScript Security: Added secure attribute handling and pattern validation
+
 = 1.2.1 =
 * Gradient Auto-Detection: Fixed gradient functionality for zigzag patterns
 * Improved Gradient Logic: Gradients now automatically work when selected from WordPress color controls
