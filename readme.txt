@@ -1,11 +1,11 @@
 === Awesome Squiggle ===
-Contributors: edequalsawesome
+Contributors: eDThomas
 Donate link: https://edequalsaweso.me
 Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.2.10
+Stable tag: 1.2.11
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -78,6 +78,13 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 
 == Changelog ==
 
+= 1.2.11 =
+* WordPress.org Compliance Enhancement: Added comprehensive source code documentation for all compiled JavaScript and CSS files
+* Build Process Documentation: Included detailed build instructions and source file locations in readme.txt
+* Plugin Packaging: Fixed plugin ZIP generation to include source files (`src/` directory) alongside built files
+* Repository Transparency: Added public GitHub repository link for enhanced open source compliance
+* Review Requirements: Addressed all WordPress.org plugin review feedback regarding human-readable code access
+
 = 1.2.10 =
 * Animation Direction Enhancement: Reversed default animation directions for improved visual flow
 * User Experience: Standard animations now flow left-to-right, reverse toggle enables right-to-left motion
@@ -114,7 +121,36 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 
 *For older version history, see changelog.txt*
 
+== Source Code ==
+
+This plugin includes compiled/minified JavaScript and CSS files in the `build/` directory. The human-readable source code is available in the `src/` directory of this plugin.
+
+**Build Process:**
+This plugin uses WordPress Scripts (@wordpress/scripts) and Webpack for building. To build from source:
+
+1. Install Node.js (version 18 or higher recommended)
+2. Navigate to the plugin directory
+3. Run `npm install` to install dependencies
+4. Run `npm run build` for development build or `npm run build:production` for production build
+
+**Source Code Location:**
+- JavaScript source: `src/index.js`
+- CSS source: `src/style.css`
+- Block configuration: `src/block.json`
+
+**Development:**
+- Run `npm run start` for development with hot reloading
+- Run `npm run lint:js` and `npm run lint:css` for code linting
+
+The complete source code is maintained in this plugin package. All compressed files in the `build/` directory are generated from the human-readable source files in the `src/` directory using the build process described above.
+
+**Public Repository:**
+The plugin source code is also available at: https://github.com/edequalsawesome/awesome-squiggle
+
 == Upgrade Notice ==
+
+= 1.2.11 =
+WordPress.org compliance update. Added comprehensive source code documentation and fixed plugin packaging to include all source files for reviewer transparency.
 
 = 1.2.10 =
 Animation direction enhancement. Standard animations now flow left-to-right for improved visual flow.

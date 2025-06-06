@@ -103,6 +103,13 @@ This ensures all debugging code is removed and the plugin is optimized for secur
 
 ## Changelog
 
+### Version 1.2.11
+- **WordPress.org Compliance Enhancement**: Added comprehensive source code documentation for all compiled JavaScript and CSS files
+- **Build Process Documentation**: Included detailed build instructions and source file locations in readme.txt
+- **Plugin Packaging**: Fixed plugin ZIP generation to include source files (`src/` directory) alongside built files
+- **Repository Transparency**: Added public GitHub repository link for enhanced open source compliance
+- **Review Requirements**: Addressed all WordPress.org plugin review feedback regarding human-readable code access
+
 ### Version 1.2.10
 - **Animation Direction Enhancement**: Reversed default animation directions for improved visual flow
 - **User Experience**: Standard animations now flow left-to-right, reverse toggle enables right-to-left motion
