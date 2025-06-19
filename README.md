@@ -103,6 +103,12 @@ This ensures all debugging code is removed and the plugin is optimized for secur
 
 ## Changelog
 
+### Version 1.2.13
+- **Fixed Color Controls**: Restored all WordPress native color controls including background color, text color, and custom color picker
+- **Enhanced Gradient Support**: Added proper WordPress core gradient support through block supports system
+- **Improved User Experience**: Users now have access to all standard WordPress color features alongside custom gradient functionality
+- **Better Architecture**: Uses WordPress core color support system instead of custom implementation for maximum compatibility
+
 ### Version 1.2.11
 - **WordPress.org Compliance Enhancement**: Added comprehensive source code documentation for all compiled JavaScript and CSS files
 - **Build Process Documentation**: Included detailed build instructions and source file locations in readme.txt

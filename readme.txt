@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.2.11
+Stable tag: 1.2.13
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -78,6 +78,12 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 
 == Changelog ==
 
+= 1.2.13 =
+* Fixed Color Controls: Restored all WordPress native color controls including background color, text color, and custom color picker
+* Enhanced Gradient Support: Added proper WordPress core gradient support through block supports system
+* Improved User Experience: Users now have access to all standard WordPress color features alongside custom gradient functionality
+* Better Architecture: Uses WordPress core color support system instead of custom implementation for maximum compatibility
+
 = 1.2.11 =
 * WordPress.org Compliance Enhancement: Added comprehensive source code documentation for all compiled JavaScript and CSS files
 * Build Process Documentation: Included detailed build instructions and source file locations in readme.txt
@@ -148,6 +154,9 @@ The complete source code is maintained in this plugin package. All compressed fi
 The plugin source code is also available at: https://github.com/edequalsawesome/awesome-squiggle
 
 == Upgrade Notice ==
+
+= 1.2.13 =
+Major color control fix. Custom gradients now work properly with full WordPress color controls restored. All color options including gradients, background colors, and custom colors are now available.
 
 = 1.2.11 =
 WordPress.org compliance update. Added comprehensive source code documentation and fixed plugin packaging to include all source files for reviewer transparency.

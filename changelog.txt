@@ -2,6 +2,18 @@
 
 This file contains the complete version history for the Awesome Squiggle WordPress plugin.
 
+= 1.2.14 =
+* Custom Gradient Fix: Resolved issue where custom gradients from WordPress gradient picker weren't being applied to squiggle dividers
+* Enhanced Gradient Detection: Improved gradient attribute parsing to properly handle both preset and custom gradients
+* Color System Compatibility: Fixed gradient support to work seamlessly with WordPress core color picker system
+* Better Debugging: Added enhanced logging for gradient detection and parsing during development
+
+= 1.2.13 =
+* Fixed Color Controls: Restored all WordPress native color controls including background color, text color, and custom color picker
+* Enhanced Gradient Support: Added proper WordPress core gradient support through block supports system
+* Improved User Experience: Users now have access to all standard WordPress color features alongside custom gradient functionality  
+* Better Architecture: Uses WordPress core color support system instead of custom implementation for maximum compatibility
+
 = 1.2.11 =
 * WordPress.org Compliance Enhancement: Added comprehensive source code documentation for all compiled JavaScript and CSS files
 * Build Process Documentation: Included detailed build instructions and source file locations in readme.txt

@@ -2,3 +2,6 @@
 node_modules
 RELEASE-NOTES-1.2.5.md
 SECURITY-IMPROVEMENTS.md
+CLAUDE.md
+GRADIENT-TEST-GUIDE.md
+mcp_settings.json
