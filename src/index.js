@@ -83,6 +83,9 @@ const setSecureAttributes = (setAttributes, updates) => {
             case 'isReversed':
                 secureUpdates[key] = value === true;
                 break;
+            case 'hasFairySparkles':
+                secureUpdates[key] = value === true;
+                break;
             case 'gradient':
                 secureUpdates[key] = value;
                 break;
@@ -337,6 +340,141 @@ const generateZigzagPath = (amplitude = 15) => {
     return d;
 };
 
+// Deterministic random function based on seed
+const seededRandom = (seed) => {
+    let x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+};
+
+// Generate fairy sparkles positioned around the path following the wave contour
+const generateFairySparkles = (isZigzag = false, amplitude = 10, animationId = '') => {
+    const sparkles = [];
+    const pathWidth = 800;
+    const pathHeight = 100;
+    const midY = pathHeight / 2;
+    
+    // Wave parameters (matching the path generation)
+    const wavelength = isZigzag ? 30 : 40;
+    const sparkleCount = 12; // More sparkles for better coverage
+    
+    // Create a deterministic seed from animationId
+    let seed = 12345; // default seed
+    if (animationId) {
+        for (let i = 0; i < animationId.length; i++) {
+            seed = ((seed << 5) - seed) + animationId.charCodeAt(i);
+            seed = seed & seed; // Convert to 32bit integer
+        }
+    }
+    
+    // Generate sparkles at specific wave features (peaks, valleys, and mid-points)
+    for (let i = 0; i < sparkleCount; i++) {
+        // Use seeded random for consistent positioning
+        const randomX = seededRandom(seed + i * 7) - 0.5; // -0.5 to 0.5
+        const randomY = seededRandom(seed + i * 11) - 0.5; // different offset for Y
+        
+        // Position sparkles at wave features rather than evenly spaced
+        const wavePosition = (i / sparkleCount) * (pathWidth + wavelength * 4) - wavelength * 2;
+        const baseX = wavePosition + randomX * 15;
+        
+        // Calculate the wave Y position at this X coordinate
+        let waveY;
+        if (isZigzag) {
+            // For zigzag: sharp peaks and valleys
+            const adjustedX = baseX + wavelength * 2;
+            const cyclePosition = adjustedX % wavelength;
+            const isUpPeak = Math.floor(adjustedX / wavelength) % 2 === 0;
+            
+            if (cyclePosition < wavelength / 2) {
+                // Rising to peak
+                const progress = cyclePosition / (wavelength / 2);
+                waveY = midY + (isUpPeak ? -amplitude * progress : amplitude * progress);
+            } else {
+                // Falling from peak
+                const progress = (cyclePosition - wavelength / 2) / (wavelength / 2);
+                waveY = midY + (isUpPeak ? -amplitude * (1 - progress) : amplitude * (1 - progress));
+            }
+        } else {
+            // For squiggle: smooth sine-like curve - match the actual squiggle generation
+            const adjustedX = baseX + wavelength * 2;
+            const segmentIndex = Math.floor(adjustedX / wavelength);
+            const isDownCurve = segmentIndex % 2 === 0;
+            const segmentProgress = (adjustedX % wavelength) / wavelength;
+            
+            // Use cubic bezier approximation to match the actual squiggle path
+            let curveY;
+            if (segmentProgress < 0.5) {
+                // First half of curve
+                curveY = isDownCurve ? midY - amplitude * (segmentProgress * 2) : midY + amplitude * (segmentProgress * 2);
+            } else {
+                // Second half of curve
+                curveY = isDownCurve ? midY - amplitude * (2 - segmentProgress * 2) : midY + amplitude * (2 - segmentProgress * 2);
+            }
+            waveY = curveY;
+        }
+        
+        // Create sparkles both above and below the wave at various positions
+        const sparklePositions = [
+            { offset: -15, side: 'above' },   // Above the wave
+            { offset: 15, side: 'below' },    // Below the wave
+            { offset: -8, side: 'near-above' }, // Closer to wave, above
+            { offset: 8, side: 'near-below' }   // Closer to wave, below
+        ];
+        
+        // Use different positioning patterns for variety
+        const positionIndex = i % sparklePositions.length;
+        const sparklePos = sparklePositions[positionIndex];
+        const y = waveY + sparklePos.offset + randomY * 6;
+        
+        // Skip sparkles that would be too far outside the viewable area
+        if (baseX < -50 || baseX > pathWidth + 50 || y < 10 || y > 90) {
+            continue;
+        }
+        
+        // Create different sized sparkles for visual interest
+        const sizes = [2, 3, 4];
+        const size = sizes[i % sizes.length];
+        
+        // Create star shape using path
+        const starPath = createStarPath(size);
+        
+        sparkles.push({
+            x: baseX,
+            y: y,
+            size: size,
+            path: starPath,
+            animationDelay: (i * 0.15) + 's', // Varied timing
+            id: `sparkle-${animationId}-${i}`
+        });
+    }
+    
+    return sparkles;
+};
+
+// Create a simple star/sparkle shape
+const createStarPath = (size = 3) => {
+    const outerRadius = size;
+    const innerRadius = size * 0.4;
+    const points = 4; // 4-pointed star for simplicity
+    
+    let path = '';
+    
+    for (let i = 0; i < points * 2; i++) {
+        const angle = (i * Math.PI) / points;
+        const radius = i % 2 === 0 ? outerRadius : innerRadius;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        
+        if (i === 0) {
+            path += `M ${x} ${y}`;
+        } else {
+            path += ` L ${x} ${y}`;
+        }
+    }
+    
+    path += ' Z';
+    return path;
+};
+
 // Helper function to check if current style is a squiggle style
 const isSquiggleStyle = (className) => {
     return className && (
@@ -414,6 +552,10 @@ addFilter(
                 },
                 gradientId: {
                     type: 'string',
+                    default: undefined
+                },
+                hasFairySparkles: {
+                    type: 'boolean',
                     default: undefined
                 }
             }
@@ -508,7 +650,8 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             customBackgroundColor,
             style,
             gradient,
-            gradientId
+            gradientId,
+            hasFairySparkles
         } = attributes;
 
         // Initialize custom style attributes when custom style is applied
@@ -752,10 +895,18 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                             0% { transform: translateX(0); }
                             100% { transform: translateX(-60px); }
                         }
+                        @keyframes fairy-twinkle {
+                            0% { opacity: 0.3; transform: scale(0.8); }
+                            50% { opacity: 1; transform: scale(1.2); }
+                            100% { opacity: 0.3; transform: scale(0.8); }
+                        }
                         .awesome-squiggle-editor-preview .squiggle-path,
                         .awesome-squiggle-editor-preview .zigzag-path {
                             transform-origin: center;
                             animation: var(--animation-name, squiggle-flow) var(--animation-duration, 1.6s) linear infinite;
+                        }
+                        .awesome-squiggle-editor-preview .fairy-sparkle {
+                            transform-origin: center;
                         }
                     `}
                 </style>
@@ -819,6 +970,25 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                                         : `${isZigzag ? (isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow') : (isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow')} ${animationSpeed || 1.6}s linear infinite`
                                 }}
                             />
+                            {hasFairySparkles && (() => {
+                                const sparkles = generateFairySparkles(isZigzag, squiggleAmplitude || (isZigzag ? 15 : 10), animationId || 'default');
+                                return sparkles.map((sparkle) => (
+                                    <g key={sparkle.id} transform={`translate(${sparkle.x}, ${sparkle.y})`}>
+                                        <path
+                                            d={sparkle.path}
+                                            fill={editorLineColor}
+                                            className="fairy-sparkle editor-sparkle"
+                                            style={{
+                                                opacity: 0.7,
+                                                animation: finalPaused 
+                                                    ? 'none'
+                                                    : `fairy-twinkle 2s ease-in-out infinite`,
+                                                animationDelay: sparkle.animationDelay
+                                            }}
+                                        />
+                                    </g>
+                                ));
+                            })()}
                         </svg>
                     </div>
                 </div>
@@ -852,6 +1022,12 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                             min={5}
                             max={25}
                             help={__(isZigzag ? 'Adjust the height of the zig-zag peaks' : 'Adjust the height of the squiggle peaks', 'awesome-squiggle')}
+                        />
+                        <ToggleControl
+                            label={__('Fairy Sparkles', 'awesome-squiggle')}
+                            checked={hasFairySparkles || false}
+                            onChange={() => setSecureAttributes(setAttributes, { hasFairySparkles: !hasFairySparkles })}
+                            help={__(isZigzag ? 'Add magical sparkles around the zig-zag' : 'Add magical sparkles around the squiggle', 'awesome-squiggle')}
                         />
                     </PanelBody>
                     <PanelBody title={__(isZigzag ? 'Zig-Zag Dimensions' : 'Squiggle Dimensions', 'awesome-squiggle')} initialOpen={false}>
@@ -923,7 +1099,8 @@ addFilter(
             customBackgroundColor,
             style,
             gradient,
-            gradientId
+            gradientId,
+            hasFairySparkles
         } = attributes;
         
         debugLog('🎨 SAVE FUNCTION - Block attributes:', { 
@@ -1110,6 +1287,25 @@ addFilter(
                                 : `${animationName} ${animationSpeed}s linear infinite`
                         }}
                     />
+                    {hasFairySparkles && (() => {
+                        const sparkles = generateFairySparkles(isZigzag, squiggleAmplitude, animationId || 'default');
+                        return sparkles.map((sparkle) => (
+                            <g key={sparkle.id} transform={`translate(${sparkle.x}, ${sparkle.y})`}>
+                                <path
+                                    d={sparkle.path}
+                                    fill={lineColor}
+                                    className="fairy-sparkle frontend-sparkle"
+                                    style={{
+                                        opacity: 0.7,
+                                        animation: finalPaused 
+                                            ? 'none'
+                                            : `fairy-twinkle 2s ease-in-out infinite`,
+                                        animationDelay: sparkle.animationDelay
+                                    }}
+                                />
+                            </g>
+                        ));
+                    })()}
                 </svg>
             </div>
         );

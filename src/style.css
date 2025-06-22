@@ -203,4 +203,33 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 .wp-block-separator.is-style-static-zigzag:not(.awesome-squiggle-wave) {
     opacity: 0;
     visibility: hidden;
+}
+
+/* Fairy sparkles animation */
+@keyframes fairy-twinkle {
+    0% {
+        opacity: 0.3;
+        transform: scale(0.8);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+    100% {
+        opacity: 0.3;
+        transform: scale(0.8);
+    }
+}
+
+/* Fairy sparkle styles */
+.fairy-sparkle {
+    transform-origin: center;
+}
+
+/* Reduced motion support for sparkles */
+@media (prefers-reduced-motion: reduce) {
+    .fairy-sparkle {
+        animation: none !important;
+        opacity: 0.6;
+    }
 } 
