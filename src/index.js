@@ -4,6 +4,8 @@ import { PanelBody, RangeControl, ToggleControl, SelectControl } from '@wordpres
 import { __ } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
+import { useEffect, useRef, useSelect } from '@wordpress/element';
+import { select } from '@wordpress/data';
 import './style.css';
 
 // Security validation functions
@@ -44,9 +46,8 @@ const validateAnimationId = (id) => {
 
 // Development-only logging
 const debugLog = (message, ...args) => {
-    if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
-        console.log(message, ...args);
-    }
+    // Temporarily enable logging in all environments for debugging
+    console.log('[Awesome Squiggle]', message, ...args);
 };
 
 // Secure attribute setter
@@ -96,17 +97,42 @@ const setSecureAttributes = (setAttributes, updates) => {
 // Debug logging
 debugLog('🌊 Awesome Squiggle plugin loaded!');
 
-// Generate unique animation ID for each block instance
-let animationCounter = 0;
-const generateAnimationId = () => {
-    const id = `squiggle-animation-${++animationCounter}`;
+// Generate deterministic animation ID for each block instance
+const generateAnimationId = (patternType = 'squiggle', clientId = '', strokeWidth = 1, amplitude = 10) => {
+    // Create deterministic ID based on block characteristics
+    const baseId = `${patternType}-animation`;
+    // Use a simple hash of the key characteristics
+    const idString = `${patternType}-${strokeWidth}-${amplitude}-${clientId}`;
+    let hash = 0;
+    for (let i = 0; i < idString.length; i++) {
+        hash = ((hash << 5) - hash) + idString.charCodeAt(i);
+        hash = hash & hash;
+    }
+    const suffix = Math.abs(hash).toString(36).substring(0, 6);
+    const id = `${baseId}-${suffix}`;
     return validateAnimationId(id);
 };
 
-// Generate unique gradient ID for each block instance
-let gradientCounter = 0;
-const generateGradientId = (patternType = 'squiggle') => {
-    const id = `${patternType}-gradient-${++gradientCounter}`;
+// Generate deterministic gradient ID to ensure save function stability  
+const generateGradientId = (patternType = 'squiggle', gradient = '', clientId = '') => {
+    // Use a fixed counter approach to ensure uniqueness but determinism
+    // This will be set once when gradient is first applied and then remain stable
+    const baseId = `${patternType}-gradient`;
+    // Create a simple deterministic suffix
+    let suffix = '';
+    if (gradient) {
+        // Simple hash of gradient to make it somewhat unique
+        let hash = 0;
+        for (let i = 0; i < gradient.length; i++) {
+            hash = ((hash << 5) - hash) + gradient.charCodeAt(i);
+            hash = hash & hash;
+        }
+        suffix = Math.abs(hash).toString(36).substring(0, 6);
+    } else {
+        // Default suffix for non-gradient cases
+        suffix = 'default';
+    }
+    const id = `${baseId}-${suffix}`;
     return validateGradientId(id);
 };
 
@@ -340,7 +366,7 @@ const isCustomStyle = (className) => {
     return isSquiggleStyle(className) || isZigzagStyle(className);
 };
 
-// Add squiggle-specific attributes to separator block (only when needed)
+// Add squiggle-specific attributes and gradient support to separator block
 addFilter(
     'blocks.registerBlockType',
     'awesome-squiggle/separator-squiggle-attributes',
@@ -349,9 +375,16 @@ addFilter(
             return settings;
         }
 
-        // Only add our attributes, don't modify existing block behavior
+        // Enable gradient support for separators and add our attributes
         return {
             ...settings,
+            supports: {
+                ...settings.supports,
+                color: {
+                    ...settings.supports?.color,
+                    gradients: true // Enable gradient support
+                }
+            },
             attributes: {
                 ...settings.attributes,
                 // Squiggle-specific attributes with defaults to avoid interference
@@ -379,10 +412,6 @@ addFilter(
                     type: 'boolean',
                     default: undefined
                 },
-                gradient: {
-                    type: 'string',
-                    default: undefined
-                },
                 gradientId: {
                     type: 'string',
                     default: undefined
@@ -393,23 +422,86 @@ addFilter(
     20
 );
 
+
 // Enhanced separator edit component
 const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
     return (props) => {
-        const { attributes, setAttributes, name } = props;
+        const { attributes, setAttributes, name, clientId } = props;
         
+        // ALL hooks must be declared at the top level, before ANY conditional logic
+        const blockInitialized = useRef(false);
+        const gradientIdRef = useRef(attributes?.gradientId);
+        const blockInitializedRef = useRef(false);
+        const gradientIdRefHook = useRef(attributes?.gradientId);
+        
+        // Pre-calculate values needed for useBlockProps
+        const { className = '', squiggleHeight = '100px', animationSpeed = 1.6, isReversed = false } = attributes || {};
+        const isSquiggle = isSquiggleStyle(className);
+        const isZigzag = isZigzagStyle(className);
+        const isCustom = isCustomStyle(className);
+        const isAnimated = isAnimatedStyle(className);
+        
+        // Determine if animation should be paused based on style
+        let finalPaused = false;
+        if (className && (className.includes('is-style-static-squiggle') || className.includes('is-style-static-zigzag'))) {
+            finalPaused = true;
+        }
+        
+        // Calculate animation name
+        const animationName = finalPaused 
+            ? 'none' 
+            : (isZigzag ? (isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow') : (isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow'));
+        
+        // useBlockProps must be called unconditionally
+        const blockProps = useBlockProps({
+            className: isCustom ? `wp-block-separator awesome-squiggle-wave ${className}`.trim() : '',
+            style: isCustom ? {
+                height: squiggleHeight,
+                backgroundColor: 'transparent',
+                minHeight: '50px',
+                [`--animation-duration`]: `${animationSpeed}s`,
+                [`--animation-name`]: animationName
+            } : {}
+        });
+        
+        // Create a wrapper for setAttributes to intercept gradient changes
+        const setAttributesWithGradientCheck = (updates) => {
+            const newUpdates = { ...updates };
+            
+            // Check if gradient is being set or changed
+            if (updates.gradient || updates.style?.color?.gradient) {
+                const newGradient = updates.gradient || updates.style?.color?.gradient;
+                const currentGradient = attributes.gradient || attributes.style?.color?.gradient;
+                const isZigzag = isZigzagStyle(attributes?.className);
+                
+                // Generate new gradient ID if:
+                // 1. No gradient ID exists, OR
+                // 2. The gradient content has changed
+                if (newGradient && (!attributes?.gradientId || newGradient !== currentGradient)) {
+                    const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle', newGradient, clientId);
+                    newUpdates.gradientId = newGradientId;
+                    debugLog('🎨 Generated new gradient ID for gradient change:', {
+                        oldGradient: currentGradient,
+                        newGradient: newGradient,
+                        oldId: attributes?.gradientId,
+                        newId: newGradientId
+                    });
+                }
+            }
+            
+            // Call the original setAttributes
+            setAttributes(newUpdates);
+        };
+        
+        // Return early for non-separator blocks AFTER all hooks are declared
         if (name !== 'core/separator') {
             return <BlockEdit {...props} />;
         }
 
         const { 
-            className, 
             strokeWidth, 
-            animationSpeed, 
             squiggleAmplitude, 
-            squiggleHeight,
             animationId,
-            isReversed,
             textColor,
             customTextColor,
             backgroundColor, 
@@ -418,17 +510,13 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             gradient,
             gradientId
         } = attributes;
-        
-        const isSquiggle = isSquiggleStyle(className);
-        const isZigzag = isZigzagStyle(className);
-        const isCustom = isCustomStyle(className);
-        const isAnimated = isAnimatedStyle(className);
 
         // Initialize custom style attributes when custom style is applied
         if (isCustom && strokeWidth === undefined) {
-            const newAnimationId = generateAnimationId();
-            const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle');
             const defaultAmplitude = isZigzag ? 15 : 10; // Zig-zag gets slightly larger default amplitude
+            const newAnimationId = generateAnimationId(isZigzag ? 'zigzag' : 'squiggle', clientId, 1, defaultAmplitude);
+            const currentGradient = gradient || style?.color?.gradient || '';
+            const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle', currentGradient, clientId);
             setSecureAttributes(setAttributes, {
                 strokeWidth: 1,
                 animationSpeed: 6, // Default to speed level 6 (which converts to 2.5s duration)
@@ -442,23 +530,105 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
 
         // Ensure each block has a unique animation ID
         if (isCustom && !animationId) {
-            setSecureAttributes(setAttributes, { animationId: generateAnimationId() });
+            const patternType = isZigzag ? 'zigzag' : 'squiggle';
+            const defaultAmplitude = isZigzag ? 15 : 10;
+            setSecureAttributes(setAttributes, { animationId: generateAnimationId(patternType, clientId, strokeWidth || 1, squiggleAmplitude || defaultAmplitude) });
         }
 
         // Ensure each block has a unique gradient ID
         if (isCustom && !gradientId) {
-            setSecureAttributes(setAttributes, { gradientId: generateGradientId(isZigzag ? 'zigzag' : 'squiggle') });
+            setSecureAttributes(setAttributes, { gradientId: generateGradientId(isZigzag ? 'zigzag' : 'squiggle', '', '') });
         }
+
+        // Hooks already declared at the top of the component
 
         // Regenerate gradient ID when switching between squiggle and zigzag to avoid conflicts
         if (isCustom && gradientId && (
             (isSquiggle && gradientId.includes('zigzag')) || 
             (isZigzag && gradientId.includes('squiggle'))
         )) {
-            const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle');
+            const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle', '', '');
             setSecureAttributes(setAttributes, { gradientId: newGradientId });
             debugLog('🔄 Regenerated gradient ID for style switch:', newGradientId);
         }
+        
+        // Detect if this is a fresh block that needs ID generation
+        useEffect(() => {
+            debugLog('🔍 Block initialization check:', {
+                isCustom,
+                clientId,
+                blockInitialized: blockInitializedRef.current,
+                currentGradientId: gradientId,
+                hasGradient: !!(gradient || style?.color?.gradient),
+                gradientIdRef: gradientIdRefHook.current
+            });
+            
+            // If this is a custom style block with gradient but the gradient ID hasn't changed from our ref,
+            // it might be a duplicate
+            if (isCustom && gradientId && !blockInitializedRef.current) {
+                // Check if another block already has this gradient ID
+                const allBlocks = select('core/block-editor').getBlocks();
+                const otherBlocksWithSameId = allBlocks.filter(block => 
+                    block.clientId !== clientId && 
+                    block.attributes.gradientId === gradientId
+                );
+                
+                if (otherBlocksWithSameId.length > 0) {
+                    debugLog('🔄 Duplicate gradient ID detected on initialization, regenerating');
+                    const defaultAmplitude = isZigzag ? 15 : 10;
+                    const newAnimationId = generateAnimationId(isZigzag ? 'zigzag' : 'squiggle', clientId, strokeWidth || 1, squiggleAmplitude || defaultAmplitude);
+                    const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle', '', clientId);
+                    setSecureAttributes(setAttributes, { 
+                        animationId: newAnimationId,
+                        gradientId: newGradientId 
+                    });
+                    gradientIdRefHook.current = newGradientId;
+                }
+            }
+            
+            blockInitializedRef.current = true;
+            gradientIdRefHook.current = gradientId;
+        }, [clientId, isCustom, gradientId, isZigzag, setAttributes]);
+        
+        // Track if this block was just duplicated
+        const wasDuplicated = useRef(false);
+        
+        // Only check for duplicates ONCE when block is first created
+        useEffect(() => {
+            if (isCustom && gradientId && !wasDuplicated.current && !blockInitializedRef.current) {
+                // Small delay to let editor settle
+                const timeoutId = setTimeout(() => {
+                    // Mark that we've checked
+                    wasDuplicated.current = true;
+                    
+                    // Check if this gradient ID is already in use by another block
+                    const allGradients = document.querySelectorAll(`linearGradient[id="${gradientId}"]`);
+                    
+                    // If we find more than one gradient definition, it's a duplicate
+                    if (allGradients.length > 1) {
+                        // This is a duplicate - generate a new ID
+                        const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle', '', '');
+                        setSecureAttributes(setAttributes, { gradientId: newGradientId });
+                        debugLog('🔄 Detected duplicate gradient ID on new block, generated new one:', newGradientId);
+                    }
+                }, 200);
+                
+                return () => clearTimeout(timeoutId);
+            }
+        }, []); // Empty deps - check only once on mount
+        
+        // Ensure gradient ID exists when gradient is present
+        useEffect(() => {
+            const customGradient = gradient || style?.color?.gradient;
+            if (isCustom && customGradient && !gradientId) {
+                const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle', '', '');
+                setSecureAttributes(setAttributes, { gradientId: newGradientId });
+                debugLog('🆕 Generated gradient ID for existing gradient:', newGradientId);
+            }
+        }, [isCustom, gradient, style?.color?.gradient, gradientId, isZigzag, setAttributes]);
+        
+        // Remove this overly aggressive duplicate check that runs too often
+        // and causes gradient IDs to regenerate during block validation
 
         // Extract color information from WordPress classes (same logic as save)
         const extractColorFromClassName = (className) => {
@@ -490,12 +660,28 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             debugLog('🎨 DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, gradient });
             debugLog('🎨 DEBUG: Pattern type:', { isSquiggle, isZigzag, gradientId });
             
-            // Check if gradient should be used - auto-enable if gradient is present
-            if ((gradient) && gradient) {
-                finalGradient = gradient;
-                editorLineColor = `url(#${gradientId})`;
-                const parsedGradient = parseGradient(gradient);
-                debugLog('🎨 GRADIENT DEBUG: Using gradient:', gradient, 'Parsed:', parsedGradient);
+            // Check if gradient should be used - check all possible gradient sources
+            const customGradient = gradient || style?.color?.gradient;
+            
+            if (customGradient) {
+                // Ensure we have a gradient ID when using gradients
+                if (!gradientId) {
+                    const newGradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle', '', '');
+                    setSecureAttributes(setAttributes, { gradientId: newGradientId });
+                    debugLog('🆕 Generated gradient ID for new gradient:', newGradientId);
+                }
+                
+                finalGradient = customGradient;
+                // Always use the current gradientId for the editor
+                // Only use existing gradientId, don't generate new ones in the editor preview
+                if (gradientId) {
+                    editorLineColor = `url(#${gradientId})`;   
+                } else {
+                    // If no gradientId yet, the useEffect will handle generating it
+                    editorLineColor = 'currentColor';
+                } 
+                const parsedGradient = parseGradient(customGradient);
+                debugLog('🎨 GRADIENT DEBUG: Using gradient:', customGradient, 'Parsed:', parsedGradient);
                 debugLog('🎨 GRADIENT STOPS:', parsedGradient?.stops);
                 debugLog('🎨 GRADIENT ID for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE', ':', gradientId);
             } else {
@@ -524,11 +710,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             debugLog('🎨 Final editor color:', editorLineColor, 'Gradient:', finalGradient);
         }
 
-        // Determine if animation should be paused based on style
-        let finalPaused = false;
-        if (className && (className.includes('is-style-static-squiggle') || className.includes('is-style-static-zigzag'))) {
-            finalPaused = true;
-        }
+        // finalPaused is already calculated at the top with hooks
 
         // Clean up the className to remove conflicting is-paused class when it shouldn't be there
         let cleanClassName = className;
@@ -538,31 +720,18 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
             setAttributes({ className: cleanClassName });
         }
 
-        // If not a custom style, just return the normal block edit without any interference
+        // If not a custom style, just return the normal block edit but still use our gradient wrapper
         if (!isCustom) {
-            return <BlockEdit {...props} />;
+            return <BlockEdit {...props} setAttributes={setAttributesWithGradientCheck} />;
         }
 
-        // For custom styles, render our custom pattern directly instead of overlay approach
-        // This works better inside Group/Row/Stack blocks that use flexbox
-        const blockProps = useBlockProps({
-            className: `wp-block-separator awesome-squiggle-wave ${className || ''}`.trim(),
-            style: {
-                height: squiggleHeight || '100px',
-                backgroundColor: 'transparent',
-                minHeight: '50px',
-                [`--animation-duration`]: `${animationSpeed || 1.6}s`,
-                [`--animation-name`]: finalPaused 
-                    ? 'none' 
-                    : (isZigzag ? (isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow') : (isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow'))
-            }
-        });
+        // blockProps already declared at the top with hooks
 
         return (
             <>
                 {/* Render the original block edit hidden to preserve all standard WordPress controls */}
                 <div style={{ display: 'none' }}>
-                    <BlockEdit {...props} />
+                    <BlockEdit {...props} setAttributes={setAttributesWithGradientCheck} />
                 </div>
                 
                 <style>
@@ -602,6 +771,7 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                         }}
                     >
                         <svg
+                            key={`svg-${gradientId || 'default'}`}
                             viewBox="0 0 800 100"
                             preserveAspectRatio="none"
                             style={{
@@ -612,13 +782,15 @@ const withSquiggleControls = createHigherOrderComponent((BlockEdit) => {
                             aria-hidden="true"
                             role="presentation"
                         >
-                            {finalGradient && (() => {
+                            {finalGradient && gradientId && (() => {
                                 const gradientData = parseGradient(finalGradient);
+                                // Use the actual gradientId if available, or use the generated one from editorLineColor
+                                const svgGradientId = gradientId;
                                 debugLog('🎨 SVG GRADIENT DATA:', gradientData);
-                                debugLog('🎨 SVG GRADIENT ID:', gradientId);
+                                debugLog('🎨 SVG GRADIENT ID:', svgGradientId);
                                 return (
                                     <defs>
-                                        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <linearGradient id={svgGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
                                             {gradientData?.stops?.length > 0 ? gradientData.stops.map((stop, index) => {
                                                 debugLog(`🎨 SVG STOP ${index}:`, stop);
                                                 return <stop key={index} offset={stop.offset} stopColor={stop.color} />;
@@ -743,7 +915,7 @@ addFilter(
             animationSpeed = 2.5, // Default duration for speed level 6
             squiggleAmplitude = isZigzag ? 15 : 10,
             squiggleHeight = '100px',
-            animationId = generateAnimationId(),
+            animationId,
             isReversed,
             textColor,
             customTextColor,
@@ -751,8 +923,15 @@ addFilter(
             customBackgroundColor,
             style,
             gradient,
-            gradientId = generateGradientId(isZigzag ? 'zigzag' : 'squiggle')
+            gradientId
         } = attributes;
+        
+        debugLog('🎨 SAVE FUNCTION - Block attributes:', { 
+            gradient, 
+            gradientId, 
+            style: style?.color?.gradient,
+            className 
+        });
 
         // Extract color information from WordPress classes
         const extractColorFromClassName = (className) => {
@@ -788,14 +967,27 @@ addFilter(
         debugLog('🎨 SAVE DEBUG: Color attributes:', { backgroundColor, customBackgroundColor, textColor, customTextColor, style, className, gradient });
         debugLog('🎨 SAVE DEBUG: Pattern type:', { isSquiggle, isZigzag, gradientId });
 
-        // Check if gradient should be used - auto-enable if gradient is present
-        if ((gradient) && gradient) {
-            finalGradient = gradient;
-            lineColor = `url(#${gradientId})`;
-            const parsedGradient = parseGradient(gradient);
-            debugLog('🎨 SAVE GRADIENT DEBUG: Using gradient:', gradient, 'Parsed:', parsedGradient);
-            debugLog('🎨 SAVE GRADIENT STOPS:', parsedGradient?.stops);
-            debugLog('🎨 SAVE GRADIENT ID for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE', ':', gradientId);
+        // Check if gradient should be used - check all possible gradient sources
+        const customGradient = gradient || style?.color?.gradient;
+        
+        // Variable to store the gradient ID consistently
+        let usedGradientId = null;
+        
+        if (customGradient) {
+            // Always use the stored gradient ID, never generate in save
+            if (gradientId) {
+                usedGradientId = gradientId;
+                finalGradient = customGradient;
+                lineColor = `url(#${usedGradientId})`;
+                const parsedGradient = parseGradient(customGradient);
+                debugLog('🎨 SAVE GRADIENT DEBUG: Using gradient:', customGradient, 'Parsed:', parsedGradient);
+                debugLog('🎨 SAVE GRADIENT STOPS:', parsedGradient?.stops);
+                debugLog('🎨 SAVE GRADIENT ID for', isZigzag ? 'ZIGZAG' : 'SQUIGGLE', ':', usedGradientId);
+            } else {
+                // If no gradient ID but has gradient, use solid color fallback
+                debugLog('⚠️ WARNING: Gradient exists but no gradientId stored');
+                lineColor = 'currentColor';
+            }
         } else {
             // Check all possible color sources in priority order
             if (backgroundColor) {
@@ -857,13 +1049,13 @@ addFilter(
             height: squiggleHeight,
             backgroundColor: 'transparent', // Container background always transparent
             [`--animation-duration`]: `${animationSpeed}s`,
-            [`--animation-name`]: animationName,
-            [`--line-color-${animationId}`]: lineColor, // Custom CSS variable for this instance
+            [`--animation-name`]: animationName
         };
 
-        // Merge any existing styles but override background to stay transparent
+        // Merge any existing styles but exclude the color object and override background
         if (style) {
-            Object.assign(inlineStyles, style);
+            const { color, ...otherStyles } = style;
+            Object.assign(inlineStyles, otherStyles);
             inlineStyles.backgroundColor = 'transparent';
         }
 
@@ -883,13 +1075,13 @@ addFilter(
                     aria-hidden="true"
                     role="presentation"
                 >
-                    {finalGradient && (() => {
+                    {finalGradient && usedGradientId && (() => {
                         const gradientData = parseGradient(finalGradient);
                         debugLog('🎨 SAVE SVG GRADIENT DATA:', gradientData);
-                        debugLog('🎨 SAVE SVG GRADIENT ID:', gradientId);
+                        debugLog('🎨 SAVE SVG GRADIENT ID:', usedGradientId);
                         return (
                             <defs>
-                                <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+                                <linearGradient id={usedGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
                                     {gradientData?.stops?.length > 0 ? gradientData.stops.map((stop, index) => {
                                         debugLog(`🎨 SAVE SVG STOP ${index}:`, stop);
                                         return <stop key={index} offset={stop.offset} stopColor={stop.color} />;
@@ -908,7 +1100,7 @@ addFilter(
                         strokeWidth={strokeWidth}
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className={`${isZigzag ? 'zigzag' : 'squiggle'}-path ${isZigzag ? 'zigzag' : 'squiggle'}-path-${animationId}`}
+                        className={`${isZigzag ? 'zigzag' : 'squiggle'}-path ${animationId ? `${isZigzag ? 'zigzag' : 'squiggle'}-path-${animationId}` : ''}`}
                         style={{
                             transformOrigin: 'center',
                             stroke: lineColor,
