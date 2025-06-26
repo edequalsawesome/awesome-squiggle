@@ -1,206 +1,264 @@
 .awesome-squiggle-wave {
-    display: block;
-    height: 100px;
-    overflow: hidden;
-    position: relative;
-    background-color: transparent !important; /* Container always transparent */
-    /* Prevent flash of incorrect sizing */
-    min-width: 0; /* Allow shrinking in flex containers */
-    box-sizing: border-box;
+	display: block;
+	height: 100px;
+	overflow: hidden;
+	position: relative;
+	background-color: transparent !important; /* Container always transparent */
+	/* Prevent flash of incorrect sizing */
+	min-width: 0; /* Allow shrinking in flex containers */
+	box-sizing: border-box;
 }
 
 .awesome-squiggle-wave svg {
-    display: block;
-    width: 100%;
-    height: 100%;
+	display: block;
+	width: 100%;
+	height: 100%;
 }
 
 /* Default squiggle animation */
 .awesome-squiggle-wave .squiggle-path {
-    transform-origin: center;
-    animation: var(--animation-name, squiggle-flow) var(--animation-duration, 1.6s) linear infinite;
+	transform-origin: center;
+	animation: var(--animation-name, squiggle-flow)
+		var(--animation-duration, 1.6s) linear infinite;
 }
 
 /* Default zig-zag animation */
 .awesome-squiggle-wave .zigzag-path {
-    transform-origin: center;
-    animation: var(--animation-name, zigzag-flow) var(--animation-duration, 1.6s) linear infinite;
+	transform-origin: center;
+	animation: var(--animation-name, zigzag-flow)
+		var(--animation-duration, 1.6s) linear infinite;
 }
 
 .awesome-squiggle-wave.is-paused .squiggle-path,
-.awesome-squiggle-wave.is-paused .zigzag-path {
-    animation-play-state: paused;
+.awesome-squiggle-wave.is-paused .zigzag-path,
+.awesome-squiggle-wave.is-paused .sparkle-group {
+	animation-play-state: paused;
 }
 
 /* Ensure each squiggle instance gets its own animation context */
 .wp-block-separator.is-style-animated-squiggle .squiggle-path {
-    transform-origin: center;
-    animation: var(--animation-name, squiggle-flow) var(--animation-duration, 1.6s) linear infinite;
+	transform-origin: center;
+	animation: var(--animation-name, squiggle-flow)
+		var(--animation-duration, 1.6s) linear infinite;
 }
 
 .wp-block-separator.is-style-static-squiggle .squiggle-path {
-    animation: none;
+	animation: none;
 }
 
 /* Ensure each zig-zag instance gets its own animation context */
 .wp-block-separator.is-style-animated-zigzag .zigzag-path {
-    transform-origin: center;
-    animation: var(--animation-name, zigzag-flow) var(--animation-duration, 1.6s) linear infinite;
+	transform-origin: center;
+	animation: var(--animation-name, zigzag-flow)
+		var(--animation-duration, 1.6s) linear infinite;
 }
 
 .wp-block-separator.is-style-static-zigzag .zigzag-path {
-    animation: none;
+	animation: none;
+}
+
+/* Default sparkle animation */
+.awesome-squiggle-wave .sparkle-group {
+	transform-origin: center;
+	animation: var(--animation-name, sparkle-flow)
+		var(--animation-duration, 1.6s) linear infinite;
+}
+
+/* Ensure each sparkle instance gets its own animation context */
+.wp-block-separator.is-style-animated-sparkle .sparkle-group {
+	transform-origin: center;
+	animation: var(--animation-name, sparkle-flow)
+		var(--animation-duration, 1.6s) linear infinite;
+}
+
+.wp-block-separator.is-style-static-sparkle .sparkle-group {
+	animation: none;
 }
 
 /* Frontend-specific selectors to ensure styles apply */
 div.wp-block-separator.awesome-squiggle-wave .squiggle-path {
-    transform-origin: center;
-    animation: var(--animation-name, squiggle-flow) var(--animation-duration, 1.6s) linear infinite;
+	transform-origin: center;
+	animation: var(--animation-name, squiggle-flow)
+		var(--animation-duration, 1.6s) linear infinite;
 }
 
 div.wp-block-separator.awesome-squiggle-wave .zigzag-path {
-    transform-origin: center;
-    animation: var(--animation-name, zigzag-flow) var(--animation-duration, 1.6s) linear infinite;
+	transform-origin: center;
+	animation: var(--animation-name, zigzag-flow)
+		var(--animation-duration, 1.6s) linear infinite;
 }
 
 div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path,
-div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
-    animation: none;
+div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path,
+div.wp-block-separator.awesome-squiggle-wave.is-paused .sparkle-group {
+	animation: none;
+}
+
+/* Frontend-specific selectors for sparkles */
+div.wp-block-separator.awesome-squiggle-wave .sparkle-group {
+	transform-origin: center;
+	animation: var(--animation-name, sparkle-flow)
+		var(--animation-duration, 1.6s) linear infinite;
 }
 
 /* Force transparent background for all squiggle containers */
 .wp-block-separator.awesome-squiggle-wave {
-    background-color: transparent !important; /* Always transparent */
-    padding: 0;
-    border: none;
-    /* Prevent layout flash by ensuring immediate proper sizing */
-    transition: none !important; /* Disable any transitions that might cause flash */
+	background-color: transparent !important; /* Always transparent */
+	padding: 0;
+	border: none;
+	/* Prevent layout flash by ensuring immediate proper sizing */
+	transition: none !important; /* Disable any transitions that might cause flash */
 }
 
 /* Even when WordPress adds background classes, keep container transparent */
 .wp-block-separator.awesome-squiggle-wave.has-background {
-    background-color: transparent !important;
+	background-color: transparent !important;
 }
 
 /* Remove any default border styles that might interfere */
 .wp-block-separator.awesome-squiggle-wave.has-background,
 .wp-block-separator.awesome-squiggle-wave.has-text-color {
-    border: none !important;
+	border: none !important;
 }
 
 /* Improved responsive height handling */
 .awesome-squiggle-wave,
 .wp-block-separator.awesome-squiggle-wave {
-    min-height: 50px;
-    height: auto;
+	min-height: 50px;
+	height: auto;
 }
 
 /* Main squiggle animation */
 @keyframes squiggle-flow {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(80px); /* Changed from -80px to 80px for RTL */
-    }
+	0% {
+		transform: translateX(0);
+	}
+	100% {
+		transform: translateX(80px); /* Changed from -80px to 80px for RTL */
+	}
 }
 
 /* Reverse squiggle animation */
 @keyframes squiggle-flow-reverse {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(-80px); /* Changed from 80px to -80px for LTR */
-    }
+	0% {
+		transform: translateX(0);
+	}
+	100% {
+		transform: translateX(-80px); /* Changed from 80px to -80px for LTR */
+	}
 }
 
 /* Main zig-zag animation (Charlie Brown stripe style) */
 @keyframes zigzag-flow {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(60px); /* Changed from -60px to 60px for RTL */
-    }
+	0% {
+		transform: translateX(0);
+	}
+	100% {
+		transform: translateX(60px); /* Changed from -60px to 60px for RTL */
+	}
 }
 
 /* Reverse zig-zag animation */
 @keyframes zigzag-flow-reverse {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(-60px); /* Changed from 60px to -60px for LTR */
-    }
+	0% {
+		transform: translateX(0);
+	}
+	100% {
+		transform: translateX(-60px); /* Changed from 60px to -60px for LTR */
+	}
+}
+
+/* Main sparkle animation */
+@keyframes sparkle-flow {
+	0% {
+		transform: translateX(0);
+	}
+	100% {
+		transform: translateX(60px);
+	}
+}
+
+/* Reverse sparkle animation */
+@keyframes sparkle-flow-reverse {
+	0% {
+		transform: translateX(0);
+	}
+	100% {
+		transform: translateX(-60px);
+	}
 }
 
 /* Improved spacing controls support */
 .wp-block-separator.awesome-squiggle-wave {
-    margin: 1.5em auto; /* Default margin that can be overridden by spacing controls */
+	margin: 1.5em auto; /* Default margin that can be overridden by spacing controls */
 }
 
 /* Ensure squiggle respects WordPress separator width settings */
 .wp-block-separator.awesome-squiggle-wave.is-style-wide {
-    width: 100%;
-    max-width: none;
+	width: 100%;
+	max-width: none;
 }
 
 /* Support for custom widths set via WordPress controls */
 .wp-block-separator.awesome-squiggle-wave[style*="width"] {
-    max-width: none; /* Allow custom width to take precedence */
+	max-width: none; /* Allow custom width to take precedence */
 }
 
 /* Responsive adjustments */
 @media screen and (max-width: 768px) {
-    .awesome-squiggle-wave {
-        min-height: 60px;
-    }
+	.awesome-squiggle-wave {
+		min-height: 60px;
+	}
 }
 
 @media screen and (max-width: 480px) {
-    .awesome-squiggle-wave {
-        min-height: 50px;
-    }
-    
-    /* Reduce squiggle complexity on very small screens for performance */
-    .awesome-squiggle-wave .squiggle-path {
-        stroke-width: 2px;
-    }
+	.awesome-squiggle-wave {
+		min-height: 50px;
+	}
+
+	/* Reduce squiggle complexity on very small screens for performance */
+	.awesome-squiggle-wave .squiggle-path {
+		stroke-width: 2px;
+	}
 }
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-    .awesome-squiggle-wave .squiggle-path {
-        stroke-width: 3px;
-    }
+	.awesome-squiggle-wave .squiggle-path {
+		stroke-width: 3px;
+	}
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-    .awesome-squiggle-wave .squiggle-path,
-    .awesome-squiggle-wave .zigzag-path {
-        animation-duration: 10s; /* Much slower */
-    }
-    
-    .awesome-squiggle-wave.is-style-static-squiggle .squiggle-path,
-    .wp-block-separator.is-style-static-squiggle .squiggle-path,
-    .awesome-squiggle-wave.is-style-static-zigzag .zigzag-path,
-    .wp-block-separator.is-style-static-zigzag .zigzag-path {
-        animation: none;
-    }
+	.awesome-squiggle-wave .squiggle-path,
+	.awesome-squiggle-wave .zigzag-path,
+	.awesome-squiggle-wave .sparkle-group {
+		animation-duration: 10s; /* Much slower */
+	}
+
+	.awesome-squiggle-wave.is-style-static-squiggle .squiggle-path,
+	.wp-block-separator.is-style-static-squiggle .squiggle-path,
+	.awesome-squiggle-wave.is-style-static-zigzag .zigzag-path,
+	.wp-block-separator.is-style-static-zigzag .zigzag-path,
+	.awesome-squiggle-wave.is-style-static-sparkle .sparkle-group,
+	.wp-block-separator.is-style-static-sparkle .sparkle-group {
+		animation: none;
+	}
 }
 
 /* Editor-specific styles */
 .wp-block-awesome-squiggle-animated-squiggle-divider {
-    margin: 2em 0;
+	margin: 2em 0;
 }
 
-/* Hide unstyled squiggle and zig-zag separators to prevent flash */
+/* Hide unstyled squiggle, zig-zag, and sparkle separators to prevent flash */
 .wp-block-separator.is-style-animated-squiggle:not(.awesome-squiggle-wave),
 .wp-block-separator.is-style-static-squiggle:not(.awesome-squiggle-wave),
 .wp-block-separator.is-style-animated-zigzag:not(.awesome-squiggle-wave),
-.wp-block-separator.is-style-static-zigzag:not(.awesome-squiggle-wave) {
-    opacity: 0;
-    visibility: hidden;
-} 
+.wp-block-separator.is-style-static-zigzag:not(.awesome-squiggle-wave),
+.wp-block-separator.is-style-animated-sparkle:not(.awesome-squiggle-wave),
+.wp-block-separator.is-style-static-sparkle:not(.awesome-squiggle-wave) {
+	opacity: 0;
+	visibility: hidden;
+}
