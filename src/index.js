@@ -773,6 +773,23 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			className: isCustom
 				? `wp-block-separator awesome-squiggle-wave ${ className }`.trim()
 				: '',
+			role: 'separator',
+			'aria-label': isCustom
+				? isSparkle
+					? __( 'Decorative sparkle divider', 'awesome-squiggle' )
+					: isZigzag
+					? __( 'Decorative zigzag divider', 'awesome-squiggle' )
+					: __( 'Decorative wavy divider', 'awesome-squiggle' )
+				: __( 'Separator', 'awesome-squiggle' ),
+			'aria-live':
+				isCustom && isAnimated && ! finalPaused ? 'polite' : 'off',
+			'aria-atomic': 'false',
+			'data-motion-preference':
+				typeof window !== 'undefined' &&
+				window.matchMedia &&
+				window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches
+					? 'reduce'
+					: 'normal',
 			style: isCustom
 				? {
 						height: squiggleHeight,
