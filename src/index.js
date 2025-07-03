@@ -6,7 +6,7 @@ import {
 	ToggleControl,
 	SelectControl,
 } from '@wordpress/components';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import { useEffect, useRef, useSelect } from '@wordpress/element';
@@ -1283,15 +1283,44 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 									min={ 1 }
 									max={ 10 }
 									step={ 1 }
-									help={ __(
-										isSparkle
-											? 'Control how fast the sparkles animate (higher = faster)'
+									// Enhanced accessibility
+									help={ (() => {
+										const speedValue = animationSpeed ? Math.round(11 - animationSpeed / 0.5) : 6;
+										const speedDescription = speedValue <= 3 ? __('slow', 'awesome-squiggle') : 
+																speedValue <= 7 ? __('medium', 'awesome-squiggle') : 
+																__('fast', 'awesome-squiggle');
+										const baseHelp = isSparkle
+											? __('Control how fast the sparkles animate (higher = faster)', 'awesome-squiggle')
 											: isZigzag
-											? 'Control how fast the zig-zag animates (higher = faster)'
-											: 'Control how fast the squiggle animates (higher = faster)',
-										'awesome-squiggle'
-									) }
+											? __('Control how fast the zig-zag animates (higher = faster)', 'awesome-squiggle')
+											: __('Control how fast the squiggle animates (higher = faster)', 'awesome-squiggle');
+										return sprintf(
+											__('%s Current speed: %s. Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
+											baseHelp,
+											speedDescription
+										);
+									})() }
+									aria-describedby="speed-help"
+									onKeyDown={ ( e ) => {
+										const currentValue = animationSpeed ? Math.round(11 - animationSpeed / 0.5) : 6;
+										if ( e.shiftKey && e.key === 'ArrowLeft' ) {
+											e.preventDefault();
+											const newValue = Math.max( 1, currentValue - 5 );
+											setSecureAttributes( setAttributes, {
+												animationSpeed: newValue,
+											} );
+										} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
+											e.preventDefault();
+											const newValue = Math.min( 10, currentValue + 5 );
+											setSecureAttributes( setAttributes, {
+												animationSpeed: newValue,
+											} );
+										}
+									} }
 								/>
+								<div id="speed-help" className="screen-reader-text">
+									{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
+								</div>
 								<ToggleControl
 									label={ __(
 										'Reverse Animation',
@@ -1334,34 +1363,103 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							}
 							min={ isSparkle ? 8 : 5 }
 							max={ isSparkle ? 35 : 25 }
-							help={ __(
-								isSparkle
-									? 'Adjust the size of the sparkles (higher = more dramatic)'
+							// Enhanced accessibility
+							help={ (() => {
+								const currentValue = squiggleAmplitude || ( isSparkle ? 18 : isZigzag ? 15 : 10 );
+								const minVal = isSparkle ? 8 : 5;
+								const maxVal = isSparkle ? 35 : 25;
+								const range = maxVal - minVal;
+								const percentage = Math.round(((currentValue - minVal) / range) * 100);
+								const sizeDescription = percentage <= 33 ? __('small', 'awesome-squiggle') : 
+														percentage <= 66 ? __('medium', 'awesome-squiggle') : 
+														__('large', 'awesome-squiggle');
+								const baseHelp = isSparkle
+									? __('Adjust the size of the sparkles (higher = more dramatic)', 'awesome-squiggle')
 									: isZigzag
-									? 'Adjust the height of the zig-zag peaks'
-									: 'Adjust the height of the squiggle peaks',
-								'awesome-squiggle'
-							) }
-						/>
-						{ isSparkle && (
-							<RangeControl
-								label={ __(
-									'Sparkle Vertical Spread',
-									'awesome-squiggle'
-								) }
-								value={ sparkleVerticalAmplitude || 15 }
-								onChange={ ( value ) =>
+									? __('Adjust the height of the zig-zag peaks', 'awesome-squiggle')
+									: __('Adjust the height of the squiggle peaks', 'awesome-squiggle');
+								return sprintf(
+									__('%s Current size: %s (%d). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
+									baseHelp,
+									sizeDescription,
+									currentValue
+								);
+							})() }
+							aria-describedby="amplitude-help"
+							onKeyDown={ ( e ) => {
+								const currentValue = squiggleAmplitude || ( isSparkle ? 18 : isZigzag ? 15 : 10 );
+								const jumpSize = isSparkle ? 5 : 3;
+								const minVal = isSparkle ? 8 : 5;
+								const maxVal = isSparkle ? 35 : 25;
+								if ( e.shiftKey && e.key === 'ArrowLeft' ) {
+									e.preventDefault();
+									const newValue = Math.max( minVal, currentValue - jumpSize );
 									setSecureAttributes( setAttributes, {
-										sparkleVerticalAmplitude: value,
-									} )
+										squiggleAmplitude: newValue,
+									} );
+								} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
+									e.preventDefault();
+									const newValue = Math.min( maxVal, currentValue + jumpSize );
+									setSecureAttributes( setAttributes, {
+										squiggleAmplitude: newValue,
+									} );
 								}
-								min={ 0 }
-								max={ 30 }
-								help={ __(
-									'Control how high and low the sparkles spread from the center line',
-									'awesome-squiggle'
-								) }
-							/>
+							} }
+						/>
+						<div id="amplitude-help" className="screen-reader-text">
+							{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
+						</div>
+						{ isSparkle && (
+							<>
+								<RangeControl
+									label={ __(
+										'Sparkle Vertical Spread',
+										'awesome-squiggle'
+									) }
+									value={ sparkleVerticalAmplitude || 15 }
+									onChange={ ( value ) =>
+										setSecureAttributes( setAttributes, {
+											sparkleVerticalAmplitude: value,
+										} )
+									}
+									min={ 0 }
+									max={ 30 }
+									// Enhanced accessibility
+									help={ (() => {
+										const currentValue = sparkleVerticalAmplitude || 15;
+										const percentage = Math.round((currentValue / 30) * 100);
+										const spreadDescription = percentage <= 25 ? __('minimal', 'awesome-squiggle') : 
+																percentage <= 50 ? __('moderate', 'awesome-squiggle') : 
+																percentage <= 75 ? __('wide', 'awesome-squiggle') : 
+																__('maximum', 'awesome-squiggle');
+										return sprintf(
+											__('Control how high and low the sparkles spread from the center line. Current spread: %s (%d). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
+											spreadDescription,
+											currentValue
+										);
+									})() }
+									aria-describedby="vertical-spread-help"
+									onKeyDown={ ( e ) => {
+										const currentValue = sparkleVerticalAmplitude || 15;
+										if ( e.shiftKey && e.key === 'ArrowLeft' ) {
+											e.preventDefault();
+											const newValue = Math.max( 0, currentValue - 5 );
+											setSecureAttributes( setAttributes, {
+												sparkleVerticalAmplitude: newValue,
+											} );
+										} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
+											e.preventDefault();
+											const newValue = Math.min( 30, currentValue + 5 );
+											setSecureAttributes( setAttributes, {
+												sparkleVerticalAmplitude: newValue,
+											} );
+										}
+									} }
+								/>
+								<div id="vertical-spread-help" className="screen-reader-text">
+									{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
+								</div>
+							</>
 						) }
 					</PanelBody>
 					<PanelBody
@@ -1376,26 +1474,60 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 						initialOpen={ false }
 					>
 						{ ! isSparkle && (
-							<RangeControl
-								label={ __(
-									'Stroke Width',
-									'awesome-squiggle'
-								) }
-								value={ strokeWidth || 1 }
-								onChange={ ( value ) =>
-									setSecureAttributes( setAttributes, {
-										strokeWidth: value,
-									} )
-								}
-								min={ 1 }
-								max={ 8 }
-								help={ __(
-									isZigzag
-										? 'Adjust the thickness of the zig-zag line'
-										: 'Adjust the thickness of the squiggle line',
-									'awesome-squiggle'
-								) }
-							/>
+							<>
+								<RangeControl
+									label={ __(
+										'Stroke Width',
+										'awesome-squiggle'
+									) }
+									value={ strokeWidth || 1 }
+									onChange={ ( value ) =>
+										setSecureAttributes( setAttributes, {
+											strokeWidth: value,
+										} )
+									}
+									min={ 1 }
+									max={ 8 }
+									// Enhanced accessibility
+									help={ (() => {
+										const currentValue = strokeWidth || 1;
+										const percentage = Math.round(((currentValue - 1) / 7) * 100);
+										const widthDescription = percentage <= 25 ? __('thin', 'awesome-squiggle') : 
+																percentage <= 50 ? __('medium', 'awesome-squiggle') : 
+																percentage <= 75 ? __('thick', 'awesome-squiggle') : 
+																__('very thick', 'awesome-squiggle');
+										const baseHelp = isZigzag
+											? __('Adjust the thickness of the zig-zag line', 'awesome-squiggle')
+											: __('Adjust the thickness of the squiggle line', 'awesome-squiggle');
+										return sprintf(
+											__('%s Current width: %s (%dpx). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
+											baseHelp,
+											widthDescription,
+											currentValue
+										);
+									})() }
+									aria-describedby="stroke-width-help"
+									onKeyDown={ ( e ) => {
+										const currentValue = strokeWidth || 1;
+										if ( e.shiftKey && e.key === 'ArrowLeft' ) {
+											e.preventDefault();
+											const newValue = Math.max( 1, currentValue - 2 );
+											setSecureAttributes( setAttributes, {
+												strokeWidth: newValue,
+											} );
+										} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
+											e.preventDefault();
+											const newValue = Math.min( 8, currentValue + 2 );
+											setSecureAttributes( setAttributes, {
+												strokeWidth: newValue,
+											} );
+										}
+									} }
+								/>
+								<div id="stroke-width-help" className="screen-reader-text">
+									{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
+								</div>
+							</>
 						) }
 						<SelectControl
 							label={ __(

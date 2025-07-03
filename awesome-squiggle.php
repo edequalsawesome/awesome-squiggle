@@ -24,6 +24,33 @@ if (!defined('ABSPATH')) {
 }
 
 /**
+ * Server-side validation for squiggle IDs
+ * Provides security hardening against client-side manipulation
+ */
+function validate_squiggle_id($id, $type = 'animation') {
+    // Strict server-side validation
+    if (!preg_match('/^[a-zA-Z0-9_-]{1,50}$/', $id)) {
+        // Generate secure fallback
+        return $type . '-' . wp_generate_uuid4();
+    }
+    return sanitize_key($id);
+}
+
+/**
+ * Validate block attributes for security
+ * Ensures animation and gradient IDs are properly sanitized
+ */
+function awesome_squiggle_validate_block_attributes($attributes) {
+    if (isset($attributes['animationId'])) {
+        $attributes['animationId'] = validate_squiggle_id($attributes['animationId'], 'animation');
+    }
+    if (isset($attributes['gradientId'])) {
+        $attributes['gradientId'] = validate_squiggle_id($attributes['gradientId'], 'gradient');
+    }
+    return $attributes;
+}
+
+/**
  * Initialize the Awesome Squiggle plugin
  */
 function awesome_squiggle_init() {
@@ -75,8 +102,11 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
     // Security improvement: Sanitize className before processing
     $className = sanitize_html_class($className);
     
+    // Security validation: Validate block attributes server-side
+    $attrs = awesome_squiggle_validate_block_attributes($attrs);
+    
     if (strpos($className, 'is-style-') !== false && 
-        (strpos($className, 'squiggle') !== false || strpos($className, 'zigzag') !== false)) {
+        (strpos($className, 'squiggle') !== false || strpos($className, 'zigzag') !== false || strpos($className, 'sparkle') !== false)) {
         
         // Ensure our CSS class is included
         if (strpos($block_content, 'awesome-squiggle-wave') === false) {
@@ -86,8 +116,72 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
                 $block_content
             );
         }
+        
+        // Security: Validate and sanitize any ID attributes in the output
+        if (isset($attrs['animationId'])) {
+            $validated_animation_id = validate_squiggle_id($attrs['animationId'], 'animation');
+            // Replace any instances of the original ID with the validated one
+            if ($attrs['animationId'] !== $validated_animation_id) {
+                $block_content = str_replace($attrs['animationId'], $validated_animation_id, $block_content);
+            }
+        }
+        
+        if (isset($attrs['gradientId'])) {
+            $validated_gradient_id = validate_squiggle_id($attrs['gradientId'], 'gradient');
+            // Replace any instances of the original ID with the validated one
+            if ($attrs['gradientId'] !== $validated_gradient_id) {
+                $block_content = str_replace($attrs['gradientId'], $validated_gradient_id, $block_content);
+            }
+        }
     }
     
     return $block_content;
 }
-add_filter('render_block', 'awesome_squiggle_filter_separator_content', 10, 2); 
+add_filter('render_block', 'awesome_squiggle_filter_separator_content', 10, 2);
+
+/**
+ * Server-side validation hook for REST API requests
+ * Validates block attributes when saving posts
+ */
+function awesome_squiggle_validate_rest_block_attributes($prepared_post, $request) {
+    // Only process if post content contains squiggle blocks
+    if (isset($prepared_post->post_content) && 
+        (strpos($prepared_post->post_content, 'is-style-animated-squiggle') !== false ||
+         strpos($prepared_post->post_content, 'is-style-static-squiggle') !== false ||
+         strpos($prepared_post->post_content, 'is-style-animated-zigzag') !== false ||
+         strpos($prepared_post->post_content, 'is-style-static-zigzag') !== false ||
+         strpos($prepared_post->post_content, 'is-style-animated-sparkle') !== false ||
+         strpos($prepared_post->post_content, 'is-style-static-sparkle') !== false)) {
+        
+        // Parse blocks and validate attributes
+        $blocks = parse_blocks($prepared_post->post_content);
+        $blocks = array_map('awesome_squiggle_validate_parsed_blocks', $blocks);
+        $prepared_post->post_content = serialize_blocks($blocks);
+    }
+    
+    return $prepared_post;
+}
+
+/**
+ * Recursively validate block attributes in parsed blocks
+ */
+function awesome_squiggle_validate_parsed_blocks($block) {
+    // Validate separator blocks with squiggle styles
+    if ($block['blockName'] === 'core/separator' && 
+        isset($block['attrs']['className']) &&
+        (strpos($block['attrs']['className'], 'squiggle') !== false ||
+         strpos($block['attrs']['className'], 'zigzag') !== false ||
+         strpos($block['attrs']['className'], 'sparkle') !== false)) {
+        
+        $block['attrs'] = awesome_squiggle_validate_block_attributes($block['attrs']);
+    }
+    
+    // Recursively validate inner blocks
+    if (!empty($block['innerBlocks'])) {
+        $block['innerBlocks'] = array_map('awesome_squiggle_validate_parsed_blocks', $block['innerBlocks']);
+    }
+    
+    return $block;
+}
+
+add_filter('rest_pre_insert_post', 'awesome_squiggle_validate_rest_block_attributes', 10, 2); 
