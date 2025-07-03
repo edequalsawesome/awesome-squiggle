@@ -9,7 +9,7 @@ import {
 import { __, sprintf } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
-import { useEffect, useRef, useSelect } from '@wordpress/element';
+import { useEffect, useRef } from '@wordpress/element';
 import { select } from '@wordpress/data';
 import './style.css';
 
@@ -47,6 +47,148 @@ const validateAnimationId = ( id ) => {
 	// Only allow alphanumeric, dash, and underscore
 	const allowedPattern = /^[a-zA-Z0-9_-]+$/;
 	return validateStringInput( id, allowedPattern, 50 );
+};
+
+// Color contrast validation utilities for WCAG AA compliance
+const hexToRgb = ( hex ) => {
+	// Remove # if present
+	hex = hex.replace( '#', '' );
+
+	// Handle 3-character hex codes
+	if ( hex.length === 3 ) {
+		hex = hex
+			.split( '' )
+			.map( ( char ) => char + char )
+			.join( '' );
+	}
+
+	// Parse RGB values
+	const r = parseInt( hex.substr( 0, 2 ), 16 );
+	const g = parseInt( hex.substr( 2, 2 ), 16 );
+	const b = parseInt( hex.substr( 4, 2 ), 16 );
+
+	return { r, g, b };
+};
+
+const rgbToLuminance = ( { r, g, b } ) => {
+	// Convert RGB to sRGB
+	const rsRGB = r / 255;
+	const gsRGB = g / 255;
+	const bsRGB = b / 255;
+
+	// Apply gamma correction
+	const rLinear =
+		rsRGB <= 0.03928
+			? rsRGB / 12.92
+			: Math.pow( ( rsRGB + 0.055 ) / 1.055, 2.4 );
+	const gLinear =
+		gsRGB <= 0.03928
+			? gsRGB / 12.92
+			: Math.pow( ( gsRGB + 0.055 ) / 1.055, 2.4 );
+	const bLinear =
+		bsRGB <= 0.03928
+			? bsRGB / 12.92
+			: Math.pow( ( bsRGB + 0.055 ) / 1.055, 2.4 );
+
+	// Calculate luminance using WCAG formula
+	return 0.2126 * rLinear + 0.7152 * gLinear + 0.0722 * bLinear;
+};
+
+const parseColorToRgb = ( color ) => {
+	if ( ! color || typeof color !== 'string' ) {
+		return null;
+	}
+
+	// Handle hex colors
+	if ( color.startsWith( '#' ) ) {
+		return hexToRgb( color );
+	}
+
+	// Handle rgb/rgba colors
+	const rgbMatch = color.match(
+		/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/
+	);
+	if ( rgbMatch ) {
+		return {
+			r: parseInt( rgbMatch[ 1 ], 10 ),
+			g: parseInt( rgbMatch[ 2 ], 10 ),
+			b: parseInt( rgbMatch[ 3 ], 10 ),
+		};
+	}
+
+	// Handle CSS color names (basic set)
+	const colorMap = {
+		white: { r: 255, g: 255, b: 255 },
+		black: { r: 0, g: 0, b: 0 },
+		red: { r: 255, g: 0, b: 0 },
+		green: { r: 0, g: 128, b: 0 },
+		blue: { r: 0, g: 0, b: 255 },
+		yellow: { r: 255, g: 255, b: 0 },
+		cyan: { r: 0, g: 255, b: 255 },
+		magenta: { r: 255, g: 0, b: 255 },
+		transparent: { r: 255, g: 255, b: 255 }, // Assume white background for transparent
+	};
+
+	return colorMap[ color.toLowerCase() ] || null;
+};
+
+const getContrastRatio = ( color1, color2 ) => {
+	const rgb1 = parseColorToRgb( color1 );
+	const rgb2 = parseColorToRgb( color2 );
+
+	if ( ! rgb1 || ! rgb2 ) {
+		return 1; // Unknown colors, assume poor contrast
+	}
+
+	const lum1 = rgbToLuminance( rgb1 );
+	const lum2 = rgbToLuminance( rgb2 );
+
+	const brightest = Math.max( lum1, lum2 );
+	const darkest = Math.min( lum1, lum2 );
+
+	return ( brightest + 0.05 ) / ( darkest + 0.05 );
+};
+
+const validateColorContrast = ( foreground, background = 'transparent' ) => {
+	const ratio = getContrastRatio( foreground, background );
+
+	// WCAG AA standard: 3:1 for large text and graphical elements
+	// WCAG AAA standard: 4.5:1 for normal text, 3:1 for large text
+	return {
+		ratio,
+		isAACompliant: ratio >= 3.0,
+		isAAACompliant: ratio >= 4.5,
+		meetsLargeTextAA: ratio >= 3.0,
+		meetsNormalTextAA: ratio >= 4.5,
+	};
+};
+
+const getAccessibleColorFallback = (
+	originalColor,
+	background = 'transparent'
+) => {
+	const contrast = validateColorContrast( originalColor, background );
+
+	if ( contrast.isAACompliant ) {
+		return originalColor;
+	}
+
+	// Provide high contrast fallbacks
+	const backgroundRgb = parseColorToRgb( background );
+	if ( ! backgroundRgb ) {
+		return 'currentColor'; // Let CSS handle it
+	}
+
+	// Calculate background luminance to determine if we need light or dark foreground
+	const backgroundLum = rgbToLuminance( backgroundRgb );
+
+	// Use high contrast colors based on background luminance
+	if ( backgroundLum > 0.5 ) {
+		// Light background - use dark foreground
+		return '#1a1a1a'; // Very dark gray
+	}
+	// Dark background - use light foreground
+	return '#f0f0f0'; // Very light gray
 };
 
 // Development-only logging
@@ -193,7 +335,9 @@ const wpDefaultGradients = {
 
 // Simple gradient parser for basic linear gradients
 const parseGradient = ( gradientString ) => {
-	if ( ! gradientString ) return null;
+	if ( ! gradientString ) {
+		return null;
+	}
 
 	// Handle WordPress preset gradient slugs directly
 	if ( wpDefaultGradients[ gradientString ] ) {
@@ -232,8 +376,12 @@ const parseGradient = ( gradientString ) => {
 
 		for ( let i = 0; i < content.length; i++ ) {
 			const char = content[ i ];
-			if ( char === '(' ) parenDepth++;
-			if ( char === ')' ) parenDepth--;
+			if ( char === '(' ) {
+				parenDepth++;
+			}
+			if ( char === ')' ) {
+				parenDepth--;
+			}
 
 			if ( char === ',' && parenDepth === 0 ) {
 				parts.push( currentPart.trim() );
@@ -253,7 +401,9 @@ const parseGradient = ( gradientString ) => {
 		// Process each part to extract color and percentage
 		for ( const part of parts ) {
 			// Skip direction part (like "135deg")
-			if ( part.includes( 'deg' ) || part.includes( 'to ' ) ) continue;
+			if ( part.includes( 'deg' ) || part.includes( 'to ' ) ) {
+				continue;
+			}
 
 			// Improved color matching - handle rgb(), rgba(), hsl(), hsla(), and hex colors
 			const colorMatch = part.match(
@@ -404,7 +554,10 @@ const generateZigzagPath = ( amplitude = 15 ) => {
 };
 
 // Generate SVG elements for sparkles pattern
-const generateSparkleElements = ( sparkleSize = 18, verticalAmplitude = 15 ) => {
+const generateSparkleElements = (
+	sparkleSize = 18,
+	verticalAmplitude = 15
+) => {
 	// Security: Validate bounds
 	sparkleSize = validateNumericInput( sparkleSize, 8, 35, 18 );
 	verticalAmplitude = validateNumericInput( verticalAmplitude, 0, 30, 15 );
@@ -435,7 +588,8 @@ const generateSparkleElements = ( sparkleSize = 18, verticalAmplitude = 15 ) => 
 		// Calculate points for a 4-pointed star
 		const points = [];
 		for ( let i = 0; i < 8; i++ ) {
-			const angle = ( Math.PI * 2 * i ) / 8 + ( rotation * Math.PI ) / 180;
+			const angle =
+				( Math.PI * 2 * i ) / 8 + ( rotation * Math.PI ) / 180;
 			const radius = i % 2 === 0 ? size : innerSize;
 			const px = x + Math.cos( angle ) * radius;
 			const py = sparkleY + Math.sin( angle ) * radius;
@@ -443,19 +597,19 @@ const generateSparkleElements = ( sparkleSize = 18, verticalAmplitude = 15 ) => 
 		}
 
 		// Calculate deterministic timing for star twinkling (avoids validation errors)
-		const seed = (x + sparkleIndex * 17) % 1600; // Deterministic "random"
+		const seed = ( x + sparkleIndex * 17 ) % 1600; // Deterministic "random"
 		const delayMs = seed; // Delay 0-1.6s
-		const durationMs = 1200 + ((sparkleIndex * 67) % 800); // Duration 1.2-2.0s
-		
+		const durationMs = 1200 + ( ( sparkleIndex * 67 ) % 800 ); // Duration 1.2-2.0s
+
 		// Create sparkle element data
-		sparkleElements.push({
-			points: points.join(' '),
+		sparkleElements.push( {
+			points: points.join( ' ' ),
 			style: {
-				animationDelay: `${delayMs}ms`,
-				animationDuration: `${durationMs}ms`,
-			}
-		});
-		
+				animationDelay: `${ delayMs }ms`,
+				animationDuration: `${ durationMs }ms`,
+			},
+		} );
+
 		sparkleIndex++;
 	}
 
@@ -660,7 +814,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 						'🎨 Generated new gradient ID for gradient change:',
 						{
 							oldGradient: currentGradient,
-							newGradient: newGradient,
+							newGradient,
 							oldId: attributes?.gradientId,
 							newId: newGradientId,
 						}
@@ -720,7 +874,11 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 
 		// Ensure each block has a unique animation ID
 		if ( isCustom && ! animationId ) {
-			const patternType = isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'squiggle';
+			const patternType = isSparkle
+				? 'sparkle'
+				: isZigzag
+				? 'zigzag'
+				: 'squiggle';
 			const defaultAmplitude = isSparkle ? 18 : isZigzag ? 15 : 10;
 			setSecureAttributes( setAttributes, {
 				animationId: generateAnimationId(
@@ -790,9 +948,17 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					debugLog(
 						'🔄 Duplicate gradient ID detected on initialization, regenerating'
 					);
-					const defaultAmplitude = isSparkle ? 18 : isZigzag ? 15 : 10;
+					const defaultAmplitude = isSparkle
+						? 18
+						: isZigzag
+						? 15
+						: 10;
 					const newAnimationId = generateAnimationId(
-						isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'squiggle',
+						isSparkle
+							? 'sparkle'
+							: isZigzag
+							? 'zigzag'
+							: 'squiggle',
 						clientId,
 						strokeWidth || 1,
 						squiggleAmplitude || defaultAmplitude
@@ -883,13 +1049,14 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			setAttributes,
 		] );
 
-
 		// Remove this overly aggressive duplicate check that runs too often
 		// and causes gradient IDs to regenerate during block validation
 
 		// Extract color information from WordPress classes (same logic as save)
 		const extractColorFromClassName = ( className ) => {
-			if ( ! className ) return null;
+			if ( ! className ) {
+				return null;
+			}
 
 			// Look for background color classes (has-{color}-background-color)
 			const bgColorMatch = className.match(
@@ -977,26 +1144,73 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					gradientId
 				);
 			} else {
-				// Use solid color logic
+				// Use solid color logic with contrast validation
+				let proposedLineColor = null;
+
 				if ( backgroundColor ) {
-					lineColor = `var(--wp--preset--color--${ backgroundColor })`;
+					proposedLineColor = `var(--wp--preset--color--${ backgroundColor })`;
 				} else if ( customBackgroundColor ) {
-					lineColor = customBackgroundColor;
+					proposedLineColor = customBackgroundColor;
 				} else if ( style?.color?.background ) {
-					lineColor = style.color.background;
+					proposedLineColor = style.color.background;
 				} else {
 					const classNameColor =
 						extractColorFromClassName( className );
 					if ( classNameColor ) {
-						lineColor = classNameColor;
+						proposedLineColor = classNameColor;
 					} else if ( textColor ) {
-						lineColor = `var(--wp--preset--color--${ textColor })`;
+						proposedLineColor = `var(--wp--preset--color--${ textColor })`;
 					} else if ( customTextColor ) {
-						lineColor = customTextColor;
+						proposedLineColor = customTextColor;
 					} else if ( style?.color?.text ) {
-						lineColor = style.color.text;
+						proposedLineColor = style.color.text;
 					}
 				}
+
+				// Apply contrast validation for accessibility
+				if ( proposedLineColor ) {
+					// For separator decorations, we assume a transparent/white background context
+					// since separators typically appear between content sections
+					const backgroundContext = 'transparent';
+					const contrastValidation = validateColorContrast(
+						proposedLineColor,
+						backgroundContext
+					);
+
+					if ( ! contrastValidation.isAACompliant ) {
+						debugLog(
+							'⚠️ Low contrast detected:',
+							proposedLineColor,
+							'vs',
+							backgroundContext,
+							'Ratio:',
+							contrastValidation.ratio.toFixed( 2 )
+						);
+
+						// Use accessible fallback
+						lineColor = getAccessibleColorFallback(
+							proposedLineColor,
+							backgroundContext
+						);
+
+						debugLog(
+							'✅ Applied accessible fallback:',
+							lineColor
+						);
+					} else {
+						lineColor = proposedLineColor;
+						debugLog(
+							'✅ Good contrast:',
+							proposedLineColor,
+							'Ratio:',
+							contrastValidation.ratio.toFixed( 2 )
+						);
+					}
+				} else {
+					// No color specified, use currentColor (inherits from context)
+					lineColor = 'currentColor';
+				}
+
 				editorLineColor = lineColor;
 			}
 
@@ -1096,11 +1310,25 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							viewBox="0 0 800 100"
 							preserveAspectRatio="none"
 							role="img"
-							aria-label={ __(
-								`Decorative ${ isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'wavy' } divider`,
-								'awesome-squiggle'
-							) }
-							aria-describedby={ `squiggle-desc-${ animationId || 'default' }` }
+							aria-label={
+								isSparkle
+									? __(
+											'Decorative sparkle divider',
+											'awesome-squiggle'
+									  )
+									: isZigzag
+									? __(
+											'Decorative zigzag divider',
+											'awesome-squiggle'
+									  )
+									: __(
+											'Decorative wavy divider',
+											'awesome-squiggle'
+									  )
+							}
+							aria-describedby={ `squiggle-desc-${
+								animationId || 'default'
+							}` }
 							style={ {
 								width: '100%',
 								height: '100%',
@@ -1108,18 +1336,55 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							} }
 						>
 							<title>
-								{ __(
-									`${ isSparkle ? 'Sparkle' : isZigzag ? 'Zigzag' : 'Wavy' } separator`,
-									'awesome-squiggle'
-								) }
+								{ isSparkle
+									? __(
+											'Sparkle separator',
+											'awesome-squiggle'
+									  )
+									: isZigzag
+									? __(
+											'Zigzag separator',
+											'awesome-squiggle'
+									  )
+									: __(
+											'Wavy separator',
+											'awesome-squiggle'
+									  ) }
 							</title>
-							<desc id={ `squiggle-desc-${ animationId || 'default' }` }>
-								{ __(
-									`A decorative ${ isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'wavy' } pattern used as a visual divider between content sections.${ 
-										isAnimated && !finalPaused ? ' This pattern includes gentle animation.' : ''
-									}`,
-									'awesome-squiggle'
-								) }
+							<desc
+								id={ `squiggle-desc-${
+									animationId || 'default'
+								}` }
+							>
+								{ isSparkle
+									? isAnimated && ! finalPaused
+										? __(
+												'A decorative sparkle pattern used as a visual divider between content sections. This pattern includes gentle animation.',
+												'awesome-squiggle'
+										  )
+										: __(
+												'A decorative sparkle pattern used as a visual divider between content sections.',
+												'awesome-squiggle'
+										  )
+									: isZigzag
+									? isAnimated && ! finalPaused
+										? __(
+												'A decorative zigzag pattern used as a visual divider between content sections. This pattern includes gentle animation.',
+												'awesome-squiggle'
+										  )
+										: __(
+												'A decorative zigzag pattern used as a visual divider between content sections.',
+												'awesome-squiggle'
+										  )
+									: isAnimated && ! finalPaused
+									? __(
+											'A decorative wavy pattern used as a visual divider between content sections. This pattern includes gentle animation.',
+											'awesome-squiggle'
+									  )
+									: __(
+											'A decorative wavy pattern used as a visual divider between content sections.',
+											'awesome-squiggle'
+									  ) }
 							</desc>
 							{ finalGradient &&
 								gradientId &&
@@ -1284,42 +1549,98 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 									max={ 10 }
 									step={ 1 }
 									// Enhanced accessibility
-									help={ (() => {
-										const speedValue = animationSpeed ? Math.round(11 - animationSpeed / 0.5) : 6;
-										const speedDescription = speedValue <= 3 ? __('slow', 'awesome-squiggle') : 
-																speedValue <= 7 ? __('medium', 'awesome-squiggle') : 
-																__('fast', 'awesome-squiggle');
+									help={ ( () => {
+										const speedValue = animationSpeed
+											? Math.round(
+													11 - animationSpeed / 0.5
+											  )
+											: 6;
+										const speedDescription =
+											speedValue <= 3
+												? __(
+														'slow',
+														'awesome-squiggle'
+												  )
+												: speedValue <= 7
+												? __(
+														'medium',
+														'awesome-squiggle'
+												  )
+												: __(
+														'fast',
+														'awesome-squiggle'
+												  );
 										const baseHelp = isSparkle
-											? __('Control how fast the sparkles animate (higher = faster)', 'awesome-squiggle')
+											? __(
+													'Control how fast the sparkles animate (higher = faster)',
+													'awesome-squiggle'
+											  )
 											: isZigzag
-											? __('Control how fast the zig-zag animates (higher = faster)', 'awesome-squiggle')
-											: __('Control how fast the squiggle animates (higher = faster)', 'awesome-squiggle');
+											? __(
+													'Control how fast the zig-zag animates (higher = faster)',
+													'awesome-squiggle'
+											  )
+											: __(
+													'Control how fast the squiggle animates (higher = faster)',
+													'awesome-squiggle'
+											  );
 										return sprintf(
-											__('%s Current speed: %s. Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
+											__(
+												'%s Current speed: %s. Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.',
+												'awesome-squiggle'
+											),
 											baseHelp,
 											speedDescription
 										);
-									})() }
+									} )() }
 									aria-describedby="speed-help"
 									onKeyDown={ ( e ) => {
-										const currentValue = animationSpeed ? Math.round(11 - animationSpeed / 0.5) : 6;
-										if ( e.shiftKey && e.key === 'ArrowLeft' ) {
+										const currentValue = animationSpeed
+											? Math.round(
+													11 - animationSpeed / 0.5
+											  )
+											: 6;
+										if (
+											e.shiftKey &&
+											e.key === 'ArrowLeft'
+										) {
 											e.preventDefault();
-											const newValue = Math.max( 1, currentValue - 5 );
-											setSecureAttributes( setAttributes, {
-												animationSpeed: newValue,
-											} );
-										} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
+											const newValue = Math.max(
+												1,
+												currentValue - 5
+											);
+											setSecureAttributes(
+												setAttributes,
+												{
+													animationSpeed: newValue,
+												}
+											);
+										} else if (
+											e.shiftKey &&
+											e.key === 'ArrowRight'
+										) {
 											e.preventDefault();
-											const newValue = Math.min( 10, currentValue + 5 );
-											setSecureAttributes( setAttributes, {
-												animationSpeed: newValue,
-											} );
+											const newValue = Math.min(
+												10,
+												currentValue + 5
+											);
+											setSecureAttributes(
+												setAttributes,
+												{
+													animationSpeed: newValue,
+												}
+											);
 										}
 									} }
 								/>
-								<div id="speed-help" className="screen-reader-text">
-									{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
+								<div
+									id="speed-help"
+									className="screen-reader-text"
+								>
+									{ __(
+										'Hold Shift and use arrow keys for larger increments',
+										'awesome-squiggle'
+									) }
 								</div>
 								<ToggleControl
 									label={ __(
@@ -1364,42 +1685,72 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							min={ isSparkle ? 8 : 5 }
 							max={ isSparkle ? 35 : 25 }
 							// Enhanced accessibility
-							help={ (() => {
-								const currentValue = squiggleAmplitude || ( isSparkle ? 18 : isZigzag ? 15 : 10 );
+							help={ ( () => {
+								const currentValue =
+									squiggleAmplitude ||
+									( isSparkle ? 18 : isZigzag ? 15 : 10 );
 								const minVal = isSparkle ? 8 : 5;
 								const maxVal = isSparkle ? 35 : 25;
 								const range = maxVal - minVal;
-								const percentage = Math.round(((currentValue - minVal) / range) * 100);
-								const sizeDescription = percentage <= 33 ? __('small', 'awesome-squiggle') : 
-														percentage <= 66 ? __('medium', 'awesome-squiggle') : 
-														__('large', 'awesome-squiggle');
+								const percentage = Math.round(
+									( ( currentValue - minVal ) / range ) * 100
+								);
+								const sizeDescription =
+									percentage <= 33
+										? __( 'small', 'awesome-squiggle' )
+										: percentage <= 66
+										? __( 'medium', 'awesome-squiggle' )
+										: __( 'large', 'awesome-squiggle' );
 								const baseHelp = isSparkle
-									? __('Adjust the size of the sparkles (higher = more dramatic)', 'awesome-squiggle')
+									? __(
+											'Adjust the size of the sparkles (higher = more dramatic)',
+											'awesome-squiggle'
+									  )
 									: isZigzag
-									? __('Adjust the height of the zig-zag peaks', 'awesome-squiggle')
-									: __('Adjust the height of the squiggle peaks', 'awesome-squiggle');
+									? __(
+											'Adjust the height of the zig-zag peaks',
+											'awesome-squiggle'
+									  )
+									: __(
+											'Adjust the height of the squiggle peaks',
+											'awesome-squiggle'
+									  );
 								return sprintf(
-									__('%s Current size: %s (%d). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
+									__(
+										'%s Current size: %s (%d). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.',
+										'awesome-squiggle'
+									),
 									baseHelp,
 									sizeDescription,
 									currentValue
 								);
-							})() }
+							} )() }
 							aria-describedby="amplitude-help"
 							onKeyDown={ ( e ) => {
-								const currentValue = squiggleAmplitude || ( isSparkle ? 18 : isZigzag ? 15 : 10 );
+								const currentValue =
+									squiggleAmplitude ||
+									( isSparkle ? 18 : isZigzag ? 15 : 10 );
 								const jumpSize = isSparkle ? 5 : 3;
 								const minVal = isSparkle ? 8 : 5;
 								const maxVal = isSparkle ? 35 : 25;
 								if ( e.shiftKey && e.key === 'ArrowLeft' ) {
 									e.preventDefault();
-									const newValue = Math.max( minVal, currentValue - jumpSize );
+									const newValue = Math.max(
+										minVal,
+										currentValue - jumpSize
+									);
 									setSecureAttributes( setAttributes, {
 										squiggleAmplitude: newValue,
 									} );
-								} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
+								} else if (
+									e.shiftKey &&
+									e.key === 'ArrowRight'
+								) {
 									e.preventDefault();
-									const newValue = Math.min( maxVal, currentValue + jumpSize );
+									const newValue = Math.min(
+										maxVal,
+										currentValue + jumpSize
+									);
 									setSecureAttributes( setAttributes, {
 										squiggleAmplitude: newValue,
 									} );
@@ -1407,7 +1758,10 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							} }
 						/>
 						<div id="amplitude-help" className="screen-reader-text">
-							{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
+							{ __(
+								'Hold Shift and use arrow keys for larger increments',
+								'awesome-squiggle'
+							) }
 						</div>
 						{ isSparkle && (
 							<>
@@ -1425,39 +1779,88 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 									min={ 0 }
 									max={ 30 }
 									// Enhanced accessibility
-									help={ (() => {
-										const currentValue = sparkleVerticalAmplitude || 15;
-										const percentage = Math.round((currentValue / 30) * 100);
-										const spreadDescription = percentage <= 25 ? __('minimal', 'awesome-squiggle') : 
-																percentage <= 50 ? __('moderate', 'awesome-squiggle') : 
-																percentage <= 75 ? __('wide', 'awesome-squiggle') : 
-																__('maximum', 'awesome-squiggle');
+									help={ ( () => {
+										const currentValue =
+											sparkleVerticalAmplitude || 15;
+										const percentage = Math.round(
+											( currentValue / 30 ) * 100
+										);
+										const spreadDescription =
+											percentage <= 25
+												? __(
+														'minimal',
+														'awesome-squiggle'
+												  )
+												: percentage <= 50
+												? __(
+														'moderate',
+														'awesome-squiggle'
+												  )
+												: percentage <= 75
+												? __(
+														'wide',
+														'awesome-squiggle'
+												  )
+												: __(
+														'maximum',
+														'awesome-squiggle'
+												  );
 										return sprintf(
-											__('Control how high and low the sparkles spread from the center line. Current spread: %s (%d). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
+											__(
+												'Control how high and low the sparkles spread from the center line. Current spread: %s (%d). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.',
+												'awesome-squiggle'
+											),
 											spreadDescription,
 											currentValue
 										);
-									})() }
+									} )() }
 									aria-describedby="vertical-spread-help"
 									onKeyDown={ ( e ) => {
-										const currentValue = sparkleVerticalAmplitude || 15;
-										if ( e.shiftKey && e.key === 'ArrowLeft' ) {
+										const currentValue =
+											sparkleVerticalAmplitude || 15;
+										if (
+											e.shiftKey &&
+											e.key === 'ArrowLeft'
+										) {
 											e.preventDefault();
-											const newValue = Math.max( 0, currentValue - 5 );
-											setSecureAttributes( setAttributes, {
-												sparkleVerticalAmplitude: newValue,
-											} );
-										} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
+											const newValue = Math.max(
+												0,
+												currentValue - 5
+											);
+											setSecureAttributes(
+												setAttributes,
+												{
+													sparkleVerticalAmplitude:
+														newValue,
+												}
+											);
+										} else if (
+											e.shiftKey &&
+											e.key === 'ArrowRight'
+										) {
 											e.preventDefault();
-											const newValue = Math.min( 30, currentValue + 5 );
-											setSecureAttributes( setAttributes, {
-												sparkleVerticalAmplitude: newValue,
-											} );
+											const newValue = Math.min(
+												30,
+												currentValue + 5
+											);
+											setSecureAttributes(
+												setAttributes,
+												{
+													sparkleVerticalAmplitude:
+														newValue,
+												}
+											);
 										}
 									} }
 								/>
-								<div id="vertical-spread-help" className="screen-reader-text">
-									{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
+								<div
+									id="vertical-spread-help"
+									className="screen-reader-text"
+								>
+									{ __(
+										'Hold Shift and use arrow keys for larger increments',
+										'awesome-squiggle'
+									) }
 								</div>
 							</>
 						) }
@@ -1489,43 +1892,94 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 									min={ 1 }
 									max={ 8 }
 									// Enhanced accessibility
-									help={ (() => {
+									help={ ( () => {
 										const currentValue = strokeWidth || 1;
-										const percentage = Math.round(((currentValue - 1) / 7) * 100);
-										const widthDescription = percentage <= 25 ? __('thin', 'awesome-squiggle') : 
-																percentage <= 50 ? __('medium', 'awesome-squiggle') : 
-																percentage <= 75 ? __('thick', 'awesome-squiggle') : 
-																__('very thick', 'awesome-squiggle');
+										const percentage = Math.round(
+											( ( currentValue - 1 ) / 7 ) * 100
+										);
+										const widthDescription =
+											percentage <= 25
+												? __(
+														'thin',
+														'awesome-squiggle'
+												  )
+												: percentage <= 50
+												? __(
+														'medium',
+														'awesome-squiggle'
+												  )
+												: percentage <= 75
+												? __(
+														'thick',
+														'awesome-squiggle'
+												  )
+												: __(
+														'very thick',
+														'awesome-squiggle'
+												  );
 										const baseHelp = isZigzag
-											? __('Adjust the thickness of the zig-zag line', 'awesome-squiggle')
-											: __('Adjust the thickness of the squiggle line', 'awesome-squiggle');
+											? __(
+													'Adjust the thickness of the zig-zag line',
+													'awesome-squiggle'
+											  )
+											: __(
+													'Adjust the thickness of the squiggle line',
+													'awesome-squiggle'
+											  );
 										return sprintf(
-											__('%s Current width: %s (%dpx). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
+											__(
+												'%s Current width: %s (%dpx). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.',
+												'awesome-squiggle'
+											),
 											baseHelp,
 											widthDescription,
 											currentValue
 										);
-									})() }
+									} )() }
 									aria-describedby="stroke-width-help"
 									onKeyDown={ ( e ) => {
 										const currentValue = strokeWidth || 1;
-										if ( e.shiftKey && e.key === 'ArrowLeft' ) {
+										if (
+											e.shiftKey &&
+											e.key === 'ArrowLeft'
+										) {
 											e.preventDefault();
-											const newValue = Math.max( 1, currentValue - 2 );
-											setSecureAttributes( setAttributes, {
-												strokeWidth: newValue,
-											} );
-										} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
+											const newValue = Math.max(
+												1,
+												currentValue - 2
+											);
+											setSecureAttributes(
+												setAttributes,
+												{
+													strokeWidth: newValue,
+												}
+											);
+										} else if (
+											e.shiftKey &&
+											e.key === 'ArrowRight'
+										) {
 											e.preventDefault();
-											const newValue = Math.min( 8, currentValue + 2 );
-											setSecureAttributes( setAttributes, {
-												strokeWidth: newValue,
-											} );
+											const newValue = Math.min(
+												8,
+												currentValue + 2
+											);
+											setSecureAttributes(
+												setAttributes,
+												{
+													strokeWidth: newValue,
+												}
+											);
 										}
 									} }
 								/>
-								<div id="stroke-width-help" className="screen-reader-text">
-									{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
+								<div
+									id="stroke-width-help"
+									className="screen-reader-text"
+								>
+									{ __(
+										'Hold Shift and use arrow keys for larger increments',
+										'awesome-squiggle'
+									) }
 								</div>
 							</>
 						) }
@@ -1621,7 +2075,9 @@ addFilter(
 
 		// Extract color information from WordPress classes
 		const extractColorFromClassName = ( className ) => {
-			if ( ! className ) return null;
+			if ( ! className ) {
+				return null;
+			}
 
 			// Look for background color classes (has-{color}-background-color)
 			const bgColorMatch = className.match(
@@ -1709,25 +2165,70 @@ addFilter(
 				lineColor = 'currentColor';
 			}
 		} else {
-			// Check all possible color sources in priority order
+			// Check all possible color sources in priority order with contrast validation
+			let proposedLineColor = null;
+
 			if ( backgroundColor ) {
-				lineColor = `var(--wp--preset--color--${ backgroundColor })`;
+				proposedLineColor = `var(--wp--preset--color--${ backgroundColor })`;
 			} else if ( customBackgroundColor ) {
-				lineColor = customBackgroundColor;
+				proposedLineColor = customBackgroundColor;
 			} else if ( style?.color?.background ) {
-				lineColor = style.color.background;
+				proposedLineColor = style.color.background;
 			} else {
 				// Try to extract color from className
 				const classNameColor = extractColorFromClassName( className );
 				if ( classNameColor ) {
-					lineColor = classNameColor;
+					proposedLineColor = classNameColor;
 				} else if ( textColor ) {
-					lineColor = `var(--wp--preset--color--${ textColor })`;
+					proposedLineColor = `var(--wp--preset--color--${ textColor })`;
 				} else if ( customTextColor ) {
-					lineColor = customTextColor;
+					proposedLineColor = customTextColor;
 				} else if ( style?.color?.text ) {
-					lineColor = style.color.text;
+					proposedLineColor = style.color.text;
 				}
+			}
+
+			// Apply contrast validation for accessibility
+			if ( proposedLineColor ) {
+				// For frontend rendering, also assume transparent/white background context
+				const backgroundContext = 'transparent';
+				const contrastValidation = validateColorContrast(
+					proposedLineColor,
+					backgroundContext
+				);
+
+				if ( ! contrastValidation.isAACompliant ) {
+					debugLog(
+						'⚠️ Frontend: Low contrast detected:',
+						proposedLineColor,
+						'vs',
+						backgroundContext,
+						'Ratio:',
+						contrastValidation.ratio.toFixed( 2 )
+					);
+
+					// Use accessible fallback
+					lineColor = getAccessibleColorFallback(
+						proposedLineColor,
+						backgroundContext
+					);
+
+					debugLog(
+						'✅ Frontend: Applied accessible fallback:',
+						lineColor
+					);
+				} else {
+					lineColor = proposedLineColor;
+					debugLog(
+						'✅ Frontend: Good contrast:',
+						proposedLineColor,
+						'Ratio:',
+						contrastValidation.ratio.toFixed( 2 )
+					);
+				}
+			} else {
+				// No color specified, use currentColor (inherits from context)
+				lineColor = 'currentColor';
 			}
 		}
 
@@ -1740,7 +2241,7 @@ addFilter(
 
 		// Build class names that preserve WordPress's color support
 		// Clean up duplicate class names and ensure proper ordering
-		let classNames = [ 'wp-block-separator', 'awesome-squiggle-wave' ];
+		const classNames = [ 'wp-block-separator', 'awesome-squiggle-wave' ];
 
 		// Parse existing className to avoid duplicates
 		if ( className ) {
@@ -1797,11 +2298,25 @@ addFilter(
 					viewBox="0 0 800 100"
 					preserveAspectRatio="none"
 					role="img"
-					aria-label={ __(
-						`Decorative ${ isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'wavy' } divider`,
-						'awesome-squiggle'
-					) }
-					aria-describedby={ `squiggle-desc-${ animationId || 'default' }` }
+					aria-label={
+						isSparkle
+							? __(
+									'Decorative sparkle divider',
+									'awesome-squiggle'
+							  )
+							: isZigzag
+							? __(
+									'Decorative zigzag divider',
+									'awesome-squiggle'
+							  )
+							: __(
+									'Decorative wavy divider',
+									'awesome-squiggle'
+							  )
+					}
+					aria-describedby={ `squiggle-desc-${
+						animationId || 'default'
+					}` }
 					style={ {
 						width: '100%',
 						height: '100%',
@@ -1809,18 +2324,42 @@ addFilter(
 					} }
 				>
 					<title>
-						{ __(
-							`${ isSparkle ? 'Sparkle' : isZigzag ? 'Zigzag' : 'Wavy' } separator`,
-							'awesome-squiggle'
-						) }
+						{ isSparkle
+							? __( 'Sparkle separator', 'awesome-squiggle' )
+							: isZigzag
+							? __( 'Zigzag separator', 'awesome-squiggle' )
+							: __( 'Wavy separator', 'awesome-squiggle' ) }
 					</title>
 					<desc id={ `squiggle-desc-${ animationId || 'default' }` }>
-						{ __(
-							`A decorative ${ isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'wavy' } pattern used as a visual divider between content sections.${ 
-								finalPaused ? '' : ' This pattern includes gentle animation.'
-							}`,
-							'awesome-squiggle'
-						) }
+						{ isSparkle
+							? finalPaused
+								? __(
+										'A decorative sparkle pattern used as a visual divider between content sections.',
+										'awesome-squiggle'
+								  )
+								: __(
+										'A decorative sparkle pattern used as a visual divider between content sections. This pattern includes gentle animation.',
+										'awesome-squiggle'
+								  )
+							: isZigzag
+							? finalPaused
+								? __(
+										'A decorative zigzag pattern used as a visual divider between content sections.',
+										'awesome-squiggle'
+								  )
+								: __(
+										'A decorative zigzag pattern used as a visual divider between content sections. This pattern includes gentle animation.',
+										'awesome-squiggle'
+								  )
+							: finalPaused
+							? __(
+									'A decorative wavy pattern used as a visual divider between content sections.',
+									'awesome-squiggle'
+							  )
+							: __(
+									'A decorative wavy pattern used as a visual divider between content sections. This pattern includes gentle animation.',
+									'awesome-squiggle'
+							  ) }
 					</desc>
 					{ finalGradient &&
 						usedGradientId &&
