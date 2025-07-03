@@ -404,7 +404,7 @@ const generateZigzagPath = ( amplitude = 15 ) => {
 };
 
 // Generate SVG elements for sparkles pattern
-const generateSparklePath = ( sparkleSize = 18, verticalAmplitude = 15 ) => {
+const generateSparkleElements = ( sparkleSize = 18, verticalAmplitude = 15 ) => {
 	// Security: Validate bounds
 	sparkleSize = validateNumericInput( sparkleSize, 8, 35, 18 );
 	verticalAmplitude = validateNumericInput( verticalAmplitude, 0, 30, 15 );
@@ -415,7 +415,7 @@ const generateSparklePath = ( sparkleSize = 18, verticalAmplitude = 15 ) => {
 	const midY = height / 2;
 
 	// Create sparkles pattern using multiple star/sparkle shapes
-	let sparkles = '';
+	const sparkleElements = [];
 	let sparkleIndex = 0;
 
 	// Generate sparkles with reasonable bounds
@@ -447,18 +447,19 @@ const generateSparklePath = ( sparkleSize = 18, verticalAmplitude = 15 ) => {
 		const delayMs = seed; // Delay 0-1.6s
 		const durationMs = 1200 + ((sparkleIndex * 67) % 800); // Duration 1.2-2.0s
 		
-		// Add individual sparkle with random animation timing for natural twinkling
-		sparkles += `<polygon points="${ points.join(
-			' '
-		) }" class="sparkle-element" style="
-			animation-delay: ${delayMs}ms;
-			animation-duration: ${durationMs}ms;
-		" />`;
+		// Create sparkle element data
+		sparkleElements.push({
+			points: points.join(' '),
+			style: {
+				animationDelay: `${delayMs}ms`,
+				animationDuration: `${durationMs}ms`,
+			}
+		});
 		
 		sparkleIndex++;
 	}
 
-	return sparkles;
+	return sparkleElements;
 };
 
 // Helper function to check if current style is a squiggle style
@@ -1171,13 +1172,19 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 										animationId || 'default'
 									}` }
 									fill={ editorLineColor }
-									dangerouslySetInnerHTML={ {
-										__html: generateSparklePath(
-											squiggleAmplitude || 18,
-											sparkleVerticalAmplitude || 15
-										),
-									} }
-								/>
+								>
+									{ generateSparkleElements(
+										squiggleAmplitude || 18,
+										sparkleVerticalAmplitude || 15
+									).map( ( sparkle, index ) => (
+										<polygon
+											key={ index }
+											points={ sparkle.points }
+											className="sparkle-element"
+											style={ sparkle.style }
+										/>
+									) ) }
+								</g>
 							) : (
 								<path
 									d={
@@ -1716,13 +1723,19 @@ addFilter(
 								transformOrigin: 'center',
 								animation: 'none', // Sparkle groups don't animate - individual elements do
 							} }
-							dangerouslySetInnerHTML={ {
-								__html: generateSparklePath(
-									squiggleAmplitude,
-									sparkleVerticalAmplitude
-								),
-							} }
-						/>
+						>
+							{ generateSparkleElements(
+								squiggleAmplitude,
+								sparkleVerticalAmplitude
+							).map( ( sparkle, index ) => (
+								<polygon
+									key={ index }
+									points={ sparkle.points }
+									className="sparkle-element"
+									style={ sparkle.style }
+								/>
+							) ) }
+						</g>
 					) : (
 						<path
 							d={
