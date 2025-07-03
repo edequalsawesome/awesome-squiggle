@@ -27,6 +27,8 @@ A WordPress plugin that adds animated and static squiggle styles to the core Sep
 - No external dependencies
 - Works inside Group, Row, Stack, and other layout blocks
 - **Performance optimized** for smooth rendering
+- **Accessibility focused** with motion preferences and keyboard navigation
+- **Screen reader compatible** with comprehensive ARIA support
 
 ## Installation
 
@@ -87,25 +89,40 @@ npm run build
 npm run build:production
 ```
 
+## Accessibility Features
+
+This plugin prioritizes accessibility and inclusive design:
+
+- **Motion Sensitivity**: Completely disables animations for users with `prefers-reduced-motion` settings
+- **Keyboard Navigation**: Advanced keyboard controls with Shift+arrow shortcuts for precise adjustments
+- **Screen Reader Support**: Comprehensive ARIA labels and descriptions for all SVG elements
+- **Alternative Visual Cues**: Static drop shadows and opacity adjustments when animations are disabled
+- **Descriptive Help Text**: Real-time feedback and context-aware control descriptions
+- **Focus Management**: Proper focus handling and keyboard interaction patterns
+
 ## Security Features
 
-Version 1.2.5 includes comprehensive security enhancements:
+Enhanced security measures protect your site:
 
-- **Input Validation**: All user inputs are validated and bounded to prevent malicious data
-- **Production Security**: Debug code is automatically stripped from production builds
-- **Pattern Validation**: IDs and identifiers follow strict alphanumeric patterns
-- **File Security**: Enhanced PHP file validation and JSON parsing with proper error handling
+- **Server-side Validation**: Comprehensive input validation and sanitization
+- **Production Security**: Debug code automatically stripped from production builds
+- **Pattern Validation**: Strict alphanumeric patterns for IDs and identifiers
 - **WordPress Integration**: Uses WordPress sanitization functions for maximum compatibility
-- **Development vs Production**: Clear separation between development debugging and production deployments
 
 For production deployments, always use:
 ```bash
 npm run build:production
 ```
 
-This ensures all debugging code is removed and the plugin is optimized for security and performance.
-
 ## Changelog
+
+### Version 1.2.16
+- **Accessibility Enhancement**: Completely disabled animations for users with motion sensitivity preferences
+- **Keyboard Accessibility**: Added advanced keyboard navigation with Shift+arrow shortcuts for all range controls
+- **Screen Reader Support**: Enhanced ARIA labels and descriptions for all SVG elements and interactive controls
+- **Security Hardening**: Improved server-side validation and input sanitization throughout the plugin
+- **Control Improvements**: Added real-time feedback and descriptive help text for all animation and styling controls
+- **Motion Preferences**: Static visual alternatives for users who disable animations
 
 ### Version 1.2.15
 - **New Sparkle Divider**: Added animated and static sparkle/glitter variations to the separator block

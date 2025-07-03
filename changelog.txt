@@ -2,6 +2,14 @@
 
 This file contains the complete version history for the Awesome Squiggle WordPress plugin.
 
+= 1.2.16 =
+* Accessibility Enhancement: Completely disabled animations for users with motion sensitivity preferences (prefers-reduced-motion)
+* Keyboard Accessibility: Added advanced keyboard navigation with Shift+arrow shortcuts for all range controls
+* Screen Reader Support: Enhanced ARIA labels and descriptions for all SVG elements and interactive controls
+* Security Hardening: Improved server-side validation and input sanitization throughout the plugin
+* Control Improvements: Added real-time feedback and descriptive help text for all animation and styling controls
+* Motion Preferences: Static visual alternatives (drop shadows, opacity adjustments) for users who disable animations
+
 = 1.2.15 =
 * New Sparkle Divider: Added animated and static sparkle/glitter variations to the separator block
 * Enhanced Gradient System: Improved deterministic gradient ID generation for better performance and uniqueness
