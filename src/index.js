@@ -1095,14 +1095,32 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							key={ `svg-${ gradientId || 'default' }` }
 							viewBox="0 0 800 100"
 							preserveAspectRatio="none"
+							role="img"
+							aria-label={ __(
+								`Decorative ${ isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'wavy' } divider`,
+								'awesome-squiggle'
+							) }
+							aria-describedby={ `squiggle-desc-${ animationId || 'default' }` }
 							style={ {
 								width: '100%',
 								height: '100%',
 								display: 'block',
 							} }
-							aria-hidden="true"
-							role="presentation"
 						>
+							<title>
+								{ __(
+									`${ isSparkle ? 'Sparkle' : isZigzag ? 'Zigzag' : 'Wavy' } separator`,
+									'awesome-squiggle'
+								) }
+							</title>
+							<desc id={ `squiggle-desc-${ animationId || 'default' }` }>
+								{ __(
+									`A decorative ${ isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'wavy' } pattern used as a visual divider between content sections.${ 
+										isAnimated && !finalPaused ? ' This pattern includes gentle animation.' : ''
+									}`,
+									'awesome-squiggle'
+								) }
+							</desc>
 							{ finalGradient &&
 								gradientId &&
 								( () => {
@@ -1646,14 +1664,32 @@ addFilter(
 				<svg
 					viewBox="0 0 800 100"
 					preserveAspectRatio="none"
+					role="img"
+					aria-label={ __(
+						`Decorative ${ isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'wavy' } divider`,
+						'awesome-squiggle'
+					) }
+					aria-describedby={ `squiggle-desc-${ animationId || 'default' }` }
 					style={ {
 						width: '100%',
 						height: '100%',
 						display: 'block',
 					} }
-					aria-hidden="true"
-					role="presentation"
 				>
+					<title>
+						{ __(
+							`${ isSparkle ? 'Sparkle' : isZigzag ? 'Zigzag' : 'Wavy' } separator`,
+							'awesome-squiggle'
+						) }
+					</title>
+					<desc id={ `squiggle-desc-${ animationId || 'default' }` }>
+						{ __(
+							`A decorative ${ isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'wavy' } pattern used as a visual divider between content sections.${ 
+								finalPaused ? '' : ' This pattern includes gentle animation.'
+							}`,
+							'awesome-squiggle'
+						) }
+					</desc>
 					{ finalGradient &&
 						usedGradientId &&
 						( () => {
