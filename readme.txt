@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.2.13
+Stable tag: 1.2.15
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -17,11 +17,13 @@ Transform boring horizontal separators into beautiful, flowing wave dividers! Aw
 
 **Features:**
 
-* Four squiggle styles for the core Separator block:
+* Six unique styles for the core Separator block:
   * **Animated Squiggle**: Smooth, continuously flowing wave animation
   * **Static Squiggle**: Beautiful wave shape without animation
   * **Animated Zig-Zag**: Sharp, angular Charlie Brown-style animation
   * **Static Zig-Zag**: Angular divider without animation
+  * **Animated Sparkle**: Glittering, shimmering sparkle animation
+  * **Static Sparkle**: Decorative sparkle pattern without animation
 
 * **Customizable wave properties:**
   * Animation speed (0.5-5 seconds)
@@ -48,14 +50,14 @@ Transform boring horizontal separators into beautiful, flowing wave dividers! Aw
 2. Activate the plugin through the 'Plugins' menu in WordPress
 3. Add a core Separator block to your content
 4. In the block toolbar, click the Styles button
-5. Select from four available squiggle/zigzag styles
+5. Select from six available squiggle/zigzag/sparkle styles
 6. Customize using the Squiggle Settings panel in the block sidebar
 
 == Frequently Asked Questions ==
 
 = How do I use the squiggle separators? =
 
-Add a core Separator block to your content, then in the block toolbar click the "Styles" button and select from the four available squiggle and zigzag styles.
+Add a core Separator block to your content, then in the block toolbar click the "Styles" button and select from the six available squiggle, zigzag, and sparkle styles.
 
 = Can I customize the animation speed? =
 
@@ -77,6 +79,14 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 4. Example of zigzag pattern with gradient colors
 
 == Changelog ==
+
+= 1.2.15 =
+* New Sparkle Divider: Added animated and static sparkle/glitter variations to the separator block
+* Enhanced Gradient System: Improved deterministic gradient ID generation for better performance and uniqueness
+* Optimized Animations: Refined CSS animations and added sparkle shimmer effects
+* Better Block Identification: Enhanced block instance tracking to prevent ID conflicts
+* Webpack Configuration: Optimized build configuration for improved bundle size
+* Code Refactoring: Improved debug logging and gradient ID generation for better performance
 
 = 1.2.13 =
 * Fixed Color Controls: Restored all WordPress native color controls including background color, text color, and custom color picker
@@ -154,6 +164,9 @@ The complete source code is maintained in this plugin package. All compressed fi
 The plugin source code is also available at: https://github.com/edequalsawesome/awesome-squiggle
 
 == Upgrade Notice ==
+
+= 1.2.15 =
+Exciting new update! Added animated and static sparkle/glitter divider styles. Improved gradient system performance and optimized animations. Six unique separator styles now available.
 
 = 1.2.13 =
 Major color control fix. Custom gradients now work properly with full WordPress color controls restored. All color options including gradients, background colors, and custom colors are now available.

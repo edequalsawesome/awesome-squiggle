@@ -31,7 +31,7 @@
 
 .awesome-squiggle-wave.is-paused .squiggle-path,
 .awesome-squiggle-wave.is-paused .zigzag-path,
-.awesome-squiggle-wave.is-paused .sparkle-group {
+.awesome-squiggle-wave.is-paused .sparkle-element {
 	animation-play-state: paused;
 }
 
@@ -57,21 +57,17 @@
 	animation: none;
 }
 
-/* Default sparkle animation */
-.awesome-squiggle-wave .sparkle-group {
-	transform-origin: center;
-	animation: var(--animation-name, sparkle-flow)
-		var(--animation-duration, 1.6s) linear infinite;
+/* Default sparkle animation - individual sparkle shimmer */
+.awesome-squiggle-wave .sparkle-element {
+	animation: sparkle-shimmer var(--animation-duration, 1.6s) ease-in-out infinite;
 }
 
 /* Ensure each sparkle instance gets its own animation context */
-.wp-block-separator.is-style-animated-sparkle .sparkle-group {
-	transform-origin: center;
-	animation: var(--animation-name, sparkle-flow)
-		var(--animation-duration, 1.6s) linear infinite;
+.wp-block-separator.is-style-animated-sparkle .sparkle-element {
+	animation: sparkle-shimmer var(--animation-duration, 1.6s) ease-in-out infinite;
 }
 
-.wp-block-separator.is-style-static-sparkle .sparkle-group {
+.wp-block-separator.is-style-static-sparkle .sparkle-element {
 	animation: none;
 }
 
@@ -90,15 +86,13 @@ div.wp-block-separator.awesome-squiggle-wave .zigzag-path {
 
 div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path,
 div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path,
-div.wp-block-separator.awesome-squiggle-wave.is-paused .sparkle-group {
+div.wp-block-separator.awesome-squiggle-wave.is-paused .sparkle-element {
 	animation: none;
 }
 
 /* Frontend-specific selectors for sparkles */
-div.wp-block-separator.awesome-squiggle-wave .sparkle-group {
-	transform-origin: center;
-	animation: var(--animation-name, sparkle-flow)
-		var(--animation-duration, 1.6s) linear infinite;
+div.wp-block-separator.awesome-squiggle-wave .sparkle-element {
+	animation: sparkle-shimmer var(--animation-duration, 1.6s) ease-in-out infinite;
 }
 
 /* Force transparent background for all squiggle containers */
@@ -168,23 +162,16 @@ div.wp-block-separator.awesome-squiggle-wave .sparkle-group {
 	}
 }
 
-/* Main sparkle animation */
-@keyframes sparkle-flow {
+/* Main sparkle twinkling animation - opacity only */
+@keyframes sparkle-shimmer {
 	0% {
-		transform: translateX(0);
+		opacity: 0.3;
+	}
+	50% {
+		opacity: 1;
 	}
 	100% {
-		transform: translateX(60px);
-	}
-}
-
-/* Reverse sparkle animation */
-@keyframes sparkle-flow-reverse {
-	0% {
-		transform: translateX(0);
-	}
-	100% {
-		transform: translateX(-60px);
+		opacity: 0.3;
 	}
 }
 
@@ -233,7 +220,7 @@ div.wp-block-separator.awesome-squiggle-wave .sparkle-group {
 @media (prefers-reduced-motion: reduce) {
 	.awesome-squiggle-wave .squiggle-path,
 	.awesome-squiggle-wave .zigzag-path,
-	.awesome-squiggle-wave .sparkle-group {
+	.awesome-squiggle-wave .sparkle-element {
 		animation-duration: 10s; /* Much slower */
 	}
 
@@ -241,8 +228,8 @@ div.wp-block-separator.awesome-squiggle-wave .sparkle-group {
 	.wp-block-separator.is-style-static-squiggle .squiggle-path,
 	.awesome-squiggle-wave.is-style-static-zigzag .zigzag-path,
 	.wp-block-separator.is-style-static-zigzag .zigzag-path,
-	.awesome-squiggle-wave.is-style-static-sparkle .sparkle-group,
-	.wp-block-separator.is-style-static-sparkle .sparkle-group {
+	.awesome-squiggle-wave.is-style-static-sparkle .sparkle-element,
+	.wp-block-separator.is-style-static-sparkle .sparkle-element {
 		animation: none;
 	}
 }

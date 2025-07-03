@@ -2,6 +2,14 @@
 
 This file contains the complete version history for the Awesome Squiggle WordPress plugin.
 
+= 1.2.15 =
+* New Sparkle Divider: Added animated and static sparkle/glitter variations to the separator block
+* Enhanced Gradient System: Improved deterministic gradient ID generation for better performance and uniqueness
+* Optimized Animations: Refined CSS animations and added sparkle shimmer effects
+* Better Block Identification: Enhanced block instance tracking to prevent ID conflicts
+* Webpack Configuration: Optimized build configuration for improved bundle size
+* Code Refactoring: Improved debug logging and gradient ID generation for better performance
+
 = 1.2.14 =
 * Custom Gradient Fix: Resolved issue where custom gradients from WordPress gradient picker weren't being applied to squiggle dividers
 * Enhanced Gradient Detection: Improved gradient attribute parsing to properly handle both preset and custom gradients

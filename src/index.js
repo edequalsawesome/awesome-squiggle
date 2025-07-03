@@ -72,7 +72,12 @@ const setSecureAttributes = ( setAttributes, updates ) => {
 				secureUpdates[ key ] = duration;
 				break;
 			case 'squiggleAmplitude':
-				secureUpdates[ key ] = validateNumericInput( value, 5, 25, 10 );
+				// Increased range for more dramatic sparkles
+				secureUpdates[ key ] = validateNumericInput( value, 8, 35, 18 );
+				break;
+			case 'sparkleVerticalAmplitude':
+				// Vertical spread range for sparkles
+				secureUpdates[ key ] = validateNumericInput( value, 0, 30, 15 );
 				break;
 			case 'animationId':
 				secureUpdates[ key ] = validateAnimationId( value );
@@ -399,41 +404,58 @@ const generateZigzagPath = ( amplitude = 15 ) => {
 };
 
 // Generate SVG elements for sparkles pattern
-const generateSparklePath = ( amplitude = 12 ) => {
-	// Security: Validate amplitude bounds
-	amplitude = validateNumericInput( amplitude, 5, 25, 12 );
+const generateSparklePath = ( sparkleSize = 18, verticalAmplitude = 15 ) => {
+	// Security: Validate bounds
+	sparkleSize = validateNumericInput( sparkleSize, 8, 35, 18 );
+	verticalAmplitude = validateNumericInput( verticalAmplitude, 0, 30, 15 );
 
-	const spacing = 60; // Space between sparkles
-	const width = 800;
+	const spacing = 50; // Better spacing for clean look
+	const width = 800; // Back to standard width
 	const height = 100;
 	const midY = height / 2;
 
 	// Create sparkles pattern using multiple star/sparkle shapes
 	let sparkles = '';
+	let sparkleIndex = 0;
 
-	// Generate sparkles along the width
+	// Generate sparkles with reasonable bounds
 	for ( let x = 0; x <= width; x += spacing ) {
-		// Vary the Y position slightly for visual interest
-		const offsetY = Math.sin( x * 0.02 ) * ( amplitude * 0.3 );
+		// Create Y variation based on vertical amplitude for pattern creation
+		const waveFrequency = 0.008; // Smooth wave pattern
+		const offsetY = Math.sin( x * waveFrequency ) * verticalAmplitude;
 		const sparkleY = midY + offsetY;
 
-		// Create a 4-pointed star sparkle shape
-		const size = amplitude;
-		const innerSize = size * 0.3;
+		// Create a 4-pointed star sparkle shape - consistent size for twinkling
+		const size = sparkleSize;
+		const innerSize = size * 0.3; // Star inner radius
+
+		// Consistent rotation for all sparkles
+		const rotation = 0;
 
 		// Calculate points for a 4-pointed star
 		const points = [];
 		for ( let i = 0; i < 8; i++ ) {
-			const angle = ( Math.PI * 2 * i ) / 8;
+			const angle = ( Math.PI * 2 * i ) / 8 + ( rotation * Math.PI ) / 180;
 			const radius = i % 2 === 0 ? size : innerSize;
 			const px = x + Math.cos( angle ) * radius;
 			const py = sparkleY + Math.sin( angle ) * radius;
 			points.push( `${ px },${ py }` );
 		}
 
+		// Calculate deterministic timing for star twinkling (avoids validation errors)
+		const seed = (x + sparkleIndex * 17) % 1600; // Deterministic "random"
+		const delayMs = seed; // Delay 0-1.6s
+		const durationMs = 1200 + ((sparkleIndex * 67) % 800); // Duration 1.2-2.0s
+		
+		// Add individual sparkle with random animation timing for natural twinkling
 		sparkles += `<polygon points="${ points.join(
 			' '
-		) }" class="sparkle-element" />`;
+		) }" class="sparkle-element" style="
+			animation-delay: ${delayMs}ms;
+			animation-duration: ${durationMs}ms;
+		" />`;
+		
+		sparkleIndex++;
 	}
 
 	return sparkles;
@@ -516,6 +538,10 @@ addFilter(
 					default: undefined,
 				},
 				squiggleAmplitude: {
+					type: 'number',
+					default: undefined,
+				},
+				sparkleVerticalAmplitude: {
 					type: 'number',
 					default: undefined,
 				},
@@ -653,6 +679,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 		const {
 			strokeWidth,
 			squiggleAmplitude,
+			sparkleVerticalAmplitude,
 			animationId,
 			textColor,
 			customTextColor,
@@ -665,7 +692,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 
 		// Initialize custom style attributes when custom style is applied
 		if ( isCustom && strokeWidth === undefined ) {
-			const defaultAmplitude = isZigzag ? 15 : 10; // Zig-zag gets slightly larger default amplitude
+			const defaultAmplitude = isSparkle ? 18 : isZigzag ? 15 : 10; // Sparkle gets largest default amplitude
 			const newAnimationId = generateAnimationId(
 				isZigzag ? 'zigzag' : 'squiggle',
 				clientId,
@@ -682,6 +709,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 				strokeWidth: 1,
 				animationSpeed: 6, // Default to speed level 6 (which converts to 2.5s duration)
 				squiggleAmplitude: defaultAmplitude,
+				sparkleVerticalAmplitude: isSparkle ? 15 : undefined,
 				squiggleHeight: '100px',
 				animationId: newAnimationId,
 				isReversed: false,
@@ -691,8 +719,8 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 
 		// Ensure each block has a unique animation ID
 		if ( isCustom && ! animationId ) {
-			const patternType = isZigzag ? 'zigzag' : 'squiggle';
-			const defaultAmplitude = isZigzag ? 15 : 10;
+			const patternType = isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'squiggle';
+			const defaultAmplitude = isSparkle ? 18 : isZigzag ? 15 : 10;
 			setSecureAttributes( setAttributes, {
 				animationId: generateAnimationId(
 					patternType,
@@ -761,9 +789,9 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					debugLog(
 						'🔄 Duplicate gradient ID detected on initialization, regenerating'
 					);
-					const defaultAmplitude = isZigzag ? 15 : 10;
+					const defaultAmplitude = isSparkle ? 18 : isZigzag ? 15 : 10;
 					const newAnimationId = generateAnimationId(
-						isZigzag ? 'zigzag' : 'squiggle',
+						isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'squiggle',
 						clientId,
 						strokeWidth || 1,
 						squiggleAmplitude || defaultAmplitude
@@ -853,6 +881,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			isZigzag,
 			setAttributes,
 		] );
+
 
 		// Remove this overly aggressive duplicate check that runs too often
 		// and causes gradient IDs to regenerate during block validation
@@ -1035,22 +1064,18 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
                             0% { transform: translateX(0); }
                             100% { transform: translateX(-60px); }
                         }
-                        @keyframes sparkle-flow {
-                            0% { transform: translateX(0); }
-                            100% { transform: translateX(60px); }
-                        }
-                        @keyframes sparkle-flow-reverse {
-                            0% { transform: translateX(0); }
-                            100% { transform: translateX(-60px); }
+                        @keyframes sparkle-shimmer {
+                            0% { opacity: 0.3; }
+                            50% { opacity: 1; }
+                            100% { opacity: 0.3; }
                         }
                         .awesome-squiggle-editor-preview .squiggle-path,
                         .awesome-squiggle-editor-preview .zigzag-path {
                             transform-origin: center;
                             animation: var(--animation-name, squiggle-flow) var(--animation-duration, 1.6s) linear infinite;
                         }
-                        .awesome-squiggle-editor-preview .sparkle-group {
-                            transform-origin: center;
-                            animation: var(--animation-name, sparkle-flow) var(--animation-duration, 1.6s) linear infinite;
+                        .awesome-squiggle-editor-preview .sparkle-element {
+                            animation: sparkle-shimmer var(--animation-duration, 1.6s) ease-in-out infinite;
                         }
                     ` }
 				</style>
@@ -1146,21 +1171,10 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 										animationId || 'default'
 									}` }
 									fill={ editorLineColor }
-									style={ {
-										transformOrigin: 'center',
-										animation: finalPaused
-											? 'none'
-											: `${
-													isReversed
-														? 'sparkle-flow-reverse'
-														: 'sparkle-flow'
-											  } ${
-													animationSpeed || 1.6
-											  }s linear infinite`,
-									} }
 									dangerouslySetInnerHTML={ {
 										__html: generateSparklePath(
-											squiggleAmplitude || 12
+											squiggleAmplitude || 18,
+											sparkleVerticalAmplitude || 15
 										),
 									} }
 								/>
@@ -1286,24 +1300,44 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							) }
 							value={
 								squiggleAmplitude ||
-								( isSparkle ? 12 : isZigzag ? 15 : 10 )
+								( isSparkle ? 18 : isZigzag ? 15 : 10 )
 							}
 							onChange={ ( value ) =>
 								setSecureAttributes( setAttributes, {
 									squiggleAmplitude: value,
 								} )
 							}
-							min={ 5 }
-							max={ 25 }
+							min={ isSparkle ? 8 : 5 }
+							max={ isSparkle ? 35 : 25 }
 							help={ __(
 								isSparkle
-									? 'Adjust the size of the sparkles'
+									? 'Adjust the size of the sparkles (higher = more dramatic)'
 									: isZigzag
 									? 'Adjust the height of the zig-zag peaks'
 									: 'Adjust the height of the squiggle peaks',
 								'awesome-squiggle'
 							) }
 						/>
+						{ isSparkle && (
+							<RangeControl
+								label={ __(
+									'Sparkle Vertical Spread',
+									'awesome-squiggle'
+								) }
+								value={ sparkleVerticalAmplitude || 15 }
+								onChange={ ( value ) =>
+									setSecureAttributes( setAttributes, {
+										sparkleVerticalAmplitude: value,
+									} )
+								}
+								min={ 0 }
+								max={ 30 }
+								help={ __(
+									'Control how high and low the sparkles spread from the center line',
+									'awesome-squiggle'
+								) }
+							/>
+						) }
 					</PanelBody>
 					<PanelBody
 						title={ __(
@@ -1407,7 +1441,8 @@ addFilter(
 		const {
 			strokeWidth = 1,
 			animationSpeed = 2.5, // Default duration for speed level 6
-			squiggleAmplitude = isZigzag ? 15 : 10,
+			squiggleAmplitude = isSparkle ? 18 : isZigzag ? 15 : 10,
+			sparkleVerticalAmplitude = 15,
 			squiggleHeight = '100px',
 			animationId,
 			isReversed,
@@ -1578,9 +1613,7 @@ addFilter(
 		} else if ( isZigzag ) {
 			animationName = isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow';
 		} else if ( isSparkle ) {
-			animationName = isReversed
-				? 'sparkle-flow-reverse'
-				: 'sparkle-flow';
+			animationName = 'none'; // Sparkles don't use group animation, individual elements twinkle via CSS
 		} else {
 			animationName = isReversed
 				? 'squiggle-flow-reverse'
@@ -1681,13 +1714,12 @@ addFilter(
 							fill={ lineColor }
 							style={ {
 								transformOrigin: 'center',
-								animation: finalPaused
-									? 'none'
-									: `${ animationName } ${ animationSpeed }s linear infinite`,
+								animation: 'none', // Sparkle groups don't animate - individual elements do
 							} }
 							dangerouslySetInnerHTML={ {
 								__html: generateSparklePath(
-									squiggleAmplitude
+									squiggleAmplitude,
+									sparkleVerticalAmplitude
 								),
 							} }
 						/>

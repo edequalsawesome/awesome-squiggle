@@ -4,11 +4,13 @@ A WordPress plugin that adds animated and static squiggle styles to the core Sep
 
 ## Features
 
-- Four squiggle styles for the core Separator block:
+- Six unique styles for the core Separator block:
   - **Animated Squiggle**: Smooth, continuously flowing wave animation
   - **Static Squiggle**: Beautiful wave shape without animation
   - **Animated Zig-Zag**: Sharp, angular Charlie Brown-style animation
   - **Static Zig-Zag**: Angular divider without animation
+  - **Animated Sparkle**: Glittering, shimmering sparkle animation
+  - **Static Sparkle**: Decorative sparkle pattern without animation
 - Customizable wave properties:
   - Animation speed (0.5-5 seconds)
   - Wave amplitude (5-25px) 
@@ -38,11 +40,13 @@ A WordPress plugin that adds animated and static squiggle styles to the core Sep
 
 1. Add a core **Separator** block to your content
 2. In the block toolbar, click the **Styles** button (or use the Styles panel in the sidebar)
-3. Select from four available styles:
+3. Select from six available styles:
    - **"Animated Squiggle"** - Smooth flowing waves
    - **"Static Squiggle"** - Curved waves without animation
    - **"Animated Zig-Zag"** - Sharp angular animation
    - **"Static Zig-Zag"** - Angular divider without animation
+   - **"Animated Sparkle"** - Shimmering glitter effect
+   - **"Static Sparkle"** - Decorative sparkle pattern
 4. Customize using the **Squiggle Settings** panel in the block sidebar
 5. Apply colors using WordPress's standard color controls or enable gradient mode for colorful effects
 
@@ -102,6 +106,14 @@ npm run build:production
 This ensures all debugging code is removed and the plugin is optimized for security and performance.
 
 ## Changelog
+
+### Version 1.2.15
+- **New Sparkle Divider**: Added animated and static sparkle/glitter variations to the separator block
+- **Enhanced Gradient System**: Improved deterministic gradient ID generation for better performance and uniqueness
+- **Optimized Animations**: Refined CSS animations and added sparkle shimmer effects
+- **Better Block Identification**: Enhanced block instance tracking to prevent ID conflicts
+- **Webpack Configuration**: Optimized build configuration for improved bundle size
+- **Code Refactoring**: Improved debug logging and gradient ID generation for better performance
 
 ### Version 1.2.13
 - **Fixed Color Controls**: Restored all WordPress native color controls including background color, text color, and custom color picker
