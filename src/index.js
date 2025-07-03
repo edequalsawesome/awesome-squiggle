@@ -5,6 +5,7 @@ import {
 	RangeControl,
 	ToggleControl,
 	SelectControl,
+	Notice,
 } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
@@ -1184,45 +1185,10 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					}
 				}
 
-				// Apply contrast validation for accessibility
+				// Use the selected color directly without forcing fallbacks
 				if ( proposedLineColor ) {
-					// For separator decorations, we assume a transparent/white background context
-					// since separators typically appear between content sections
-					const backgroundContext = 'transparent';
-					const contrastValidation = validateColorContrast(
-						proposedLineColor,
-						backgroundContext
-					);
-
-					if ( ! contrastValidation.isAACompliant ) {
-						debugLog(
-							'⚠️ Low contrast detected:',
-							proposedLineColor,
-							'vs',
-							backgroundContext,
-							'Ratio:',
-							contrastValidation.ratio.toFixed( 2 )
-						);
-
-						// Use accessible fallback
-						lineColor = getAccessibleColorFallback(
-							proposedLineColor,
-							backgroundContext
-						);
-
-						debugLog(
-							'✅ Applied accessible fallback:',
-							lineColor
-						);
-					} else {
-						lineColor = proposedLineColor;
-						debugLog(
-							'✅ Good contrast:',
-							proposedLineColor,
-							'Ratio:',
-							contrastValidation.ratio.toFixed( 2 )
-						);
-					}
+					lineColor = proposedLineColor;
+					debugLog( '🎨 Using selected color:', proposedLineColor );
 				} else {
 					// No color specified, use currentColor (inherits from context)
 					lineColor = 'currentColor';
@@ -2033,6 +1999,78 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							) }
 						/>
 					</PanelBody>
+					
+					{ /* Add custom contrast checker for accessibility warnings */ }
+					{ isCustom && ( () => {
+						// Get the current color being used for the separator
+						let separatorColor = null;
+						let resolvedColor = null;
+						
+						if ( backgroundColor ) {
+							separatorColor = `var(--wp--preset--color--${ backgroundColor })`;
+							// Try to resolve the CSS variable to an actual color
+							if ( typeof window !== 'undefined' && document.documentElement ) {
+								const computedStyle = window.getComputedStyle( document.documentElement );
+								resolvedColor = computedStyle.getPropertyValue( `--wp--preset--color--${ backgroundColor }` ).trim();
+							}
+						} else if ( customBackgroundColor ) {
+							separatorColor = customBackgroundColor;
+							resolvedColor = customBackgroundColor;
+						} else if ( style?.color?.background ) {
+							separatorColor = style.color.background;
+							resolvedColor = style.color.background;
+						} else if ( textColor ) {
+							separatorColor = `var(--wp--preset--color--${ textColor })`;
+							// Try to resolve the CSS variable to an actual color
+							if ( typeof window !== 'undefined' && document.documentElement ) {
+								const computedStyle = window.getComputedStyle( document.documentElement );
+								resolvedColor = computedStyle.getPropertyValue( `--wp--preset--color--${ textColor }` ).trim();
+							}
+						} else if ( customTextColor ) {
+							separatorColor = customTextColor;
+							resolvedColor = customTextColor;
+						} else if ( style?.color?.text ) {
+							separatorColor = style.color.text;
+							resolvedColor = style.color.text;
+						}
+						
+						// Only show contrast checker if we have a specific color (not currentColor)
+						// and we successfully resolved it to a hex/rgb value
+						if ( separatorColor && ! separatorColor.includes( 'currentColor' ) && resolvedColor ) {
+							// Use existing contrast validation function
+							const contrastResult = validateColorContrast( resolvedColor, '#ffffff' );
+							const showWarning = ! contrastResult.isAACompliant;
+							
+							return (
+								<PanelBody
+									title={ __( 'Accessibility', 'awesome-squiggle' ) }
+									initialOpen={ false }
+								>
+									{ showWarning && (
+										<Notice
+											status="warning"
+											isDismissible={ false }
+										>
+											<strong>{ __( '⚠️ Accessibility Warning', 'awesome-squiggle' ) }</strong>
+											<br />
+											{ sprintf(
+												__( 'This color combination may be hard for people to read. Contrast ratio: %s (AA standard: 4.5)', 'awesome-squiggle' ),
+												contrastResult.ratio.toFixed( 1 )
+											) }
+										</Notice>
+									) }
+									<Notice
+										status="info"
+										isDismissible={ false }
+									>
+										{ __( 'This separator spans the full width and may appear against different background colors. The contrast checker uses white as a reference, but ensure good contrast across your entire design.', 'awesome-squiggle' ) }
+									</Notice>
+								</PanelBody>
+							);
+						}
+						
+						return null;
+					} )() }
 				</InspectorControls>
 			</>
 		);
