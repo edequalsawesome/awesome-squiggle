@@ -116,6 +116,18 @@ npm run build:production
 
 ## Changelog
 
+### Version 1.2.17
+- **Enhanced Screen Reader Accessibility**: Added comprehensive semantic context with `role="separator"` and dynamic ARIA labels
+- **Live Region Support**: Implemented `aria-live="polite"` for animation state announcements to screen readers
+- **Motion Preference Detection**: Added automatic detection and data attributes for `prefers-reduced-motion` CSS targeting
+- **WordPress Security Enhancements**: Comprehensive security improvements including capability checks and enhanced sanitization
+- **Permission Validation**: Added user permission checks for all block operations and REST API requests
+- **Nonce Verification**: Implemented nonce verification functions for future AJAX operations
+- **Enhanced Input Sanitization**: Expanded sanitization for color attributes, style arrays, and block structure validation
+- **DoS Protection**: Added content length validation and request source verification
+- **WordPress Coding Standards**: Significantly improved code quality with automated PHPCS fixes (533/586 issues resolved)
+- **Development Tools**: Added Composer integration with WordPress coding standards for improved code quality
+
 ### Version 1.2.16
 - **Accessibility Enhancement**: Completely disabled animations for users with motion sensitivity preferences
 - **Keyboard Accessibility**: Added advanced keyboard navigation with Shift+arrow shortcuts for all range controls

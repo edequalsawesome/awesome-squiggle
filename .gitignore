@@ -6,3 +6,8 @@ CLAUDE.md
 GRADIENT-TEST-GUIDE.md
 mcp_settings.json
 gradient-id-debugging-analysis.md
+
+# Composer dependencies - should not be committed
+vendor/
+composer.lock
+composer
