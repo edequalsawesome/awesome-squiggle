@@ -218,10 +218,22 @@ div.wp-block-separator.awesome-squiggle-wave .sparkle-element {
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
+	/* Completely disable animations for motion-sensitive users */
 	.awesome-squiggle-wave .squiggle-path,
 	.awesome-squiggle-wave .zigzag-path,
 	.awesome-squiggle-wave .sparkle-element {
-		animation-duration: 10s; /* Much slower */
+		animation: none !important;
+	}
+	
+	/* Provide alternative static visual interest */
+	.awesome-squiggle-wave .squiggle-path,
+	.awesome-squiggle-wave .zigzag-path {
+		filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+	}
+	
+	/* Ensure sparkles remain visible without animation */
+	.awesome-squiggle-wave .sparkle-element {
+		opacity: 0.8;
 	}
 
 	.awesome-squiggle-wave.is-style-static-squiggle .squiggle-path,
@@ -232,6 +244,13 @@ div.wp-block-separator.awesome-squiggle-wave .sparkle-element {
 	.wp-block-separator.is-style-static-sparkle .sparkle-element {
 		animation: none;
 	}
+}
+
+/* Add user preference override */
+.awesome-squiggle-wave[data-motion-preference="reduce"] .squiggle-path,
+.awesome-squiggle-wave[data-motion-preference="reduce"] .zigzag-path,
+.awesome-squiggle-wave[data-motion-preference="reduce"] .sparkle-element {
+	animation: none !important;
 }
 
 /* Editor-specific styles */
