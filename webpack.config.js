@@ -1,8 +1,13 @@
 const defaultConfig = require( '@wordpress/scripts/config/webpack.config' );
 const TerserPlugin = require( 'terser-webpack-plugin' );
+const path = require( 'path' );
 
 module.exports = {
 	...defaultConfig,
+	entry: {
+		index: path.resolve( process.cwd(), 'src', 'index.js' ),
+		frontend: path.resolve( process.cwd(), 'src', 'frontend.js' ),
+	},
 	optimization: {
 		...defaultConfig.optimization,
 		minimizer: [

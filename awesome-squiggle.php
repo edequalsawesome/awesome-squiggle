@@ -88,6 +88,28 @@ function awesome_squiggle_enqueue_frontend_styles() {
 add_action('wp_enqueue_scripts', 'awesome_squiggle_enqueue_frontend_styles');
 
 /**
+ * Add frontend JavaScript for sparkle separators - only load when needed
+ */
+function awesome_squiggle_enqueue_frontend_scripts() {
+    // Only enqueue if the current post contains sparkle separators
+    global $post;
+    
+    if ($post && ( 
+        strpos($post->post_content, 'is-style-animated-sparkle') !== false || 
+        strpos($post->post_content, 'is-style-static-sparkle') !== false 
+    )) {
+        wp_enqueue_script(
+            'awesome-squiggle-frontend',
+            plugin_dir_url(__FILE__) . 'build/frontend.js',
+            array(),
+            '1.2.16',
+            true
+        );
+    }
+}
+add_action('wp_enqueue_scripts', 'awesome_squiggle_enqueue_frontend_scripts');
+
+/**
  * Filter separator block content on frontend to ensure squiggle styles are applied
  */
 function awesome_squiggle_filter_separator_content($block_content, $block) {

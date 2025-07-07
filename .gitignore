@@ -1,8 +1,61 @@
+# Build artifacts
 /awesome-squiggle.zip
-node_modules
-RELEASE-NOTES-1.2.5.md
+/build/
+
+# Dependencies
+node_modules/
+vendor/
+
+# Composer
+composer
+composer.phar
+composer.lock
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Claude configuration
+.claude/
+
+# Local documentation and notes
+RELEASE-NOTES-*.md
 SECURITY-IMPROVEMENTS.md
 CLAUDE.md
 GRADIENT-TEST-GUIDE.md
 mcp_settings.json
 gradient-id-debugging-analysis.md
+*-debugging-analysis.md
+*-notes.md
+
+# WordPress specific
+wp-config.php
+.htaccess
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

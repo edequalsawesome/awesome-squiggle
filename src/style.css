@@ -191,6 +191,54 @@ div.wp-block-separator.awesome-squiggle-wave .sparkle-element {
 	max-width: none; /* Allow custom width to take precedence */
 }
 
+/* Force transparent background for ALL squiggle/zigzag/sparkle separators */
+.wp-block-separator.is-style-animated-sparkle,
+.wp-block-separator.is-style-animated-squiggle,
+.wp-block-separator.is-style-animated-zigzag,
+.wp-block-separator.is-style-static-sparkle,
+.wp-block-separator.is-style-static-squiggle,
+.wp-block-separator.is-style-static-zigzag {
+	background-color: transparent !important;
+	background: transparent !important;
+	border: none !important;
+}
+
+/* Override WordPress background color classes with extreme specificity */
+.wp-block-separator.is-style-animated-sparkle.has-background-color,
+.wp-block-separator.is-style-animated-squiggle.has-background-color,
+.wp-block-separator.is-style-animated-zigzag.has-background-color,
+.wp-block-separator.is-style-static-sparkle.has-background-color,
+.wp-block-separator.is-style-static-squiggle.has-background-color,
+.wp-block-separator.is-style-static-zigzag.has-background-color,
+.wp-block-separator.is-style-animated-sparkle.has-text-color,
+.wp-block-separator.is-style-animated-squiggle.has-text-color,
+.wp-block-separator.is-style-animated-zigzag.has-text-color,
+.wp-block-separator.is-style-static-sparkle.has-text-color,
+.wp-block-separator.is-style-static-squiggle.has-text-color,
+.wp-block-separator.is-style-static-zigzag.has-text-color,
+.wp-block-separator.is-style-animated-sparkle[class*="background-color"],
+.wp-block-separator.is-style-animated-squiggle[class*="background-color"],
+.wp-block-separator.is-style-animated-zigzag[class*="background-color"],
+.wp-block-separator.is-style-static-sparkle[class*="background-color"],
+.wp-block-separator.is-style-static-squiggle[class*="background-color"],
+.wp-block-separator.is-style-static-zigzag[class*="background-color"],
+.wp-block-separator.is-style-animated-sparkle[class*="has-background"],
+.wp-block-separator.is-style-animated-squiggle[class*="has-background"],
+.wp-block-separator.is-style-animated-zigzag[class*="has-background"],
+.wp-block-separator.is-style-static-sparkle[class*="has-background"],
+.wp-block-separator.is-style-static-squiggle[class*="has-background"],
+.wp-block-separator.is-style-static-zigzag[class*="has-background"],
+.wp-block-separator.is-style-animated-sparkle[style*="background"],
+.wp-block-separator.is-style-animated-squiggle[style*="background"],
+.wp-block-separator.is-style-animated-zigzag[style*="background"],
+.wp-block-separator.is-style-static-sparkle[style*="background"],
+.wp-block-separator.is-style-static-squiggle[style*="background"],
+.wp-block-separator.is-style-static-zigzag[style*="background"] {
+	background-color: transparent !important;
+	background: transparent !important;
+	border: none !important;
+}
+
 /* Responsive adjustments */
 @media screen and (max-width: 768px) {
 	.awesome-squiggle-wave {

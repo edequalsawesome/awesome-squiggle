@@ -9,7 +9,7 @@ import {
 import { __, sprintf } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
-import { useEffect, useRef, useSelect } from '@wordpress/element';
+import { useEffect, useRef, useState, useSelect } from '@wordpress/element';
 import { select } from '@wordpress/data';
 import './style.css';
 
@@ -404,13 +404,13 @@ const generateZigzagPath = ( amplitude = 15 ) => {
 };
 
 // Generate SVG elements for sparkles pattern
-const generateSparkleElements = ( sparkleSize = 18, verticalAmplitude = 15 ) => {
+const generateSparkleElements = ( sparkleSize = 18, verticalAmplitude = 15, containerWidth = 800 ) => {
 	// Security: Validate bounds
 	sparkleSize = validateNumericInput( sparkleSize, 8, 35, 18 );
 	verticalAmplitude = validateNumericInput( verticalAmplitude, 0, 30, 15 );
+	containerWidth = validateNumericInput( containerWidth, 300, 5000, 800 );
 
 	const spacing = 50; // Better spacing for clean look
-	const width = 800; // Back to standard width
 	const height = 100;
 	const midY = height / 2;
 
@@ -418,8 +418,19 @@ const generateSparkleElements = ( sparkleSize = 18, verticalAmplitude = 15 ) => 
 	const sparkleElements = [];
 	let sparkleIndex = 0;
 
-	// Generate sparkles with reasonable bounds
-	for ( let x = 0; x <= width; x += spacing ) {
+	// Calculate effective container boundaries to avoid half-sparkles
+	const sparkleRadius = sparkleSize; // Maximum extent of a sparkle from its center
+	const effectiveStart = sparkleRadius; // Start far enough from edge
+	const effectiveEnd = containerWidth - sparkleRadius; // End far enough from edge
+	
+	// Only generate sparkles if we have enough space
+	if ( effectiveEnd <= effectiveStart ) {
+		// Container too small for sparkles, return empty array
+		return sparkleElements;
+	}
+
+	// Generate sparkles with proper boundaries to avoid half-sparkles
+	for ( let x = effectiveStart; x <= effectiveEnd; x += spacing ) {
 		// Create Y variation based on vertical amplitude for pattern creation
 		const waveFrequency = 0.008; // Smooth wave pattern
 		const offsetY = Math.sin( x * waveFrequency ) * verticalAmplitude;
@@ -574,10 +585,12 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 		const { attributes, setAttributes, name, clientId } = props;
 
 		// ALL hooks must be declared at the top level, before ANY conditional logic
-		const blockInitialized = useRef( false );
-		const gradientIdRef = useRef( attributes?.gradientId );
 		const blockInitializedRef = useRef( false );
 		const gradientIdRefHook = useRef( attributes?.gradientId );
+		
+		// Container width measurement for dynamic sparkle generation
+		const [containerWidth, setContainerWidth] = useState(800);
+		const containerRef = useRef(null);
 
 		// Pre-calculate values needed for useBlockProps
 		const {
@@ -883,6 +896,27 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			setAttributes,
 		] );
 
+		// Container width measurement for dynamic sparkle generation
+		useEffect( () => {
+			if ( ! isSparkle || ! containerRef.current ) {
+				return;
+			}
+
+			const observer = new ResizeObserver( ( entries ) => {
+				for ( const entry of entries ) {
+					const newWidth = entry.contentRect.width;
+					if ( newWidth !== containerWidth ) {
+						setContainerWidth( newWidth );
+					}
+				}
+			} );
+
+			observer.observe( containerRef.current );
+
+			return () => {
+				observer.disconnect();
+			};
+		}, [ isSparkle, containerWidth ] );
 
 		// Remove this overly aggressive duplicate check that runs too often
 		// and causes gradient IDs to regenerate during block validation
@@ -1082,6 +1116,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 				</style>
 				<div { ...blockProps }>
 					<div
+						ref={ containerRef }
 						className="awesome-squiggle-editor-preview"
 						style={ {
 							width: '100%',
@@ -1093,7 +1128,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					>
 						<svg
 							key={ `svg-${ gradientId || 'default' }` }
-							viewBox="0 0 800 100"
+							viewBox={ `0 0 ${ Math.max( 800, containerWidth + 100 ) } 100` }
 							preserveAspectRatio="none"
 							role="img"
 							aria-label={ __(
@@ -1193,7 +1228,8 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 								>
 									{ generateSparkleElements(
 										squiggleAmplitude || 18,
-										sparkleVerticalAmplitude || 15
+										sparkleVerticalAmplitude || 15,
+										containerWidth
 									).map( ( sparkle, index ) => (
 										<polygon
 											key={ index }
@@ -1585,7 +1621,8 @@ addFilter(
 			return element;
 		}
 
-		const { className } = attributes;
+		// Check both element props and attributes for className (fixes alignfull/alignwide)
+		const className = element?.props?.className || attributes?.className || '';
 		const isSquiggle = isSquiggleStyle( className );
 		const isZigzag = isZigzagStyle( className );
 		const isSparkle = isSparkleStyle( className );
@@ -1894,7 +1931,8 @@ addFilter(
 						>
 							{ generateSparkleElements(
 								squiggleAmplitude,
-								sparkleVerticalAmplitude
+								sparkleVerticalAmplitude,
+								800  // Default width for save function - frontend script will handle dynamic sizing
 							).map( ( sparkle, index ) => (
 								<polygon
 									key={ index }
