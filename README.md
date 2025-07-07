@@ -116,6 +116,15 @@ npm run build:production
 
 ## Changelog
 
+### Version 1.3.0
+- **Dynamic Sparkle Generation**: Sparkles now automatically scale based on container width for responsive display
+- **Alignment Fix**: Fixed alignfull and alignwide classes not generating correctly on frontend
+- **Color Override Enhancement**: Added aggressive CSS overrides to prevent background color blocks from appearing
+- **Half-Sparkle Prevention**: Sparkles now respect container boundaries and never appear as partial elements
+- **ResizeObserver Integration**: Added automatic sparkle regeneration when container size changes
+- **Frontend Script Optimization**: Conditional loading of frontend scripts only when sparkle styles are present
+- **Webpack Multi-Entry**: Added support for separate frontend JavaScript bundle
+
 ### Version 1.2.16
 - **Accessibility Enhancement**: Completely disabled animations for users with motion sensitivity preferences
 - **Keyboard Accessibility**: Added advanced keyboard navigation with Shift+arrow shortcuts for all range controls

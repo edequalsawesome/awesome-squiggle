@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.2.15
+Stable tag: 1.3.0
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -79,6 +79,15 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 4. Example of zigzag pattern with gradient colors
 
 == Changelog ==
+
+= 1.3.0 =
+* Dynamic Sparkle Generation: Sparkles now automatically scale based on container width for responsive display
+* Alignment Fix: Fixed alignfull and alignwide classes not generating correctly on frontend
+* Color Override Enhancement: Added aggressive CSS overrides to prevent background color blocks from appearing
+* Half-Sparkle Prevention: Sparkles now respect container boundaries and never appear as partial elements
+* ResizeObserver Integration: Added automatic sparkle regeneration when container size changes
+* Frontend Script Optimization: Conditional loading of frontend scripts only when sparkle styles are present
+* Webpack Multi-Entry: Added support for separate frontend JavaScript bundle
 
 = 1.2.15 =
 * New Sparkle Divider: Added animated and static sparkle/glitter variations to the separator block
@@ -164,6 +173,9 @@ The complete source code is maintained in this plugin package. All compressed fi
 The plugin source code is also available at: https://github.com/edequalsawesome/awesome-squiggle
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+Major responsive enhancement! Sparkles now automatically scale with container width and respect alignment boundaries. Fixed frontend alignment classes and enhanced color override system for perfect display.
 
 = 1.2.15 =
 Exciting new update! Added animated and static sparkle/glitter divider styles. Improved gradient system performance and optimized animations. Six unique separator styles now available.
