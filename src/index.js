@@ -334,12 +334,12 @@ const testCss =
 debugLog( 'Direct CSS test:', parseGradient( testCss ) );
 
 // Generate SVG path data for the squiggle
-const generateSquigglePath = ( amplitude = 10 ) => {
+const generateSquigglePath = ( amplitude = 10, pathWidth = 800 ) => {
 	// Security: Validate amplitude bounds
 	amplitude = validateNumericInput( amplitude, 5, 25, 10 );
 
 	const wavelength = 40;
-	const width = 800;
+	const width = pathWidth;
 	const height = 100;
 	const midY = height / 2;
 
@@ -368,12 +368,12 @@ const generateSquigglePath = ( amplitude = 10 ) => {
 };
 
 // Generate SVG path data for the zig-zag (Charlie Brown stripe style)
-const generateZigzagPath = ( amplitude = 15 ) => {
+const generateZigzagPath = ( amplitude = 15, pathWidth = 800 ) => {
 	// Security: Validate amplitude bounds
 	amplitude = validateNumericInput( amplitude, 5, 25, 15 );
 
 	const wavelength = 30; // Narrower than squiggle for more angular feel
-	const width = 800;
+	const width = pathWidth;
 	const height = 100;
 	const midY = height / 2;
 
@@ -896,9 +896,9 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			setAttributes,
 		] );
 
-		// Container width measurement for dynamic sparkle generation
+		// Container width measurement for dynamic path generation
 		useEffect( () => {
-			if ( ! isSparkle || ! containerRef.current ) {
+			if ( ! isCustom || ! containerRef.current ) {
 				return;
 			}
 
@@ -916,7 +916,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			return () => {
 				observer.disconnect();
 			};
-		}, [ isSparkle, containerWidth ] );
+		}, [ isCustom, containerWidth ] );
 
 		// Remove this overly aggressive duplicate check that runs too often
 		// and causes gradient IDs to regenerate during block validation
@@ -1244,10 +1244,12 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 									d={
 										isZigzag
 											? generateZigzagPath(
-													squiggleAmplitude || 15
+													squiggleAmplitude || 15,
+													Math.max( 800, containerWidth + 100 )
 											  )
 											: generateSquigglePath(
-													squiggleAmplitude || 10
+													squiggleAmplitude || 10,
+													Math.max( 800, containerWidth + 100 )
 											  )
 									}
 									fill="none"
@@ -1946,8 +1948,8 @@ addFilter(
 						<path
 							d={
 								isZigzag
-									? generateZigzagPath( squiggleAmplitude )
-									: generateSquigglePath( squiggleAmplitude )
+									? generateZigzagPath( squiggleAmplitude, 800 )
+									: generateSquigglePath( squiggleAmplitude, 800 )
 							}
 							fill="none"
 							stroke={ lineColor }

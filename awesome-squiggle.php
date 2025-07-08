@@ -27,7 +27,7 @@ if (!defined('ABSPATH')) {
  * Server-side validation for squiggle IDs
  * Provides security hardening against client-side manipulation
  */
-function validate_squiggle_id($id, $type = 'animation') {
+function awesome_squiggle_validate_squiggle_id($id, $type = 'animation') {
     // Strict server-side validation
     if (!preg_match('/^[a-zA-Z0-9_-]{1,50}$/', $id)) {
         // Generate secure fallback
@@ -42,10 +42,10 @@ function validate_squiggle_id($id, $type = 'animation') {
  */
 function awesome_squiggle_validate_block_attributes($attributes) {
     if (isset($attributes['animationId'])) {
-        $attributes['animationId'] = validate_squiggle_id($attributes['animationId'], 'animation');
+        $attributes['animationId'] = awesome_squiggle_validate_squiggle_id($attributes['animationId'], 'animation');
     }
     if (isset($attributes['gradientId'])) {
-        $attributes['gradientId'] = validate_squiggle_id($attributes['gradientId'], 'gradient');
+        $attributes['gradientId'] = awesome_squiggle_validate_squiggle_id($attributes['gradientId'], 'gradient');
     }
     return $attributes;
 }
@@ -141,7 +141,7 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
         
         // Security: Validate and sanitize any ID attributes in the output
         if (isset($attrs['animationId'])) {
-            $validated_animation_id = validate_squiggle_id($attrs['animationId'], 'animation');
+            $validated_animation_id = awesome_squiggle_validate_squiggle_id($attrs['animationId'], 'animation');
             // Replace any instances of the original ID with the validated one
             if ($attrs['animationId'] !== $validated_animation_id) {
                 $block_content = str_replace($attrs['animationId'], $validated_animation_id, $block_content);
@@ -149,7 +149,7 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
         }
         
         if (isset($attrs['gradientId'])) {
-            $validated_gradient_id = validate_squiggle_id($attrs['gradientId'], 'gradient');
+            $validated_gradient_id = awesome_squiggle_validate_squiggle_id($attrs['gradientId'], 'gradient');
             // Replace any instances of the original ID with the validated one
             if ($attrs['gradientId'] !== $validated_gradient_id) {
                 $block_content = str_replace($attrs['gradientId'], $validated_gradient_id, $block_content);
