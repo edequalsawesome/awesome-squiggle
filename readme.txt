@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -83,6 +83,10 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 = 1.3.1 =
 * Full Width Fix: Ensure alignfull separators break out of global site padding wrappers
 * Theme Preset Gradients: Resolve theme.json gradient presets via CSS variables for any theme slug
+* Sparkle Controls on Frontend: Sparkle Size and Sparkle Vertical Spread now apply on the frontend (saved as data attributes)
+* Sparkle Animation Speed: Editor speed now controls frontend shimmer timing
+* Twinkle Randomness: New control to tune sparkle timing variance (0–200%)
+* Editor Preview Parity: Sparkle preview width matches frontend for centered layout
 * Packaging: Updated built assets and ZIP for distribution
 
 = 1.3.0 =
@@ -182,7 +186,7 @@ The plugin source code is also available at: https://github.com/edequalsawesome/
 == Upgrade Notice ==
 
 = 1.3.1 =
-Fixes full-width behavior in block themes and improves compatibility with theme-defined gradient presets.
+Fixes full-width behavior in block themes and improves compatibility with theme-defined gradient presets. Also brings sparkle controls (size/spread/speed/randomness) to the frontend and aligns editor preview with frontend.
 
 = 1.3.0 =
 Major responsive enhancement! Sparkles now automatically scale with container width and respect alignment boundaries. Fixed frontend alignment classes and enhanced color override system for perfect display.

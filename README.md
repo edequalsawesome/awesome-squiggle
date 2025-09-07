@@ -29,6 +29,7 @@ A WordPress plugin that adds animated and static squiggle styles to the core Sep
 - **Performance optimized** for smooth rendering
 - **Accessibility focused** with motion preferences and keyboard navigation
 - **Screen reader compatible** with comprehensive ARIA support
+ - **Sparkle controls**: size, vertical spread, animation speed, and twinkle randomness
 
 ## Installation
 
@@ -64,6 +65,12 @@ When a squiggle or zig-zag style is applied, you'll find these options in the bl
 ### Pattern Dimensions
 - **Stroke Width**: Adjust the thickness of the line (1-8px)
 - **Pattern Height**: Set the height of the container (50px-200px)
+
+### Sparkle Settings
+- **Sparkle Size**: Control star size (8–35)
+- **Sparkle Vertical Spread**: Control Y spread around the center (0–30)
+- **Animation Speed**: Controls shimmer tempo on the frontend
+- **Twinkle Randomness**: Variance of delays/durations (0–200%)
 
 ### Colors & Gradients
 Use WordPress's standard color controls or enable gradient mode:
@@ -119,6 +126,10 @@ npm run build:production
 ### Version 1.3.1
 - **Full Width Fix:** Ensure alignfull separators break out of global site padding wrappers
 - **Theme Preset Gradients:** Resolve theme.json gradient presets via CSS variables for any theme slug
+- **Sparkle Controls on Frontend:** Sparkle Size and Vertical Spread values now apply on the frontend
+- **Sparkle Animation Speed:** Editor speed now controls shimmer tempo on the frontend
+- **Twinkle Randomness:** New control (0–200%) to tune sparkle timing variance
+- **Editor Preview Parity:** Sparkle preview width matches frontend for centered layout
 - **Packaging:** Updated built assets and ZIP for distribution
 
 ### Version 1.3.0
