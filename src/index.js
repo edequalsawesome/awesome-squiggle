@@ -191,24 +191,90 @@ const wpDefaultGradients = {
 	midnight: 'linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%)',
 };
 
-// Simple gradient parser for basic linear gradients
-const parseGradient = ( gradientString ) => {
-	if ( ! gradientString ) return null;
+// Resolve a gradient slug/var/custom to a concrete CSS linear-gradient string when possible
+const resolveGradientToCss = ( input ) => {
+	if ( ! input ) return null;
 
-	// Handle WordPress preset gradient slugs directly
-	if ( wpDefaultGradients[ gradientString ] ) {
-		gradientString = wpDefaultGradients[ gradientString ];
+	let value = String( input ).trim();
+
+	// If it's a bare slug (no var()/gradient()) try the preset var first
+	const looksLikeSlug =
+		! value.includes( 'gradient(' ) && ! value.startsWith( 'var(' );
+	if ( looksLikeSlug ) {
+		// Attempt to resolve via computed style for theme-defined preset
+		const varRef = `var(--wp--preset--gradient--${ value })`;
+		const resolved = resolveCssVarBackgroundImage( varRef );
+		if ( resolved ) return resolved;
+
+		// Fallback to our known defaults map
+		if ( wpDefaultGradients[ value ] ) return wpDefaultGradients[ value ];
 	}
 
-	// Handle WordPress preset gradients (var(--wp--preset--gradient--name))
+	// If it's a CSS var for a preset, resolve it via computed style
+	if ( value.startsWith( 'var(--wp--preset--gradient--' ) ) {
+		const resolved = resolveCssVarBackgroundImage( value );
+		if ( resolved ) return resolved;
+
+		// As a fallback, extract slug and map if we know it
+		const m = value.match( /var\(--wp--preset--gradient--([^)]+)\)/ );
+		if ( m && wpDefaultGradients[ m[ 1 ] ] ) {
+			return wpDefaultGradients[ m[ 1 ] ];
+		}
+	}
+
+	// If it's already a concrete linear-gradient, return as-is
+	if ( value.startsWith( 'linear-gradient(' ) ) {
+		return value;
+	}
+
+	return null;
+};
+
+// Helper: resolve a CSS background-image using computed styles
+const resolveCssVarBackgroundImage = ( css ) => {
+	try {
+		if ( typeof window === 'undefined' || ! window.document ) return null;
+		const el = document.createElement( 'div' );
+		// Keep it out of flow and invisible
+		el.style.position = 'absolute';
+		el.style.left = '-9999px';
+		el.style.top = '-9999px';
+		el.style.width = '1px';
+		el.style.height = '1px';
+		el.style.backgroundImage = css;
+		document.body.appendChild( el );
+		const computed = getComputedStyle( el ).backgroundImage;
+		document.body.removeChild( el );
+		if ( computed && computed !== 'none' ) {
+			return computed;
+		}
+		return null;
+	} catch ( e ) {
+		return null;
+	}
+};
+
+// Simple gradient parser for basic linear gradients
+const parseGradient = ( gradientInput ) => {
+	if ( ! gradientInput ) return {
+		type: 'linear',
+		stops: [
+			{ color: '#667eea', offset: '0%' },
+			{ color: '#764ba2', offset: '100%' },
+		],
+	};
+
+	// First, normalize/resolve to a concrete linear-gradient when possible
+	let gradientString = resolveGradientToCss( gradientInput ) || String( gradientInput );
+
+	if ( ! gradientString ) return null;
+
+	// If it's still a var reference at this point and couldn't be resolved, try our mapping or fallback.
 	if ( gradientString.startsWith( 'var(--wp--preset--gradient--' ) ) {
-		const gradientName = gradientString.match(
-			/var\(--wp--preset--gradient--([^)]+)\)/
-		)?.[ 1 ];
-		if ( gradientName && wpDefaultGradients[ gradientName ] ) {
-			gradientString = wpDefaultGradients[ gradientName ];
+		const m = gradientString.match( /var\(--wp--preset--gradient--([^)]+)\)/ );
+		if ( m && wpDefaultGradients[ m[ 1 ] ] ) {
+			gradientString = wpDefaultGradients[ m[ 1 ] ];
 		} else {
-			// Fallback for unknown preset gradients
 			return {
 				type: 'linear',
 				stops: [
@@ -319,10 +385,10 @@ const parseGradient = ( gradientString ) => {
 
 // Test gradient parsing
 debugLog( '🧪 Testing gradient parsing:' );
-const testGradient1 = parseGradient(
-	'luminous-vivid-amber-to-luminous-vivid-orange'
-);
-const testGradient2 = parseGradient( 'cool-to-warm-spectrum' );
+	const testGradient1 = parseGradient(
+		'luminous-vivid-amber-to-luminous-vivid-orange'
+	);
+	const testGradient2 = parseGradient( 'cool-to-warm-spectrum' );
 debugLog( 'luminous-vivid-amber-to-luminous-vivid-orange:', testGradient1 );
 debugLog( '  stops:', testGradient1?.stops );
 debugLog( 'cool-to-warm-spectrum:', testGradient2 );

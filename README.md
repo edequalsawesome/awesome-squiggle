@@ -116,6 +116,11 @@ npm run build:production
 
 ## Changelog
 
+### Version 1.3.1
+- **Full Width Fix:** Ensure alignfull separators break out of global site padding wrappers
+- **Theme Preset Gradients:** Resolve theme.json gradient presets via CSS variables for any theme slug
+- **Packaging:** Updated built assets and ZIP for distribution
+
 ### Version 1.3.0
 - **Dynamic Sparkle Generation**: Sparkles now automatically scale based on container width for responsive display
 - **Alignment Fix**: Fixed alignfull and alignwide classes not generating correctly on frontend

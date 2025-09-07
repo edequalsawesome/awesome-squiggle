@@ -182,8 +182,23 @@ div.wp-block-separator.awesome-squiggle-wave .sparkle-element {
 
 /* Ensure squiggle respects WordPress separator width settings */
 .wp-block-separator.awesome-squiggle-wave.is-style-wide {
-	width: 100%;
-	max-width: none;
+    width: 100%;
+    max-width: none;
+}
+
+/* Full width support: ensure alignfull breaks out of site padding wrappers */
+/* Block themes commonly use a global padding wrapper. Break out only for our separator. */
+.has-global-padding > .wp-block-separator.awesome-squiggle-wave.alignfull {
+    margin-left: calc(var(--wp--style--root--padding-left) * -1);
+    margin-right: calc(var(--wp--style--root--padding-right) * -1);
+}
+
+/* Fallback full width breakout when the theme relies on vw-based rule */
+.wp-site-blocks > .wp-block-separator.awesome-squiggle-wave.alignfull {
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
 }
 
 /* Support for custom widths set via WordPress controls */

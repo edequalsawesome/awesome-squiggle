@@ -80,14 +80,21 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 
 == Changelog ==
 
+= 1.3.1 =
+* Full Width Fix: Ensure alignfull separators break out of global site padding wrappers
+* Theme Preset Gradients: Resolve theme.json gradient presets via CSS variables for any theme slug
+* Packaging: Updated built assets and ZIP for distribution
+
 = 1.3.0 =
 * Dynamic Sparkle Generation: Sparkles now automatically scale based on container width for responsive display
 * Alignment Fix: Fixed alignfull and alignwide classes not generating correctly on frontend
+* Alignfull Breakout: Added CSS to break full-width separators out of global padding wrappers for true edge-to-edge display
 * Color Override Enhancement: Added aggressive CSS overrides to prevent background color blocks from appearing
 * Half-Sparkle Prevention: Sparkles now respect container boundaries and never appear as partial elements
 * ResizeObserver Integration: Added automatic sparkle regeneration when container size changes
 * Frontend Script Optimization: Conditional loading of frontend scripts only when sparkle styles are present
 * Webpack Multi-Entry: Added support for separate frontend JavaScript bundle
+* Theme Gradient Compatibility: Gradient presets from theme.json now resolve via CSS variables, supporting custom slugs across themes
 
 = 1.2.15 =
 * New Sparkle Divider: Added animated and static sparkle/glitter variations to the separator block
@@ -173,6 +180,9 @@ The complete source code is maintained in this plugin package. All compressed fi
 The plugin source code is also available at: https://github.com/edequalsawesome/awesome-squiggle
 
 == Upgrade Notice ==
+
+= 1.3.1 =
+Fixes full-width behavior in block themes and improves compatibility with theme-defined gradient presets.
 
 = 1.3.0 =
 Major responsive enhancement! Sparkles now automatically scale with container width and respect alignment boundaries. Fixed frontend alignment classes and enhanced color override system for perfect display.
