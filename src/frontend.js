@@ -7,7 +7,7 @@
 	'use strict';
 
 	// Helper function to generate sparkle elements dynamically
-	function generateSparkleElements( sparkleSize, verticalAmplitude, containerWidth, isAnimated ) {
+	function generateSparkleElements( sparkleSize, verticalAmplitude, containerWidth, isAnimated, randomness ) {
 		const spacing = 50;
 		const height = 100;
 		const midY = height / 2;
@@ -49,8 +49,9 @@
 
 			// Calculate timing for twinkling animation
 			const seed = ( x + sparkleIndex * 17 ) % 1600;
-			const delayMs = seed;
-			const durationMs = 1200 + ( ( sparkleIndex * 67 ) % 800 );
+			const randScale = Math.max(0, Math.min(200, typeof randomness === 'number' ? randomness : 100)) / 100;
+			const delayMs = Math.round(seed * randScale);
+			const durationMs = 1200 + Math.round((( sparkleIndex * 67 ) % 800) * randScale);
 
 			sparkleElements.push( {
 				points: points.join( ' ' ),
@@ -66,9 +67,9 @@
 	}
 
 	// Function to update sparkles for a specific container
-	function updateSparkles( container ) {
-		const svg = container.querySelector( 'svg' );
-		const sparkleGroup = svg.querySelector( '.sparkle-group' );
+    function updateSparkles( container ) {
+        const svg = container.querySelector( 'svg' );
+        const sparkleGroup = svg.querySelector( '.sparkle-group' );
 		
 		if ( ! sparkleGroup ) {
 			return; // Not a sparkle separator
@@ -81,7 +82,9 @@
 		const sparkleSize = parseInt( container.dataset.sparkleSize ) || 18;
 		const verticalAmplitude = parseInt( container.dataset.sparkleVerticalAmplitude ) || 15;
 		const isAnimated = ! container.classList.contains( 'is-style-static-sparkle' );
+		const animationSpeedSec = Math.max(0.5, Math.min(5, parseFloat(container.dataset.animationSpeed) || 1.6));
 		const isPaused = container.classList.contains( 'is-paused' );
+		const randomness = parseInt( container.dataset.sparkleRandomness ) || 100;
 
 		// Calculate appropriate viewBox width based on container width
 		// Add extra width to ensure smooth animation
@@ -93,27 +96,37 @@
 			sparkleSize, 
 			verticalAmplitude, 
 			viewBoxWidth, 
-			isAnimated && ! isPaused 
+			isAnimated && ! isPaused,
+			randomness
 		);
 
 		// Clear existing sparkles
 		sparkleGroup.innerHTML = '';
 
 		// Add new sparkles
-		sparkleElements.forEach( ( sparkle, index ) => {
-			const polygon = document.createElementNS( 'http://www.w3.org/2000/svg', 'polygon' );
-			polygon.setAttribute( 'points', sparkle.points );
-			polygon.setAttribute( 'class', 'sparkle-element' );
-			
-			if ( sparkle.isAnimated ) {
-				polygon.style.animation = `sparkle-shimmer ${ sparkle.duration }ms ease-in-out ${ sparkle.delay }ms infinite`;
-			} else {
-				polygon.style.opacity = '0.8';
-				polygon.style.transform = 'scale(1)';
-			}
-			
-			sparkleGroup.appendChild( polygon );
-		} );
+        sparkleElements.forEach( ( sparkle, index ) => {
+            const polygon = document.createElementNS( 'http://www.w3.org/2000/svg', 'polygon' );
+            polygon.setAttribute( 'points', sparkle.points );
+            polygon.setAttribute( 'class', 'sparkle-element' );
+            
+            if ( sparkle.isAnimated ) {
+                // Scale duration around the chosen animation speed from the editor
+                // Base prior behavior used ~1600ms average; scale proportionally
+                const baseAvg = 1600; // ms
+                const scale = animationSpeedSec * 1000 / baseAvg;
+                const scaledDuration = Math.max(300, Math.round(sparkle.duration * scale));
+                polygon.style.animationName = 'sparkle-shimmer';
+                polygon.style.animationTimingFunction = 'ease-in-out';
+                polygon.style.animationIterationCount = 'infinite';
+                polygon.style.animationDuration = `${ scaledDuration }ms`;
+                polygon.style.animationDelay = `${ sparkle.delay }ms`;
+            } else {
+                polygon.style.opacity = '0.8';
+                polygon.style.transform = 'scale(1)';
+            }
+            
+            sparkleGroup.appendChild( polygon );
+        } );
 	}
 
 	// Function to handle all sparkle separators

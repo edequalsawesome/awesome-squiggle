@@ -60,7 +60,7 @@ const setSecureAttributes = ( setAttributes, updates ) => {
 	const secureUpdates = {};
 
 	for ( const [ key, value ] of Object.entries( updates ) ) {
-		switch ( key ) {
+			switch ( key ) {
 			case 'strokeWidth':
 				secureUpdates[ key ] = validateNumericInput( value, 1, 8, 1 );
 				break;
@@ -78,6 +78,10 @@ const setSecureAttributes = ( setAttributes, updates ) => {
 			case 'sparkleVerticalAmplitude':
 				// Vertical spread range for sparkles
 				secureUpdates[ key ] = validateNumericInput( value, 0, 30, 15 );
+				break;
+			case 'sparkleRandomness':
+				// Variance factor for sparkle timing (percent 0..200)
+				secureUpdates[ key ] = validateNumericInput( value, 0, 200, 100 );
 				break;
 			case 'animationId':
 				secureUpdates[ key ] = validateAnimationId( value );
@@ -470,11 +474,13 @@ const generateZigzagPath = ( amplitude = 15, pathWidth = 800 ) => {
 };
 
 // Generate SVG elements for sparkles pattern
-const generateSparkleElements = ( sparkleSize = 18, verticalAmplitude = 15, containerWidth = 800 ) => {
+const generateSparkleElements = ( sparkleSize = 18, verticalAmplitude = 15, containerWidth = 800, randomness = 100 ) => {
 	// Security: Validate bounds
 	sparkleSize = validateNumericInput( sparkleSize, 8, 35, 18 );
 	verticalAmplitude = validateNumericInput( verticalAmplitude, 0, 30, 15 );
 	containerWidth = validateNumericInput( containerWidth, 300, 5000, 800 );
+	// Randomness controls variance of delay/duration (0%..200%)
+	randomness = validateNumericInput( randomness, 0, 200, 100 );
 
 	const spacing = 50; // Better spacing for clean look
 	const height = 100;
@@ -520,9 +526,10 @@ const generateSparkleElements = ( sparkleSize = 18, verticalAmplitude = 15, cont
 		}
 
 		// Calculate deterministic timing for star twinkling (avoids validation errors)
-		const seed = (x + sparkleIndex * 17) % 1600; // Deterministic "random"
-		const delayMs = seed; // Delay 0-1.6s
-		const durationMs = 1200 + ((sparkleIndex * 67) % 800); // Duration 1.2-2.0s
+		const seed = (x + sparkleIndex * 17) % 1600; // base 0..1600ms
+		const delayMs = Math.max(0, Math.round(seed * (randomness / 100))); // scale by randomness
+		const baseVar = (sparkleIndex * 67) % 800; // 0..800ms variance
+		const durationMs = 1200 + Math.max(0, Math.round(baseVar * (randomness / 100))); // 1.2s..(up to 2.0s*scale)
 		
 		// Create sparkle element data
 		sparkleElements.push({
@@ -620,6 +627,10 @@ addFilter(
 					default: undefined,
 				},
 				sparkleVerticalAmplitude: {
+					type: 'number',
+					default: undefined,
+				},
+				sparkleRandomness: {
 					type: 'number',
 					default: undefined,
 				},
@@ -760,6 +771,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			strokeWidth,
 			squiggleAmplitude,
 			sparkleVerticalAmplitude,
+			sparkleRandomness,
 			animationId,
 			textColor,
 			customTextColor,
@@ -1295,7 +1307,8 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 									{ generateSparkleElements(
 										squiggleAmplitude || 18,
 										sparkleVerticalAmplitude || 15,
-										containerWidth
+										Math.max( 800, containerWidth + 100 ),
+										sparkleRandomness ?? 100
 									).map( ( sparkle, index ) => (
 										<polygon
 											key={ index }
@@ -1563,6 +1576,14 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 								<div id="vertical-spread-help" className="screen-reader-text">
 									{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
 								</div>
+								<RangeControl
+									label={ __( 'Twinkle Randomness', 'awesome-squiggle' ) }
+									value={ (attributes?.sparkleRandomness ?? 100) }
+									onChange={ ( value ) => setSecureAttributes( setAttributes, { sparkleRandomness: value } ) }
+									min={ 0 }
+									max={ 200 }
+									help={ __( 'Controls how varied the sparkle twinkle timing is. 0% = uniform, 100% = normal, 200% = highly varied.', 'awesome-squiggle' ) }
+								/>
 							</>
 						) }
 					</PanelBody>
@@ -1705,6 +1726,7 @@ addFilter(
 			animationSpeed = 2.5, // Default duration for speed level 6
 			squiggleAmplitude = isSparkle ? 18 : isZigzag ? 15 : 10,
 			sparkleVerticalAmplitude = 15,
+			sparkleRandomness = 100,
 			squiggleHeight = '100px',
 			animationId,
 			isReversed,
@@ -1896,8 +1918,30 @@ addFilter(
 			inlineStyles.backgroundColor = 'transparent';
 		}
 
+		// Data attributes for frontend sparkle regeneration
+		const sparkleDataAttrs = isSparkle
+			? {
+                // Clamp to validated ranges to keep frontend logic safe
+                'data-sparkle-size': String(
+                    Math.max( 8, Math.min( 35, squiggleAmplitude || 18 ) )
+                ),
+                'data-sparkle-vertical-amplitude': String(
+                    Math.max(
+                        0,
+                        Math.min( 30, sparkleVerticalAmplitude || 15 )
+                    )
+                ),
+				'data-animation-speed': String(
+					Math.max( 0.5, Math.min( 5, animationSpeed || 1.6 ) )
+				),
+				'data-sparkle-randomness': String(
+					Math.max( 0, Math.min( 200, (attributes?.sparkleRandomness ?? 100) ) )
+				),
+			}
+			: {};
+
 		return (
-			<div className={ combinedClassName } style={ inlineStyles }>
+			<div className={ combinedClassName } style={ inlineStyles } { ...sparkleDataAttrs }>
 				<svg
 					viewBox="0 0 800 100"
 					preserveAspectRatio="none"
@@ -1997,11 +2041,12 @@ addFilter(
 								animation: 'none', // Sparkle groups don't animate - individual elements do
 							} }
 						>
-							{ generateSparkleElements(
-								squiggleAmplitude,
-								sparkleVerticalAmplitude,
-								800  // Default width for save function - frontend script will handle dynamic sizing
-							).map( ( sparkle, index ) => (
+								{ generateSparkleElements(
+									squiggleAmplitude,
+									sparkleVerticalAmplitude,
+									800,  // Default width for save function - frontend script will handle dynamic sizing
+									sparkleRandomness
+								).map( ( sparkle, index ) => (
 								<polygon
 									key={ index }
 									points={ sparkle.points }
