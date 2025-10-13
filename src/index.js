@@ -1940,8 +1940,9 @@ addFilter(
 			}
 			: {};
 
-		// Use a wider viewBox to minimize stretching on wide screens
-		const viewBoxWidth = 2400;
+		// Use a wider viewBox for zigzag/squiggle to minimize stretching on wide screens
+		// Sparkles use 800px since frontend JavaScript handles dynamic regeneration
+		const viewBoxWidth = isSparkle ? 800 : 2400;
 
 		return (
 			<div className={ combinedClassName } style={ inlineStyles } { ...sparkleDataAttrs }>
