@@ -2,6 +2,12 @@
 
 This file contains the complete version history for the Awesome Squiggle WordPress plugin.
 
+= 1.3.2 =
+* Fixed zigzag and squiggle pattern stretching on wide screens
+* Increased SVG viewBox from 800px to 2400px for consistent rendering across all screen sizes
+* Updated zigzag wavelength from 30px to 40px to match squiggle pattern
+* Pure CSS/SVG solution with no additional JavaScript overhead
+
 = 1.3.1 =
 * Full Width Fix: Ensure alignfull separators break out of global site padding wrappers
 * Theme Preset Gradients: Resolve theme.json gradient presets via CSS variables for any theme slug

@@ -123,6 +123,12 @@ npm run build:production
 
 ## Changelog
 
+### Version 1.3.2
+- **Fixed Pattern Stretching:** Zigzag and squiggle patterns no longer stretch on wide screens
+- **Expanded ViewBox:** Increased SVG viewBox from 800px to 2400px for consistent rendering across all screen sizes
+- **Unified Wavelength:** Updated zigzag wavelength from 30px to 40px to match squiggle pattern
+- **Pure CSS/SVG Solution:** No additional JavaScript overhead, keeping the plugin lightweight
+
 ### Version 1.3.1
 - **Full Width Fix:** Ensure alignfull separators break out of global site padding wrappers
 - **Theme Preset Gradients:** Resolve theme.json gradient presets via CSS variables for any theme slug

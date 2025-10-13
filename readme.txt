@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.3.1
+Stable tag: 1.3.2
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -79,6 +79,12 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 4. Example of zigzag pattern with gradient colors
 
 == Changelog ==
+
+= 1.3.2 =
+* Fixed zigzag and squiggle pattern stretching on wide screens
+* Increased SVG viewBox from 800px to 2400px for consistent rendering across all screen sizes
+* Updated zigzag wavelength from 30px to 40px to match squiggle pattern
+* Pure CSS/SVG solution with no additional JavaScript overhead
 
 = 1.3.1 =
 * Full Width Fix: Ensure alignfull separators break out of global site padding wrappers

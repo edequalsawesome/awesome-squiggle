@@ -442,7 +442,7 @@ const generateZigzagPath = ( amplitude = 15, pathWidth = 800 ) => {
 	// Security: Validate amplitude bounds
 	amplitude = validateNumericInput( amplitude, 5, 25, 15 );
 
-	const wavelength = 30; // Narrower than squiggle for more angular feel
+	const wavelength = 40; // Match squiggle wavelength for consistent appearance
 	const width = pathWidth;
 	const height = 100;
 	const midY = height / 2;
@@ -1171,11 +1171,11 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
                         }
                         @keyframes zigzag-flow {
                             0% { transform: translateX(0); }
-                            100% { transform: translateX(60px); }
+                            100% { transform: translateX(80px); }
                         }
                         @keyframes zigzag-flow-reverse {
                             0% { transform: translateX(0); }
-                            100% { transform: translateX(-60px); }
+                            100% { transform: translateX(-80px); }
                         }
                         @keyframes sparkle-shimmer {
                             0% { opacity: 0.3; }
@@ -1940,10 +1940,13 @@ addFilter(
 			}
 			: {};
 
+		// Use a wider viewBox to minimize stretching on wide screens
+		const viewBoxWidth = 2400;
+
 		return (
 			<div className={ combinedClassName } style={ inlineStyles } { ...sparkleDataAttrs }>
 				<svg
-					viewBox="0 0 800 100"
+					viewBox={ `0 0 ${ viewBoxWidth } 100` }
 					preserveAspectRatio="none"
 					role="img"
 					aria-label={ __(
@@ -2044,7 +2047,7 @@ addFilter(
 								{ generateSparkleElements(
 									squiggleAmplitude,
 									sparkleVerticalAmplitude,
-									800,  // Default width for save function - frontend script will handle dynamic sizing
+									viewBoxWidth,
 									sparkleRandomness
 								).map( ( sparkle, index ) => (
 								<polygon
@@ -2059,8 +2062,8 @@ addFilter(
 						<path
 							d={
 								isZigzag
-									? generateZigzagPath( squiggleAmplitude, 800 )
-									: generateSquigglePath( squiggleAmplitude, 800 )
+									? generateZigzagPath( squiggleAmplitude, viewBoxWidth )
+									: generateSquigglePath( squiggleAmplitude, viewBoxWidth )
 							}
 							fill="none"
 							stroke={ lineColor }
