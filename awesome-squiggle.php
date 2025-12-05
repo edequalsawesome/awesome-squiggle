@@ -121,8 +121,9 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
     $attrs = $block['attrs'] ?? array();
     $className = $attrs['className'] ?? '';
     
-    // Security improvement: Sanitize className before processing
-    $className = sanitize_html_class($className);
+    // Security improvement: Sanitize each class in the className individually
+    // Note: sanitize_html_class() is for single classes, not space-separated lists
+    $className = implode(' ', array_map('sanitize_html_class', explode(' ', $className)));
     
     // Security validation: Validate block attributes server-side
     $attrs = awesome_squiggle_validate_block_attributes($attrs);
