@@ -12,13 +12,13 @@ Moving from semantic versioning (1.3.2) to date-based versioning.
 
 ### Format: `YYYY.MM.DD`
 
-Example: `2025.01.12`
+Example: `2026.01.12`
 
 ### Compatibility Notes
 
 - WordPress.org allows date-based versions (no explicit prohibition in guidelines)
 - PHP's `version_compare()` handles this format correctly
-- `2025.01.12` > `1.3.2` so upgrades will work properly
+- `2026.01.12` > `1.3.2` so upgrades will work properly
 - Tags must contain only numbers and periods (compliant)
 
 ### Files to Update
@@ -499,7 +499,7 @@ function migrateOldStyles(className, attributes) {
 Keep old class selectors for one major version cycle:
 
 ```css
-/* DEPRECATED: Remove in v2026.x */
+/* DEPRECATED: Remove in v2027.x */
 .is-style-animated-squiggle .squiggle-path,
 .is-style-animated-zigzag .zigzag-path {
     animation: wave-flow var(--animation-duration, 2.5s) linear infinite;

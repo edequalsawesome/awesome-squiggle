@@ -15,7 +15,7 @@ This document outlines how to extract the Sparkles feature from Awesome Squiggle
  * Plugin Name:       Awesome Sparkles
  * Plugin URI:        https://github.com/[username]/awesome-sparkles
  * Description:       Add animated sparkle separators to your WordPress site. Extends the core Separator block with twinkling star patterns.
- * Version:           2025.01.12
+ * Version:           2026.01.12
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            [Author Name]
@@ -264,12 +264,12 @@ add_action('admin_init', 'awesome_squiggle_sparkle_deprecation_notice');
 
 ### Backwards Compatibility Period
 
-1. **Awesome Squiggle v2.0** (2025.01.xx)
+1. **Awesome Squiggle v2.0** (2026.01.xx)
    - Remove sparkle controls from editor
    - Keep sparkle CSS for frontend rendering (existing blocks still display)
    - Show admin notice recommending Awesome Sparkles
 
-2. **Awesome Squiggle v2025.06.xx** (6 months later)
+2. **Awesome Squiggle v2026.07.xx** (6 months later)
    - Remove sparkle CSS entirely
    - Existing sparkle blocks render as plain separators
    - Clear migration path complete
@@ -328,12 +328,12 @@ touch package.json webpack.config.js readme.txt
 3. Remove `src/frontend.js` entirely
 4. Remove sparkle enqueue from PHP
 5. Add deprecation notice
-6. Update version to 2025.xx.xx
+6. Update version to 2026.xx.xx
 
 ### Phase 5: Release
 
-1. Release Awesome Sparkles v2025.01.xx
-2. Release Awesome Squiggle v2025.01.xx (sans sparkles)
+1. Release Awesome Sparkles v2026.01.xx
+2. Release Awesome Squiggle v2026.01.xx (sans sparkles)
 3. Update WordPress.org listings
 4. Announce split to users
 
@@ -358,7 +358,7 @@ Contributors: [username]
 Tags: separator, sparkles, animation, block, stars
 Requires at least: 6.0
 Tested up to: 6.4
-Stable tag: 2025.01.12
+Stable tag: 2026.01.12
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -392,7 +392,7 @@ separator experience.
 
 == Changelog ==
 
-= 2025.01.12 =
+= 2026.01.12 =
 * Initial release (extracted from Awesome Squiggle)
 ```
 
