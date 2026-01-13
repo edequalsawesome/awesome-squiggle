@@ -50,6 +50,7 @@ mcp_settings.json
 gradient-id-debugging-analysis.md
 *-debugging-analysis.md
 *-notes.md
+dev-notes-*.md
 
 # WordPress specific
 wp-config.php

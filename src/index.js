@@ -72,16 +72,19 @@ const setSecureAttributes = ( setAttributes, updates ) => {
 				secureUpdates[ key ] = duration;
 				break;
 			case 'squiggleAmplitude':
-				// Increased range for more dramatic sparkles
-				secureUpdates[ key ] = validateNumericInput( value, 8, 35, 18 );
+				// Amplitude range for squiggle/zigzag waves
+				secureUpdates[ key ] = validateNumericInput( value, 5, 25, 10 );
 				break;
-			case 'sparkleVerticalAmplitude':
-				// Vertical spread range for sparkles
-				secureUpdates[ key ] = validateNumericInput( value, 0, 30, 15 );
+			case 'pointiness':
+				// Pointiness range: 0 (smooth curves) to 100 (sharp angles)
+				secureUpdates[ key ] = validateNumericInput( value, 0, 100, 0 );
 				break;
-			case 'sparkleRandomness':
-				// Variance factor for sparkle timing (percent 0..200)
-				secureUpdates[ key ] = validateNumericInput( value, 0, 200, 100 );
+			case 'angle':
+				// Angle range: -60 to +60 degrees
+				secureUpdates[ key ] = validateNumericInput( value, -60, 60, 0 );
+				break;
+			case 'isAnimated':
+				secureUpdates[ key ] = value === true;
 				break;
 			case 'animationId':
 				secureUpdates[ key ] = validateAnimationId( value );
@@ -438,6 +441,7 @@ const generateSquigglePath = ( amplitude = 10, pathWidth = 800 ) => {
 };
 
 // Generate SVG path data for the zig-zag (Charlie Brown stripe style)
+// LEGACY: Kept for backwards compatibility, use generateWavePath for new code
 const generateZigzagPath = ( amplitude = 15, pathWidth = 800 ) => {
 	// Security: Validate amplitude bounds
 	amplitude = validateNumericInput( amplitude, 5, 25, 15 );
@@ -473,122 +477,136 @@ const generateZigzagPath = ( amplitude = 15, pathWidth = 800 ) => {
 	return d;
 };
 
-// Generate SVG elements for sparkles pattern
-const generateSparkleElements = ( sparkleSize = 18, verticalAmplitude = 15, containerWidth = 800, randomness = 100 ) => {
-	// Security: Validate bounds
-	sparkleSize = validateNumericInput( sparkleSize, 8, 35, 18 );
-	verticalAmplitude = validateNumericInput( verticalAmplitude, 0, 30, 15 );
-	containerWidth = validateNumericInput( containerWidth, 300, 5000, 800 );
-	// Randomness controls variance of delay/duration (0%..200%)
-	randomness = validateNumericInput( randomness, 0, 200, 100 );
+/**
+ * Generate a unified wave path with variable pointiness and angle
+ * This replaces both generateSquigglePath and generateZigzagPath
+ *
+ * @param {number} amplitude - Wave height (5-25px)
+ * @param {number} pathWidth - Width of the path
+ * @param {number} pointiness - 0 = smooth curves (squiggle), 100 = sharp points (zigzag)
+ * @param {number} angle - Peak angle in degrees (-60 to +60)
+ * @returns {string} SVG path d attribute
+ */
+const generateWavePath = ( amplitude = 10, pathWidth = 800, pointiness = 0, angle = 0 ) => {
+	// Security: Validate all inputs
+	amplitude = validateNumericInput( amplitude, 5, 25, 10 );
+	pointiness = validateNumericInput( pointiness, 0, 100, 0 );
+	angle = validateNumericInput( angle, -60, 60, 0 );
 
-	const spacing = 50; // Better spacing for clean look
+	const wavelength = 40;
+	const width = pathWidth;
 	const height = 100;
 	const midY = height / 2;
 
-	// Create sparkles pattern using multiple star/sparkle shapes
-	const sparkleElements = [];
-	let sparkleIndex = 0;
+	// Convert angle to radians for offset calculation
+	const angleRad = ( angle * Math.PI ) / 180;
 
-	// Calculate effective container boundaries to avoid half-sparkles
-	const sparkleRadius = sparkleSize; // Maximum extent of a sparkle from its center
-	const effectiveStart = sparkleRadius; // Start far enough from edge
-	const effectiveEnd = containerWidth - sparkleRadius; // End far enough from edge
-	
-	// Only generate sparkles if we have enough space
-	if ( effectiveEnd <= effectiveStart ) {
-		// Container too small for sparkles, return empty array
-		return sparkleElements;
-	}
+	// Calculate horizontal offset for angled peaks
+	const xOffset = amplitude * Math.sin( angleRad );
+	const yMultiplier = Math.cos( angleRad );
 
-	// Generate sparkles with proper boundaries to avoid half-sparkles
-	for ( let x = effectiveStart; x <= effectiveEnd; x += spacing ) {
-		// Create Y variation based on vertical amplitude for pattern creation
-		const waveFrequency = 0.008; // Smooth wave pattern
-		const offsetY = Math.sin( x * waveFrequency ) * verticalAmplitude;
-		const sparkleY = midY + offsetY;
+	// Start path
+	let d = `M-${ wavelength * 2 },${ midY }`;
+	let isUpPeak = true;
 
-		// Create a 4-pointed star sparkle shape - consistent size for twinkling
-		const size = sparkleSize;
-		const innerSize = size * 0.3; // Star inner radius
+	// Generate wave segments
+	for (
+		let x = -wavelength * 2;
+		x <= width + wavelength * 2;
+		x += wavelength
+	) {
+		// Calculate peak position with angle offset
+		const peakX = x + wavelength / 2 + ( isUpPeak ? xOffset : -xOffset );
+		const peakY = isUpPeak
+			? midY - ( amplitude * yMultiplier )
+			: midY + ( amplitude * yMultiplier );
+		const endX = x + wavelength;
 
-		// Consistent rotation for all sparkles
-		const rotation = 0;
+		if ( pointiness >= 100 ) {
+			// Pure zig-zag: straight lines to peak and back
+			d += ` L${ peakX },${ peakY } L${ endX },${ midY }`;
+		} else if ( pointiness <= 0 ) {
+			// Pure squiggle: smooth cubic Bezier curves
+			const cp1x = x + wavelength * 0.375;
+			const cp2x = x + wavelength * 0.625;
+			d += ` C${ cp1x },${ peakY } ${ cp2x },${ peakY } ${ endX },${ midY }`;
+		} else {
+			// Hybrid: quadratic Bezier with tightness based on pointiness
+			// Higher pointiness = tighter curve around peak
+			const tension = pointiness / 100;
 
-		// Calculate points for a 4-pointed star
-		const points = [];
-		for ( let i = 0; i < 8; i++ ) {
-			const angle = ( Math.PI * 2 * i ) / 8 + ( rotation * Math.PI ) / 180;
-			const radius = i % 2 === 0 ? size : innerSize;
-			const px = x + Math.cos( angle ) * radius;
-			const py = sparkleY + Math.sin( angle ) * radius;
-			points.push( `${ px },${ py }` );
+			// Calculate quadratic control points that blend between smooth and sharp
+			const qcp1x = x + ( peakX - x ) * ( 0.5 + tension * 0.4 );
+			const qcp1y = midY + ( peakY - midY ) * ( 0.7 + tension * 0.3 );
+			const qcp2x = peakX + ( endX - peakX ) * ( 0.5 - tension * 0.4 );
+			const qcp2y = midY + ( peakY - midY ) * ( 0.7 + tension * 0.3 );
+
+			d += ` Q${ qcp1x },${ qcp1y } ${ peakX },${ peakY }`;
+			d += ` Q${ qcp2x },${ qcp2y } ${ endX },${ midY }`;
 		}
 
-		// Calculate deterministic timing for star twinkling (avoids validation errors)
-		const seed = (x + sparkleIndex * 17) % 1600; // base 0..1600ms
-		const delayMs = Math.max(0, Math.round(seed * (randomness / 100))); // scale by randomness
-		const baseVar = (sparkleIndex * 67) % 800; // 0..800ms variance
-		const durationMs = 1200 + Math.max(0, Math.round(baseVar * (randomness / 100))); // 1.2s..(up to 2.0s*scale)
-		
-		// Create sparkle element data
-		sparkleElements.push({
-			points: points.join(' '),
-			style: {
-				animationDelay: `${delayMs}ms`,
-				animationDuration: `${durationMs}ms`,
-			}
-		});
-		
-		sparkleIndex++;
+		isUpPeak = ! isUpPeak;
 	}
 
-	return sparkleElements;
+	return d;
 };
 
-// Helper function to check if current style is a squiggle style
+// Helper function to check if current style is a squiggle style (new or legacy)
 const isSquiggleStyle = ( className ) => {
 	return (
 		className &&
-		( className.includes( 'is-style-animated-squiggle' ) ||
+		( className.includes( 'is-style-squiggle' ) ||
+			// Legacy support
+			className.includes( 'is-style-animated-squiggle' ) ||
 			className.includes( 'is-style-static-squiggle' ) )
 	);
 };
 
-// Helper function to check if current style is a zig-zag style
+// Helper function to check if current style is a zig-zag style (new or legacy)
 const isZigzagStyle = ( className ) => {
 	return (
 		className &&
-		( className.includes( 'is-style-animated-zigzag' ) ||
+		( className.includes( 'is-style-zigzag' ) ||
+			// Legacy support
+			className.includes( 'is-style-animated-zigzag' ) ||
 			className.includes( 'is-style-static-zigzag' ) )
 	);
 };
 
-// Helper function to check if current style is a sparkle style
-const isSparkleStyle = ( className ) => {
-	return (
-		className &&
-		( className.includes( 'is-style-animated-sparkle' ) ||
-			className.includes( 'is-style-static-sparkle' ) )
-	);
+// Helper function to check if current style is a lightning style
+const isLightningStyle = ( className ) => {
+	return className && className.includes( 'is-style-lightning' );
 };
 
-// Helper function to check if current style is animated (not static)
-const isAnimatedStyle = ( className ) => {
+// Helper function to check if legacy animated style (for migration)
+const isLegacyAnimatedStyle = ( className ) => {
 	return (
 		className &&
 		( className.includes( 'is-style-animated-squiggle' ) ||
-			className.includes( 'is-style-animated-zigzag' ) ||
-			className.includes( 'is-style-animated-sparkle' ) )
+			className.includes( 'is-style-animated-zigzag' ) )
 	);
 };
 
-// Helper function to check if current style is any custom style (squiggle, zig-zag, or sparkle)
+// Helper function to check if legacy static style (for migration)
+const isLegacyStaticStyle = ( className ) => {
+	return (
+		className &&
+		( className.includes( 'is-style-static-squiggle' ) ||
+			className.includes( 'is-style-static-zigzag' ) )
+	);
+};
+
+// Helper function to check if any legacy style
+const isLegacyStyle = ( className ) => {
+	return isLegacyAnimatedStyle( className ) || isLegacyStaticStyle( className );
+};
+
+// Helper function to check if current style is any custom style (squiggle, zig-zag, or lightning)
 const isCustomStyle = ( className ) => {
 	return (
 		isSquiggleStyle( className ) ||
 		isZigzagStyle( className ) ||
-		isSparkleStyle( className )
+		isLightningStyle( className )
 	);
 };
 
@@ -613,24 +631,30 @@ addFilter(
 			},
 			attributes: {
 				...settings.attributes,
-				// Squiggle-specific attributes with defaults to avoid interference
+				// NEW: Parametric wave controls
+				pointiness: {
+					type: 'number',
+					default: undefined, // Set by style selection (0 for squiggle, 100 for zigzag/lightning)
+				},
+				angle: {
+					type: 'number',
+					default: undefined, // Set by style selection (0 for squiggle/zigzag, 40 for lightning)
+				},
+				// NEW: Animation as toggle (replaces style-based animated/static)
+				isAnimated: {
+					type: 'boolean',
+					default: true, // Animation on by default
+				},
+				// EXISTING: Core wave attributes
 				strokeWidth: {
 					type: 'number',
-					default: undefined, // No default to avoid interference
+					default: undefined,
 				},
 				animationSpeed: {
 					type: 'number',
 					default: undefined,
 				},
 				squiggleAmplitude: {
-					type: 'number',
-					default: undefined,
-				},
-				sparkleVerticalAmplitude: {
-					type: 'number',
-					default: undefined,
-				},
-				sparkleRandomness: {
 					type: 'number',
 					default: undefined,
 				},
@@ -665,7 +689,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 		const blockInitializedRef = useRef( false );
 		const gradientIdRefHook = useRef( attributes?.gradientId );
 		
-		// Container width measurement for dynamic sparkle generation
+		// Container width measurement for dynamic viewBox sizing
 		const [containerWidth, setContainerWidth] = useState(800);
 		const containerRef = useRef(null);
 
@@ -675,34 +699,40 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			squiggleHeight = '100px',
 			animationSpeed = 1.6,
 			isReversed = false,
+			// NEW: Parametric wave controls (with defaults based on style)
+			isAnimated: isAnimatedAttr,
+			pointiness: pointinessAttr,
+			angle: angleAttr,
 		} = attributes || {};
+
 		const isSquiggle = isSquiggleStyle( className );
 		const isZigzag = isZigzagStyle( className );
-		const isSparkle = isSparkleStyle( className );
+		const isLightning = isLightningStyle( className );
 		const isCustom = isCustomStyle( className );
-		const isAnimated = isAnimatedStyle( className );
+		const isLegacy = isLegacyStyle( className );
 
-		// Determine if animation should be paused based on style
-		let finalPaused = false;
-		if (
-			className &&
-			( className.includes( 'is-style-static-squiggle' ) ||
-				className.includes( 'is-style-static-zigzag' ) ||
-				className.includes( 'is-style-static-sparkle' ) )
-		) {
-			finalPaused = true;
-		}
+		// For legacy styles, determine animation from class name; for new styles, use attribute
+		const isAnimated = isLegacy
+			? isLegacyAnimatedStyle( className )
+			: ( isAnimatedAttr !== undefined ? isAnimatedAttr : true );
 
-		// Calculate animation name
+		// Calculate effective pointiness and angle based on style (defaults if not set)
+		const effectivePointiness = pointinessAttr !== undefined
+			? pointinessAttr
+			: ( isZigzag || isLightning ? 100 : 0 );
+		const effectiveAngle = angleAttr !== undefined
+			? angleAttr
+			: ( isLightning ? 40 : 0 );
+
+		// Determine if animation should be paused (either explicitly disabled or legacy static style)
+		const finalPaused = ! isAnimated;
+
+		// Calculate animation name (unified for all wave types)
 		const animationName = finalPaused
 			? 'none'
-			: isZigzag
-			? isReversed
-				? 'zigzag-flow-reverse'
-				: 'zigzag-flow'
 			: isReversed
-			? 'squiggle-flow-reverse'
-			: 'squiggle-flow';
+			? 'wave-flow-reverse'
+			: 'wave-flow';
 
 		// useBlockProps must be called unconditionally
 		const blockProps = useBlockProps( {
@@ -770,8 +800,6 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 		const {
 			strokeWidth,
 			squiggleAmplitude,
-			sparkleVerticalAmplitude,
-			sparkleRandomness,
 			animationId,
 			textColor,
 			customTextColor,
@@ -784,16 +812,23 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 
 		// Initialize custom style attributes when custom style is applied
 		if ( isCustom && strokeWidth === undefined ) {
-			const defaultAmplitude = isSparkle ? 18 : isZigzag ? 15 : 10; // Sparkle gets largest default amplitude
+			// Calculate defaults based on style
+			const defaultAmplitude = ( isZigzag || isLightning ) ? 15 : 10;
+			const defaultPointiness = ( isZigzag || isLightning ) ? 100 : 0;
+			const defaultAngle = isLightning ? 40 : 0;
+			// For legacy styles, infer animation from class; for new styles, default to true
+			const defaultIsAnimated = isLegacy ? isLegacyAnimatedStyle( className ) : true;
+
+			const patternType = isLightning ? 'lightning' : ( isZigzag ? 'zigzag' : 'squiggle' );
 			const newAnimationId = generateAnimationId(
-				isZigzag ? 'zigzag' : 'squiggle',
+				patternType,
 				clientId,
 				1,
 				defaultAmplitude
 			);
 			const currentGradient = gradient || style?.color?.gradient || '';
 			const newGradientId = generateGradientId(
-				isZigzag ? 'zigzag' : 'squiggle',
+				patternType,
 				currentGradient,
 				clientId
 			);
@@ -801,18 +836,21 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 				strokeWidth: 1,
 				animationSpeed: 6, // Default to speed level 6 (which converts to 2.5s duration)
 				squiggleAmplitude: defaultAmplitude,
-				sparkleVerticalAmplitude: isSparkle ? 15 : undefined,
 				squiggleHeight: '100px',
 				animationId: newAnimationId,
 				isReversed: false,
 				gradientId: newGradientId,
+				// NEW: Parametric wave defaults based on style
+				pointiness: defaultPointiness,
+				angle: defaultAngle,
+				isAnimated: defaultIsAnimated,
 			} );
 		}
 
 		// Ensure each block has a unique animation ID
 		if ( isCustom && ! animationId ) {
-			const patternType = isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'squiggle';
-			const defaultAmplitude = isSparkle ? 18 : isZigzag ? 15 : 10;
+			const patternType = isZigzag ? 'zigzag' : 'squiggle';
+			const defaultAmplitude = isZigzag ? 15 : 10;
 			setSecureAttributes( setAttributes, {
 				animationId: generateAnimationId(
 					patternType,
@@ -855,6 +893,47 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			);
 		}
 
+		// MIGRATION: Convert legacy styles to new parametric styles
+		// This runs once when a legacy block is opened in the editor
+		if ( isLegacy && className ) {
+			// Determine the new style and animation state based on legacy class
+			let newClassName = className;
+			let newIsAnimated = true;
+
+			if ( className.includes( 'is-style-animated-squiggle' ) ) {
+				newClassName = className.replace( 'is-style-animated-squiggle', 'is-style-squiggle' );
+				newIsAnimated = true;
+			} else if ( className.includes( 'is-style-static-squiggle' ) ) {
+				newClassName = className.replace( 'is-style-static-squiggle', 'is-style-squiggle' );
+				newIsAnimated = false;
+			} else if ( className.includes( 'is-style-animated-zigzag' ) ) {
+				newClassName = className.replace( 'is-style-animated-zigzag', 'is-style-zigzag' );
+				newIsAnimated = true;
+			} else if ( className.includes( 'is-style-static-zigzag' ) ) {
+				newClassName = className.replace( 'is-style-static-zigzag', 'is-style-zigzag' );
+				newIsAnimated = false;
+			}
+
+			// Apply migration - this converts the block to new format
+			if ( newClassName !== className ) {
+				debugLog( '🔄 MIGRATION: Converting legacy style to new format:', {
+					oldClassName: className,
+					newClassName,
+					newIsAnimated,
+				} );
+
+				// Set pointiness based on pattern type (zigzag = 100, squiggle = 0)
+				const newPointiness = newClassName.includes( 'is-style-zigzag' ) ? 100 : 0;
+
+				setSecureAttributes( setAttributes, {
+					className: newClassName,
+					isAnimated: newIsAnimated,
+					pointiness: newPointiness,
+					angle: 0,
+				} );
+			}
+		}
+
 		// Detect if this is a fresh block that needs ID generation
 		useEffect( () => {
 			debugLog( '🔍 Block initialization check:', {
@@ -881,9 +960,9 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					debugLog(
 						'🔄 Duplicate gradient ID detected on initialization, regenerating'
 					);
-					const defaultAmplitude = isSparkle ? 18 : isZigzag ? 15 : 10;
+					const defaultAmplitude = isZigzag ? 15 : 10;
 					const newAnimationId = generateAnimationId(
-						isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'squiggle',
+						isZigzag ? 'zigzag' : 'squiggle',
 						clientId,
 						strokeWidth || 1,
 						squiggleAmplitude || defaultAmplitude
@@ -1161,6 +1240,15 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 
 				<style>
 					{ `
+                        @keyframes wave-flow {
+                            0% { transform: translateX(0); }
+                            100% { transform: translateX(80px); }
+                        }
+                        @keyframes wave-flow-reverse {
+                            0% { transform: translateX(0); }
+                            100% { transform: translateX(-80px); }
+                        }
+                        /* Legacy keyframes for backwards compatibility */
                         @keyframes squiggle-flow {
                             0% { transform: translateX(0); }
                             100% { transform: translateX(80px); }
@@ -1177,22 +1265,29 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
                             0% { transform: translateX(0); }
                             100% { transform: translateX(-80px); }
                         }
-                        @keyframes sparkle-shimmer {
-                            0% { opacity: 0.3; }
-                            50% { opacity: 1; }
-                            100% { opacity: 0.3; }
-                        }
-                        .awesome-squiggle-editor-preview .squiggle-path,
-                        .awesome-squiggle-editor-preview .zigzag-path {
+                        .awesome-squiggle-editor-preview .wave-path {
                             transform-origin: center;
-                            animation: var(--animation-name, squiggle-flow) var(--animation-duration, 1.6s) linear infinite;
-                        }
-                        .awesome-squiggle-editor-preview .sparkle-element {
-                            animation: sparkle-shimmer var(--animation-duration, 1.6s) ease-in-out infinite;
+                            animation: var(--animation-name, wave-flow) var(--animation-duration, 1.6s) linear infinite;
                         }
                     ` }
 				</style>
 				<div { ...blockProps }>
+					{ /* Calculate viewBox to zoom in on the actual wave portion */ }
+					{ ( () => {
+						const effectiveAmplitude = squiggleAmplitude || 15; // Match PHP default
+						const effectiveStrokeWidth = strokeWidth || 1;
+						const editorPadding = Math.max( effectiveStrokeWidth * 2, 5 );
+						const editorViewBoxMinY = 50 - effectiveAmplitude - editorPadding;
+						const editorViewBoxHeight = ( effectiveAmplitude * 2 ) + ( editorPadding * 2 );
+						// Always generate path with max width so viewBox can adjust without missing waves
+						const editorPathWidth = 9600; // Wide enough for any screen
+						// Use 4800 for alignfull (wide/ultra-wide screens), 800 for normal width
+						// Check both className AND align attribute (WordPress stores alignment separately)
+						const isAlignFull = ( className && className.includes( 'alignfull' ) ) ||
+											( attributes.align === 'full' );
+						const editorViewBoxWidth = isAlignFull ? 4800 : 800;
+
+						return (
 					<div
 						ref={ containerRef }
 						className="awesome-squiggle-editor-preview"
@@ -1206,11 +1301,11 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					>
 						<svg
 							key={ `svg-${ gradientId || 'default' }` }
-							viewBox={ `0 0 ${ Math.max( 800, containerWidth + 100 ) } 100` }
+							viewBox={ `0 ${ editorViewBoxMinY } ${ editorViewBoxWidth } ${ editorViewBoxHeight }` }
 							preserveAspectRatio="none"
 							role="img"
 							aria-label={ __(
-								`Decorative ${ isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'wavy' } divider`,
+								`Decorative ${ isZigzag ? 'zigzag' : 'wavy' } divider`,
 								'awesome-squiggle'
 							) }
 							aria-describedby={ `squiggle-desc-${ animationId || 'default' }` }
@@ -1222,13 +1317,13 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 						>
 							<title>
 								{ __(
-									`${ isSparkle ? 'Sparkle' : isZigzag ? 'Zigzag' : 'Wavy' } separator`,
+									`${ isZigzag ? 'Zigzag' : 'Wavy' } separator`,
 									'awesome-squiggle'
 								) }
 							</title>
 							<desc id={ `squiggle-desc-${ animationId || 'default' }` }>
 								{ __(
-									`A decorative ${ isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'wavy' } pattern used as a visual divider between content sections.${ 
+									`A decorative ${ isZigzag ? 'zigzag' : 'wavy' } pattern used as a visual divider between content sections.${
 										isAnimated && !finalPaused ? ' This pattern includes gentle animation.' : ''
 									}`,
 									'awesome-squiggle'
@@ -1297,101 +1392,118 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 										</defs>
 									);
 								} )() }
-							{ isSparkle ? (
-								<g
-									className={ `sparkle-group sparkle-group-${
-										animationId || 'default'
-									}` }
-									fill={ editorLineColor }
-								>
-									{ generateSparkleElements(
-										squiggleAmplitude || 18,
-										sparkleVerticalAmplitude || 15,
-										Math.max( 800, containerWidth + 100 ),
-										sparkleRandomness ?? 100
-									).map( ( sparkle, index ) => (
-										<polygon
-											key={ index }
-											points={ sparkle.points }
-											className="sparkle-element"
-											style={ sparkle.style }
-										/>
-									) ) }
-								</g>
-							) : (
-								<path
-									d={
-										isZigzag
-											? generateZigzagPath(
-													squiggleAmplitude || 15,
-													Math.max( 800, containerWidth + 100 )
-											  )
-											: generateSquigglePath(
-													squiggleAmplitude || 10,
-													Math.max( 800, containerWidth + 100 )
-											  )
-									}
-									fill="none"
-									stroke={ editorLineColor }
-									strokeWidth={ strokeWidth || 1 }
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									className={ `${
-										isZigzag ? 'zigzag' : 'squiggle'
-									}-path ${
-										isZigzag ? 'zigzag' : 'squiggle'
-									}-path-${ animationId || 'default' }` }
-									style={ {
-										transformOrigin: 'center',
-										stroke: editorLineColor,
-										display: 'block',
-										animation: finalPaused
-											? 'none'
-											: `${
-													isZigzag
-														? isReversed
-															? 'zigzag-flow-reverse'
-															: 'zigzag-flow'
-														: isReversed
-														? 'squiggle-flow-reverse'
-														: 'squiggle-flow'
-											  } ${
-													animationSpeed || 1.6
-											  }s linear infinite`,
-									} }
-								/>
-							) }
+							<path
+								d={
+									generateWavePath(
+										squiggleAmplitude || 15, // Match PHP default
+										editorPathWidth, // Wide path, viewBox crops it
+										effectivePointiness,
+										effectiveAngle
+									)
+								}
+								fill="none"
+								stroke={ editorLineColor }
+								strokeWidth={ strokeWidth || 1 }
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								className={ `wave-path wave-path-${ animationId || 'default' }` }
+								style={ {
+									transformOrigin: 'center',
+									stroke: editorLineColor,
+									display: 'block',
+									animation: finalPaused
+										? 'none'
+										: `${ isReversed ? 'wave-flow-reverse' : 'wave-flow' } ${ animationSpeed || 1.6 }s linear infinite`,
+								} }
+							/>
 						</svg>
 					</div>
+						);
+					} )() }
 				</div>
 
 				{ /* Add our custom pattern-specific controls to the inspector */ }
 				<InspectorControls group="settings">
 					<PanelBody
-						title={ __(
-							isSparkle
-								? 'Sparkle Settings'
-								: isZigzag
-								? 'Zig-Zag Settings'
-								: 'Squiggle Settings',
-							'awesome-squiggle'
-						) }
+						title={ __( 'Wave Settings', 'awesome-squiggle' ) }
 						initialOpen={ true }
 					>
+						{ /* Amplitude slider */ }
+						<RangeControl
+							label={ __( 'Amplitude', 'awesome-squiggle' ) }
+							value={ squiggleAmplitude || ( ( isZigzag || isLightning ) ? 15 : 10 ) }
+							onChange={ ( value ) =>
+								setSecureAttributes( setAttributes, {
+									squiggleAmplitude: value,
+								} )
+							}
+							min={ 5 }
+							max={ 25 }
+							help={ __( 'Adjust the height of the wave peaks (5-25px)', 'awesome-squiggle' ) }
+						/>
+
+						{ /* Pointiness slider */ }
+						<RangeControl
+							label={ __( 'Pointiness', 'awesome-squiggle' ) }
+							value={ effectivePointiness }
+							onChange={ ( value ) =>
+								setSecureAttributes( setAttributes, {
+									pointiness: value,
+								} )
+							}
+							min={ 0 }
+							max={ 100 }
+							step={ 5 }
+							help={ (() => {
+								const p = effectivePointiness;
+								const desc = p <= 20 ? __( 'Smooth curves', 'awesome-squiggle' ) :
+											p <= 40 ? __( 'Rounded waves', 'awesome-squiggle' ) :
+											p <= 60 ? __( 'Moderate sharpness', 'awesome-squiggle' ) :
+											p <= 80 ? __( 'Pointed peaks', 'awesome-squiggle' ) :
+											__( 'Sharp zig-zag', 'awesome-squiggle' );
+								return sprintf( __( '%s (%d%%)', 'awesome-squiggle' ), desc, p );
+							})() }
+						/>
+
+						{ /* Angle slider */ }
+						<RangeControl
+							label={ __( 'Angle', 'awesome-squiggle' ) }
+							value={ effectiveAngle }
+							onChange={ ( value ) =>
+								setSecureAttributes( setAttributes, {
+									angle: value,
+								} )
+							}
+							min={ -60 }
+							max={ 60 }
+							step={ 5 }
+							help={ (() => {
+								const a = effectiveAngle;
+								const desc = a < -20 ? __( 'Left lean', 'awesome-squiggle' ) :
+											a > 20 ? __( 'Right lean', 'awesome-squiggle' ) :
+											__( 'Vertical peaks', 'awesome-squiggle' );
+								return sprintf( __( '%s (%d\u00b0)', 'awesome-squiggle' ), desc, a );
+							})() }
+						/>
+
+						{ /* Animation toggle */ }
+						<ToggleControl
+							label={ __( 'Animate', 'awesome-squiggle' ) }
+							checked={ isAnimated }
+							onChange={ ( value ) =>
+								setSecureAttributes( setAttributes, {
+									isAnimated: value,
+								} )
+							}
+							help={ __( 'Enable or disable wave animation', 'awesome-squiggle' ) }
+						/>
+
+						{ /* Animation controls - only shown when animated */ }
 						{ isAnimated && (
 							<>
 								<RangeControl
-									label={ __(
-										'Animation Speed',
-										'awesome-squiggle'
-									) }
-									value={
-										animationSpeed
-											? Math.round(
-													11 - animationSpeed / 0.5
-											  )
-											: 6
-									}
+									label={ __( 'Animation Speed', 'awesome-squiggle' ) }
+									value={ animationSpeed ? Math.round( 11 - animationSpeed / 0.5 ) : 6 }
 									onChange={ ( value ) =>
 										setSecureAttributes( setAttributes, {
 											animationSpeed: value,
@@ -1400,265 +1512,82 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 									min={ 1 }
 									max={ 10 }
 									step={ 1 }
-									// Enhanced accessibility
 									help={ (() => {
-										const speedValue = animationSpeed ? Math.round(11 - animationSpeed / 0.5) : 6;
-										const speedDescription = speedValue <= 3 ? __('slow', 'awesome-squiggle') : 
-																speedValue <= 7 ? __('medium', 'awesome-squiggle') : 
-																__('fast', 'awesome-squiggle');
-										const baseHelp = isSparkle
-											? __('Control how fast the sparkles animate (higher = faster)', 'awesome-squiggle')
-											: isZigzag
-											? __('Control how fast the zig-zag animates (higher = faster)', 'awesome-squiggle')
-											: __('Control how fast the squiggle animates (higher = faster)', 'awesome-squiggle');
-										return sprintf(
-											__('%s Current speed: %s. Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
-											baseHelp,
-											speedDescription
-										);
+										const speedValue = animationSpeed ? Math.round( 11 - animationSpeed / 0.5 ) : 6;
+										const desc = speedValue <= 3 ? __( 'slow', 'awesome-squiggle' ) :
+													speedValue <= 7 ? __( 'medium', 'awesome-squiggle' ) :
+													__( 'fast', 'awesome-squiggle' );
+										return sprintf( __( 'Current: %s (higher = faster)', 'awesome-squiggle' ), desc );
 									})() }
-									aria-describedby="speed-help"
-									onKeyDown={ ( e ) => {
-										const currentValue = animationSpeed ? Math.round(11 - animationSpeed / 0.5) : 6;
-										if ( e.shiftKey && e.key === 'ArrowLeft' ) {
-											e.preventDefault();
-											const newValue = Math.max( 1, currentValue - 5 );
-											setSecureAttributes( setAttributes, {
-												animationSpeed: newValue,
-											} );
-										} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
-											e.preventDefault();
-											const newValue = Math.min( 10, currentValue + 5 );
-											setSecureAttributes( setAttributes, {
-												animationSpeed: newValue,
-											} );
-										}
-									} }
 								/>
-								<div id="speed-help" className="screen-reader-text">
-									{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
-								</div>
 								<ToggleControl
-									label={ __(
-										'Reverse Animation',
-										'awesome-squiggle'
-									) }
+									label={ __( 'Reverse Direction', 'awesome-squiggle' ) }
 									checked={ isReversed || false }
 									onChange={ () =>
 										setSecureAttributes( setAttributes, {
 											isReversed: ! isReversed,
 										} )
 									}
-									help={ __(
-										isSparkle
-											? 'Make the sparkles animate in the opposite direction'
-											: isZigzag
-											? 'Make the zig-zag animate in the opposite direction'
-											: 'Make the squiggle animate in the opposite direction',
-										'awesome-squiggle'
-									) }
-								/>
-							</>
-						) }
-						<RangeControl
-							label={ __(
-								isSparkle
-									? 'Sparkle Size'
-									: isZigzag
-									? 'Zig-Zag Amplitude'
-									: 'Squiggle Amplitude',
-								'awesome-squiggle'
-							) }
-							value={
-								squiggleAmplitude ||
-								( isSparkle ? 18 : isZigzag ? 15 : 10 )
-							}
-							onChange={ ( value ) =>
-								setSecureAttributes( setAttributes, {
-									squiggleAmplitude: value,
-								} )
-							}
-							min={ isSparkle ? 8 : 5 }
-							max={ isSparkle ? 35 : 25 }
-							// Enhanced accessibility
-							help={ (() => {
-								const currentValue = squiggleAmplitude || ( isSparkle ? 18 : isZigzag ? 15 : 10 );
-								const minVal = isSparkle ? 8 : 5;
-								const maxVal = isSparkle ? 35 : 25;
-								const range = maxVal - minVal;
-								const percentage = Math.round(((currentValue - minVal) / range) * 100);
-								const sizeDescription = percentage <= 33 ? __('small', 'awesome-squiggle') : 
-														percentage <= 66 ? __('medium', 'awesome-squiggle') : 
-														__('large', 'awesome-squiggle');
-								const baseHelp = isSparkle
-									? __('Adjust the size of the sparkles (higher = more dramatic)', 'awesome-squiggle')
-									: isZigzag
-									? __('Adjust the height of the zig-zag peaks', 'awesome-squiggle')
-									: __('Adjust the height of the squiggle peaks', 'awesome-squiggle');
-								return sprintf(
-									__('%s Current size: %s (%d). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
-									baseHelp,
-									sizeDescription,
-									currentValue
-								);
-							})() }
-							aria-describedby="amplitude-help"
-							onKeyDown={ ( e ) => {
-								const currentValue = squiggleAmplitude || ( isSparkle ? 18 : isZigzag ? 15 : 10 );
-								const jumpSize = isSparkle ? 5 : 3;
-								const minVal = isSparkle ? 8 : 5;
-								const maxVal = isSparkle ? 35 : 25;
-								if ( e.shiftKey && e.key === 'ArrowLeft' ) {
-									e.preventDefault();
-									const newValue = Math.max( minVal, currentValue - jumpSize );
-									setSecureAttributes( setAttributes, {
-										squiggleAmplitude: newValue,
-									} );
-								} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
-									e.preventDefault();
-									const newValue = Math.min( maxVal, currentValue + jumpSize );
-									setSecureAttributes( setAttributes, {
-										squiggleAmplitude: newValue,
-									} );
-								}
-							} }
-						/>
-						<div id="amplitude-help" className="screen-reader-text">
-							{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
-						</div>
-						{ isSparkle && (
-							<>
-								<RangeControl
-									label={ __(
-										'Sparkle Vertical Spread',
-										'awesome-squiggle'
-									) }
-									value={ sparkleVerticalAmplitude || 15 }
-									onChange={ ( value ) =>
-										setSecureAttributes( setAttributes, {
-											sparkleVerticalAmplitude: value,
-										} )
-									}
-									min={ 0 }
-									max={ 30 }
-									// Enhanced accessibility
-									help={ (() => {
-										const currentValue = sparkleVerticalAmplitude || 15;
-										const percentage = Math.round((currentValue / 30) * 100);
-										const spreadDescription = percentage <= 25 ? __('minimal', 'awesome-squiggle') : 
-																percentage <= 50 ? __('moderate', 'awesome-squiggle') : 
-																percentage <= 75 ? __('wide', 'awesome-squiggle') : 
-																__('maximum', 'awesome-squiggle');
-										return sprintf(
-											__('Control how high and low the sparkles spread from the center line. Current spread: %s (%d). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
-											spreadDescription,
-											currentValue
-										);
-									})() }
-									aria-describedby="vertical-spread-help"
-									onKeyDown={ ( e ) => {
-										const currentValue = sparkleVerticalAmplitude || 15;
-										if ( e.shiftKey && e.key === 'ArrowLeft' ) {
-											e.preventDefault();
-											const newValue = Math.max( 0, currentValue - 5 );
-											setSecureAttributes( setAttributes, {
-												sparkleVerticalAmplitude: newValue,
-											} );
-										} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
-											e.preventDefault();
-											const newValue = Math.min( 30, currentValue + 5 );
-											setSecureAttributes( setAttributes, {
-												sparkleVerticalAmplitude: newValue,
-											} );
-										}
-									} }
-								/>
-								<div id="vertical-spread-help" className="screen-reader-text">
-									{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
-								</div>
-								<RangeControl
-									label={ __( 'Twinkle Randomness', 'awesome-squiggle' ) }
-									value={ (attributes?.sparkleRandomness ?? 100) }
-									onChange={ ( value ) => setSecureAttributes( setAttributes, { sparkleRandomness: value } ) }
-									min={ 0 }
-									max={ 200 }
-									help={ __( 'Controls how varied the sparkle twinkle timing is. 0% = uniform, 100% = normal, 200% = highly varied.', 'awesome-squiggle' ) }
+									help={ __( 'Animate in the opposite direction', 'awesome-squiggle' ) }
 								/>
 							</>
 						) }
 					</PanelBody>
 					<PanelBody
-						title={ __(
-							isSparkle
-								? 'Sparkle Dimensions'
-								: isZigzag
-								? 'Zig-Zag Dimensions'
-								: 'Squiggle Dimensions',
-							'awesome-squiggle'
-						) }
+						title={ __( 'Dimensions', 'awesome-squiggle' ) }
 						initialOpen={ false }
 					>
-						{ ! isSparkle && (
-							<>
-								<RangeControl
-									label={ __(
-										'Stroke Width',
-										'awesome-squiggle'
-									) }
-									value={ strokeWidth || 1 }
-									onChange={ ( value ) =>
-										setSecureAttributes( setAttributes, {
-											strokeWidth: value,
-										} )
-									}
-									min={ 1 }
-									max={ 8 }
-									// Enhanced accessibility
-									help={ (() => {
-										const currentValue = strokeWidth || 1;
-										const percentage = Math.round(((currentValue - 1) / 7) * 100);
-										const widthDescription = percentage <= 25 ? __('thin', 'awesome-squiggle') : 
-																percentage <= 50 ? __('medium', 'awesome-squiggle') : 
-																percentage <= 75 ? __('thick', 'awesome-squiggle') : 
-																__('very thick', 'awesome-squiggle');
-										const baseHelp = isZigzag
-											? __('Adjust the thickness of the zig-zag line', 'awesome-squiggle')
-											: __('Adjust the thickness of the squiggle line', 'awesome-squiggle');
-										return sprintf(
-											__('%s Current width: %s (%dpx). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
-											baseHelp,
-											widthDescription,
-											currentValue
-										);
-									})() }
-									aria-describedby="stroke-width-help"
-									onKeyDown={ ( e ) => {
-										const currentValue = strokeWidth || 1;
-										if ( e.shiftKey && e.key === 'ArrowLeft' ) {
-											e.preventDefault();
-											const newValue = Math.max( 1, currentValue - 2 );
-											setSecureAttributes( setAttributes, {
-												strokeWidth: newValue,
-											} );
-										} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
-											e.preventDefault();
-											const newValue = Math.min( 8, currentValue + 2 );
-											setSecureAttributes( setAttributes, {
-												strokeWidth: newValue,
-											} );
-										}
-									} }
-								/>
-								<div id="stroke-width-help" className="screen-reader-text">
-									{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
-								</div>
-							</>
-						) }
+						<RangeControl
+							label={ __( 'Stroke Width', 'awesome-squiggle' ) }
+							value={ strokeWidth || 1 }
+							onChange={ ( value ) =>
+								setSecureAttributes( setAttributes, {
+									strokeWidth: value,
+								} )
+							}
+							min={ 1 }
+							max={ 8 }
+							help={ (() => {
+								const currentValue = strokeWidth || 1;
+								const percentage = Math.round(((currentValue - 1) / 7) * 100);
+								const widthDescription = percentage <= 25 ? __('thin', 'awesome-squiggle') :
+														percentage <= 50 ? __('medium', 'awesome-squiggle') :
+														percentage <= 75 ? __('thick', 'awesome-squiggle') :
+														__('very thick', 'awesome-squiggle');
+								const baseHelp = isZigzag
+									? __('Adjust the thickness of the zig-zag line', 'awesome-squiggle')
+									: __('Adjust the thickness of the squiggle line', 'awesome-squiggle');
+								return sprintf(
+									__('%s Current width: %s (%dpx). Use arrow keys or drag to adjust. Hold Shift + arrow keys for larger increments.', 'awesome-squiggle'),
+									baseHelp,
+									widthDescription,
+									currentValue
+								);
+							})() }
+							aria-describedby="stroke-width-help"
+							onKeyDown={ ( e ) => {
+								const currentValue = strokeWidth || 1;
+								if ( e.shiftKey && e.key === 'ArrowLeft' ) {
+									e.preventDefault();
+									const newValue = Math.max( 1, currentValue - 2 );
+									setSecureAttributes( setAttributes, {
+										strokeWidth: newValue,
+									} );
+								} else if ( e.shiftKey && e.key === 'ArrowRight' ) {
+									e.preventDefault();
+									const newValue = Math.min( 8, currentValue + 2 );
+									setSecureAttributes( setAttributes, {
+										strokeWidth: newValue,
+									} );
+								}
+							} }
+						/>
+						<div id="stroke-width-help" className="screen-reader-text">
+							{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
+						</div>
 						<SelectControl
 							label={ __(
-								isSparkle
-									? 'Sparkle Height'
-									: isZigzag
+								isZigzag
 									? 'Zig-Zag Height'
 									: 'Squiggle Height',
 								'awesome-squiggle'
@@ -1678,9 +1607,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 								} )
 							}
 							help={ __(
-								isSparkle
-									? 'Set the height of the sparkle container'
-									: isZigzag
+								isZigzag
 									? 'Set the height of the zig-zag container'
 									: 'Set the height of the squiggle container',
 								'awesome-squiggle'
@@ -1714,7 +1641,8 @@ addFilter(
 		const className = element?.props?.className || attributes?.className || '';
 		const isSquiggle = isSquiggleStyle( className );
 		const isZigzag = isZigzagStyle( className );
-		const isSparkle = isSparkleStyle( className );
+		const isLightning = isLightningStyle( className );
+		const isLegacy = isLegacyStyle( className );
 		const isCustom = isCustomStyle( className );
 
 		if ( ! isCustom ) {
@@ -1724,9 +1652,7 @@ addFilter(
 		const {
 			strokeWidth = 1,
 			animationSpeed = 2.5, // Default duration for speed level 6
-			squiggleAmplitude = isSparkle ? 18 : isZigzag ? 15 : 10,
-			sparkleVerticalAmplitude = 15,
-			sparkleRandomness = 100,
+			squiggleAmplitude = 15, // Match PHP default
 			squiggleHeight = '100px',
 			animationId,
 			isReversed,
@@ -1737,7 +1663,19 @@ addFilter(
 			style,
 			gradient,
 			gradientId,
+			// NEW: Parametric wave controls
+			isAnimated: isAnimatedAttr,
+			pointiness: pointinessAttr,
+			angle: angleAttr,
 		} = attributes;
+
+		// Calculate effective values for pointiness and angle
+		const effectivePointiness = pointinessAttr !== undefined
+			? pointinessAttr
+			: ( isZigzag || isLightning ? 100 : 0 );
+		const effectiveAngle = angleAttr !== undefined
+			? angleAttr
+			: ( isLightning ? 40 : 0 );
 
 		debugLog( '🎨 SAVE FUNCTION - Block attributes:', {
 			gradient,
@@ -1771,16 +1709,12 @@ addFilter(
 			return null;
 		};
 
-		// Determine if animation should be paused based on style
-		let finalPaused = false;
-		if (
-			className &&
-			( className.includes( 'is-style-static-squiggle' ) ||
-				className.includes( 'is-style-static-zigzag' ) ||
-				className.includes( 'is-style-static-sparkle' ) )
-		) {
-			finalPaused = true;
-		}
+		// Determine if animation should be paused
+		// For legacy styles, check class name; for new styles, use isAnimated attribute
+		const isAnimated = isLegacy
+			? isLegacyAnimatedStyle( className )
+			: ( isAnimatedAttr !== undefined ? isAnimatedAttr : true );
+		const finalPaused = ! isAnimated;
 
 		// Get line color - prioritize background color settings for the line
 		let lineColor = 'currentColor';
@@ -1798,7 +1732,6 @@ addFilter(
 		debugLog( '🎨 SAVE DEBUG: Pattern type:', {
 			isSquiggle,
 			isZigzag,
-			isSparkle,
 			gradientId,
 		} );
 
@@ -1890,19 +1823,28 @@ addFilter(
 		// Remove any duplicates and join
 		const combinedClassName = [ ...new Set( classNames ) ].join( ' ' );
 
-		// Determine animation name based on pattern type and direction
+		// Determine animation name - use legacy names for legacy styles, unified for new styles
 		let animationName;
 		if ( finalPaused ) {
 			animationName = 'none';
-		} else if ( isZigzag ) {
-			animationName = isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow';
-		} else if ( isSparkle ) {
-			animationName = 'none'; // Sparkles don't use group animation, individual elements twinkle via CSS
+		} else if ( isLegacy ) {
+			// Legacy styles use pattern-specific animation names for backwards compatibility
+			if ( isZigzag ) {
+				animationName = isReversed ? 'zigzag-flow-reverse' : 'zigzag-flow';
+			} else {
+				animationName = isReversed ? 'squiggle-flow-reverse' : 'squiggle-flow';
+			}
 		} else {
-			animationName = isReversed
-				? 'squiggle-flow-reverse'
-				: 'squiggle-flow';
+			// New styles use unified animation names
+			animationName = isReversed ? 'wave-flow-reverse' : 'wave-flow';
 		}
+
+		// Determine path class name - use legacy names for legacy styles
+		const pathClassName = isLegacy
+			? ( isZigzag
+				? `zigzag-path ${ animationId ? `zigzag-path-${ animationId }` : '' }`
+				: `squiggle-path ${ animationId ? `squiggle-path-${ animationId }` : '' }` )
+			: `wave-path ${ animationId ? `wave-path-${ animationId }` : '' }`;
 
 		const inlineStyles = {
 			height: squiggleHeight,
@@ -1918,40 +1860,29 @@ addFilter(
 			inlineStyles.backgroundColor = 'transparent';
 		}
 
-		// Data attributes for frontend sparkle regeneration
-		const sparkleDataAttrs = isSparkle
-			? {
-                // Clamp to validated ranges to keep frontend logic safe
-                'data-sparkle-size': String(
-                    Math.max( 8, Math.min( 35, squiggleAmplitude || 18 ) )
-                ),
-                'data-sparkle-vertical-amplitude': String(
-                    Math.max(
-                        0,
-                        Math.min( 30, sparkleVerticalAmplitude || 15 )
-                    )
-                ),
-				'data-animation-speed': String(
-					Math.max( 0.5, Math.min( 5, animationSpeed || 1.6 ) )
-				),
-				'data-sparkle-randomness': String(
-					Math.max( 0, Math.min( 200, (attributes?.sparkleRandomness ?? 100) ) )
-				),
-			}
-			: {};
+		// Always generate path with max width (9600) so PHP can adjust viewBox without missing waves
+		// ViewBox width determines how much of the path is visible
+		const pathWidth = 9600; // Wide enough for any screen
+		// Check both className AND align attribute (WordPress stores alignment separately)
+		const isAlignFull = ( className && className.includes( 'alignfull' ) ) ||
+							( attributes.align === 'full' );
+		const viewBoxWidth = isAlignFull ? 4800 : 800;
 
-		// Use a wider viewBox for zigzag/squiggle to minimize stretching on wide screens
-		// Sparkles use 800px since frontend JavaScript handles dynamic regeneration
-		const viewBoxWidth = isSparkle ? 800 : 2400;
+		// Calculate viewBox to zoom in on the actual wave portion
+		// Path uses midY=50 with amplitude going above/below
+		// Add padding equal to strokeWidth to prevent clipping
+		const padding = Math.max( strokeWidth * 2, 5 );
+		const viewBoxMinY = 50 - squiggleAmplitude - padding;
+		const viewBoxHeight = ( squiggleAmplitude * 2 ) + ( padding * 2 );
 
 		return (
-			<div className={ combinedClassName } style={ inlineStyles } { ...sparkleDataAttrs }>
+			<div className={ combinedClassName } style={ inlineStyles }>
 				<svg
-					viewBox={ `0 0 ${ viewBoxWidth } 100` }
+					viewBox={ `0 ${ viewBoxMinY } ${ viewBoxWidth } ${ viewBoxHeight }` }
 					preserveAspectRatio="none"
 					role="img"
 					aria-label={ __(
-						`Decorative ${ isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'wavy' } divider`,
+						`Decorative ${ isZigzag ? 'zigzag' : 'wavy' } divider`,
 						'awesome-squiggle'
 					) }
 					aria-describedby={ `squiggle-desc-${ animationId || 'default' }` }
@@ -1963,13 +1894,13 @@ addFilter(
 				>
 					<title>
 						{ __(
-							`${ isSparkle ? 'Sparkle' : isZigzag ? 'Zigzag' : 'Wavy' } separator`,
+							`${ isZigzag ? 'Zigzag' : 'Wavy' } separator`,
 							'awesome-squiggle'
 						) }
 					</title>
 					<desc id={ `squiggle-desc-${ animationId || 'default' }` }>
 						{ __(
-							`A decorative ${ isSparkle ? 'sparkle' : isZigzag ? 'zigzag' : 'wavy' } pattern used as a visual divider between content sections.${ 
+							`A decorative ${ isZigzag ? 'zigzag' : 'wavy' } pattern used as a visual divider between content sections.${
 								finalPaused ? '' : ' This pattern includes gentle animation.'
 							}`,
 							'awesome-squiggle'
@@ -2032,64 +1963,34 @@ addFilter(
 								</defs>
 							);
 						} )() }
-					{ isSparkle ? (
-						<g
-							className={ `sparkle-group ${
-								animationId
-									? `sparkle-group-${ animationId }`
-									: ''
-							}` }
-							fill={ lineColor }
-							style={ {
-								transformOrigin: 'center',
-								animation: 'none', // Sparkle groups don't animate - individual elements do
-							} }
-						>
-								{ generateSparkleElements(
+					<path
+						d={
+							isLegacy
+								? ( isZigzag
+									? generateZigzagPath( squiggleAmplitude, pathWidth )
+									: generateSquigglePath( squiggleAmplitude, pathWidth ) )
+								: generateWavePath(
 									squiggleAmplitude,
-									sparkleVerticalAmplitude,
-									viewBoxWidth,
-									sparkleRandomness
-								).map( ( sparkle, index ) => (
-								<polygon
-									key={ index }
-									points={ sparkle.points }
-									className="sparkle-element"
-									style={ sparkle.style }
-								/>
-							) ) }
-						</g>
-					) : (
-						<path
-							d={
-								isZigzag
-									? generateZigzagPath( squiggleAmplitude, viewBoxWidth )
-									: generateSquigglePath( squiggleAmplitude, viewBoxWidth )
-							}
-							fill="none"
-							stroke={ lineColor }
-							strokeWidth={ strokeWidth }
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							className={ `${
-								isZigzag ? 'zigzag' : 'squiggle'
-							}-path ${
-								animationId
-									? `${
-											isZigzag ? 'zigzag' : 'squiggle'
-									  }-path-${ animationId }`
-									: ''
-							}` }
-							style={ {
-								transformOrigin: 'center',
-								stroke: lineColor,
-								display: 'block',
-								animation: finalPaused
-									? 'none'
-									: `${ animationName } ${ animationSpeed }s linear infinite`,
-							} }
-						/>
-					) }
+									pathWidth,
+									effectivePointiness,
+									effectiveAngle
+								)
+						}
+						fill="none"
+						stroke={ lineColor }
+						strokeWidth={ strokeWidth }
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						className={ pathClassName }
+						style={ {
+							transformOrigin: 'center',
+							stroke: lineColor,
+							display: 'block',
+							animation: finalPaused
+								? 'none'
+								: `${ animationName } ${ animationSpeed }s linear infinite`,
+						} }
+					/>
 				</svg>
 			</div>
 		);
@@ -2097,47 +1998,26 @@ addFilter(
 	20
 );
 
-// Register block styles for squiggle and zig-zag options
+// Register block styles - shape presets only, animation is now a toggle
 wp.domReady( () => {
-	// Animated Squiggle Style
+	// Squiggle Style (smooth curves, pointiness: 0)
 	registerBlockStyle( 'core/separator', {
-		name: 'animated-squiggle',
-		label: __( 'Animated Squiggle', 'awesome-squiggle' ),
+		name: 'squiggle',
+		label: __( 'Squiggle', 'awesome-squiggle' ),
 		isDefault: false,
 	} );
 
-	// Static Squiggle Style
+	// Zig-Zag Style (sharp angles, pointiness: 100)
 	registerBlockStyle( 'core/separator', {
-		name: 'static-squiggle',
-		label: __( 'Static Squiggle', 'awesome-squiggle' ),
+		name: 'zigzag',
+		label: __( 'Zig-Zag', 'awesome-squiggle' ),
 		isDefault: false,
 	} );
 
-	// Animated Zig-Zag Style
+	// Lightning Style (sharp angles with tilt, pointiness: 100, angle: 40)
 	registerBlockStyle( 'core/separator', {
-		name: 'animated-zigzag',
-		label: __( 'Animated Zig-Zag', 'awesome-squiggle' ),
-		isDefault: false,
-	} );
-
-	// Static Zig-Zag Style
-	registerBlockStyle( 'core/separator', {
-		name: 'static-zigzag',
-		label: __( 'Static Zig-Zag', 'awesome-squiggle' ),
-		isDefault: false,
-	} );
-
-	// Animated Sparkle Style
-	registerBlockStyle( 'core/separator', {
-		name: 'animated-sparkle',
-		label: __( 'Animated Sparkle', 'awesome-squiggle' ),
-		isDefault: false,
-	} );
-
-	// Static Sparkle Style
-	registerBlockStyle( 'core/separator', {
-		name: 'static-sparkle',
-		label: __( 'Static Sparkle', 'awesome-squiggle' ),
+		name: 'lightning',
+		label: __( 'Lightning', 'awesome-squiggle' ),
 		isDefault: false,
 	} );
 } );

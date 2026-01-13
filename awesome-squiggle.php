@@ -3,7 +3,7 @@
  * Plugin Name: Awesome Squiggle
  * Plugin URI: https://github.com/edequalsawesome/awesome-squiggle
  * Description: Adds animated squiggle variations to the core WordPress separator block
- * Version: 1.3.2
+ * Version: 2026.01.12
  * Author: eD! Thomas
  * Author URI: https://edequalsaweso.me
  * License: GPL-3.0-or-later
@@ -82,32 +82,10 @@ function awesome_squiggle_enqueue_frontend_styles() {
         'awesome-squiggle-frontend',
         plugin_dir_url(__FILE__) . 'build/style-index.css',
         array(),
-        '1.3.2'
+        '2026.01.12'
     );
 }
 add_action('wp_enqueue_scripts', 'awesome_squiggle_enqueue_frontend_styles');
-
-/**
- * Add frontend JavaScript for sparkle separators - only load when needed
- */
-function awesome_squiggle_enqueue_frontend_scripts() {
-    // Only enqueue if the current post contains sparkle separators
-    global $post;
-
-    if ($post && (
-        strpos($post->post_content, 'is-style-animated-sparkle') !== false ||
-        strpos($post->post_content, 'is-style-static-sparkle') !== false
-    )) {
-        wp_enqueue_script(
-            'awesome-squiggle-frontend',
-            plugin_dir_url(__FILE__) . 'build/frontend.js',
-            array(),
-            '1.3.2',
-            true
-        );
-    }
-}
-add_action('wp_enqueue_scripts', 'awesome_squiggle_enqueue_frontend_scripts');
 
 /**
  * Filter separator block content on frontend to ensure squiggle styles are applied
@@ -128,9 +106,9 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
     // Security validation: Validate block attributes server-side
     $attrs = awesome_squiggle_validate_block_attributes($attrs);
     
-    if (strpos($className, 'is-style-') !== false && 
-        (strpos($className, 'squiggle') !== false || strpos($className, 'zigzag') !== false || strpos($className, 'sparkle') !== false)) {
-        
+    if (strpos($className, 'is-style-') !== false &&
+        (strpos($className, 'squiggle') !== false || strpos($className, 'zigzag') !== false || strpos($className, 'lightning') !== false)) {
+
         // Ensure our CSS class is included
         if (strpos($block_content, 'awesome-squiggle-wave') === false) {
             $block_content = str_replace(
@@ -139,7 +117,33 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
                 $block_content
             );
         }
-        
+
+        // Fix viewBox to zoom in on the actual wave portion
+        // This ensures the wave fills the container height properly
+        $amplitude = isset($attrs['squiggleAmplitude']) ? intval($attrs['squiggleAmplitude']) : 15;
+        $amplitude = max(5, min(25, $amplitude)); // Clamp to valid range
+        $stroke_width = isset($attrs['strokeWidth']) ? intval($attrs['strokeWidth']) : 1;
+        $stroke_width = max(1, min(8, $stroke_width)); // Clamp to valid range
+
+        $padding = max($stroke_width * 2, 5);
+        $viewbox_min_y = 50 - $amplitude - $padding;
+        $viewbox_height = ($amplitude * 2) + ($padding * 2);
+
+        // Replace viewBox with calculated one
+        // Use 4800 for alignfull (wide/ultra-wide screens), 800 for normal width
+        // Check both className and align attribute (WordPress stores alignment separately)
+        $is_full_width = (strpos($className, 'alignfull') !== false) ||
+                         (isset($attrs['align']) && $attrs['align'] === 'full');
+        $viewbox_width = $is_full_width ? 4800 : 800;
+
+        // Match ANY viewBox format and replace with correct calculated values
+        // This fixes both old format (0 0 width 100) and new format (0 minY width height)
+        $block_content = preg_replace(
+            '/viewBox="[^"]*"/',
+            'viewBox="0 ' . $viewbox_min_y . ' ' . $viewbox_width . ' ' . $viewbox_height . '"',
+            $block_content
+        );
+
         // Security: Validate and sanitize any ID attributes in the output
         if (isset($attrs['animationId'])) {
             $validated_animation_id = awesome_squiggle_validate_squiggle_id($attrs['animationId'], 'animation');
@@ -148,7 +152,7 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
                 $block_content = str_replace($attrs['animationId'], $validated_animation_id, $block_content);
             }
         }
-        
+
         if (isset($attrs['gradientId'])) {
             $validated_gradient_id = awesome_squiggle_validate_squiggle_id($attrs['gradientId'], 'gradient');
             // Replace any instances of the original ID with the validated one
@@ -168,13 +172,11 @@ add_filter('render_block', 'awesome_squiggle_filter_separator_content', 10, 2);
  */
 function awesome_squiggle_validate_rest_block_attributes($prepared_post, $request) {
     // Only process if post content contains squiggle blocks
-    if (isset($prepared_post->post_content) && 
+    if (isset($prepared_post->post_content) &&
         (strpos($prepared_post->post_content, 'is-style-animated-squiggle') !== false ||
          strpos($prepared_post->post_content, 'is-style-static-squiggle') !== false ||
          strpos($prepared_post->post_content, 'is-style-animated-zigzag') !== false ||
-         strpos($prepared_post->post_content, 'is-style-static-zigzag') !== false ||
-         strpos($prepared_post->post_content, 'is-style-animated-sparkle') !== false ||
-         strpos($prepared_post->post_content, 'is-style-static-sparkle') !== false)) {
+         strpos($prepared_post->post_content, 'is-style-static-zigzag') !== false)) {
         
         // Parse blocks and validate attributes
         $blocks = parse_blocks($prepared_post->post_content);
@@ -190,11 +192,10 @@ function awesome_squiggle_validate_rest_block_attributes($prepared_post, $reques
  */
 function awesome_squiggle_validate_parsed_blocks($block) {
     // Validate separator blocks with squiggle styles
-    if ($block['blockName'] === 'core/separator' && 
+    if ($block['blockName'] === 'core/separator' &&
         isset($block['attrs']['className']) &&
         (strpos($block['attrs']['className'], 'squiggle') !== false ||
-         strpos($block['attrs']['className'], 'zigzag') !== false ||
-         strpos($block['attrs']['className'], 'sparkle') !== false)) {
+         strpos($block['attrs']['className'], 'zigzag') !== false)) {
         
         $block['attrs'] = awesome_squiggle_validate_block_attributes($block['attrs']);
     }

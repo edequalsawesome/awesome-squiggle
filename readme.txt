@@ -5,29 +5,29 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.3.2
+Stable tag: 2026.01.12
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
-Adds animated squiggle and zigzag styles to the core WordPress separator block with full customization options.
+Adds parametric wave styles to the core WordPress separator block with full shape control via sliders.
 
 == Description ==
 
-Transform boring horizontal separators into beautiful, flowing wave dividers! Awesome Squiggle adds animated and static squiggle styles to the core WordPress Separator block.
+Transform boring horizontal separators into beautiful, flowing wave dividers! Awesome Squiggle adds parametric wave styles to the core WordPress Separator block with full control over shape, animation, and style.
 
 **Features:**
 
-* Six unique styles for the core Separator block:
-  * **Animated Squiggle**: Smooth, continuously flowing wave animation
-  * **Static Squiggle**: Beautiful wave shape without animation
-  * **Animated Zig-Zag**: Sharp, angular Charlie Brown-style animation
-  * **Static Zig-Zag**: Angular divider without animation
-  * **Animated Sparkle**: Glittering, shimmering sparkle animation
-  * **Static Sparkle**: Decorative sparkle pattern without animation
+* Three shape presets for the core Separator block:
+  * **Squiggle**: Smooth, flowing wave curves
+  * **Zig-Zag**: Sharp, angular Charlie Brown-style pattern
+  * **Lightning**: Sharp angles with a dynamic lean
 
-* **Customizable wave properties:**
+* **Parametric wave controls:**
+  * Pointiness (0-100%): Smooth curves to sharp angles
+  * Angle (-60 to +60): Lean the wave peaks for lightning effects
+  * Animation toggle: Enable or disable animation on any shape
+  * Wave amplitude (5-25px)
   * Animation speed (0.5-5 seconds)
-  * Wave amplitude (5-25px) 
   * Stroke width (1-8px)
   * Container height (50px-200px)
   * Reverse animation direction
@@ -50,14 +50,14 @@ Transform boring horizontal separators into beautiful, flowing wave dividers! Aw
 2. Activate the plugin through the 'Plugins' menu in WordPress
 3. Add a core Separator block to your content
 4. In the block toolbar, click the Styles button
-5. Select from six available squiggle/zigzag/sparkle styles
+5. Select from four available squiggle/zigzag styles
 6. Customize using the Squiggle Settings panel in the block sidebar
 
 == Frequently Asked Questions ==
 
 = How do I use the squiggle separators? =
 
-Add a core Separator block to your content, then in the block toolbar click the "Styles" button and select from the six available squiggle, zigzag, and sparkle styles.
+Add a core Separator block to your content, then in the block toolbar click the "Styles" button and select from the four available squiggle and zigzag styles.
 
 = Can I customize the animation speed? =
 
@@ -80,6 +80,16 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 
 == Changelog ==
 
+= 2026.01.12 =
+* Major Refactor: Converted from style-based to slider-based parametric wave generator
+* New Wave Controls: Added Pointiness slider (0-100) for smooth curves to sharp angles
+* Angle Control: Added Angle slider (-60 to +60) for leaning wave peaks (lightning bolt effect)
+* Animation Toggle: Animation is now controlled via toggle instead of separate styles
+* Three Shape Presets: Squiggle (smooth), Zig-Zag (sharp), Lightning (sharp + angled)
+* Backwards Compatible: Legacy styles (animated-squiggle, static-squiggle, etc.) still work
+* Unified Path Generation: Single generateWavePath() function for all wave types
+* Sparkle Extraction: Sparkle styles extracted to separate "Awesome Sparkles" plugin
+
 = 1.3.2 =
 * Fixed zigzag and squiggle pattern stretching on wide screens
 * Increased SVG viewBox from 800px to 2400px for consistent rendering across all screen sizes
@@ -89,27 +99,17 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 = 1.3.1 =
 * Full Width Fix: Ensure alignfull separators break out of global site padding wrappers
 * Theme Preset Gradients: Resolve theme.json gradient presets via CSS variables for any theme slug
-* Sparkle Controls on Frontend: Sparkle Size and Sparkle Vertical Spread now apply on the frontend (saved as data attributes)
-* Sparkle Animation Speed: Editor speed now controls frontend shimmer timing
-* Twinkle Randomness: New control to tune sparkle timing variance (0–200%)
-* Editor Preview Parity: Sparkle preview width matches frontend for centered layout
+* Editor Preview Parity: Preview width matches frontend for centered layout
 * Packaging: Updated built assets and ZIP for distribution
 
 = 1.3.0 =
-* Dynamic Sparkle Generation: Sparkles now automatically scale based on container width for responsive display
 * Alignment Fix: Fixed alignfull and alignwide classes not generating correctly on frontend
 * Alignfull Breakout: Added CSS to break full-width separators out of global padding wrappers for true edge-to-edge display
 * Color Override Enhancement: Added aggressive CSS overrides to prevent background color blocks from appearing
-* Half-Sparkle Prevention: Sparkles now respect container boundaries and never appear as partial elements
-* ResizeObserver Integration: Added automatic sparkle regeneration when container size changes
-* Frontend Script Optimization: Conditional loading of frontend scripts only when sparkle styles are present
-* Webpack Multi-Entry: Added support for separate frontend JavaScript bundle
 * Theme Gradient Compatibility: Gradient presets from theme.json now resolve via CSS variables, supporting custom slugs across themes
 
 = 1.2.15 =
-* New Sparkle Divider: Added animated and static sparkle/glitter variations to the separator block
 * Enhanced Gradient System: Improved deterministic gradient ID generation for better performance and uniqueness
-* Optimized Animations: Refined CSS animations and added sparkle shimmer effects
 * Better Block Identification: Enhanced block instance tracking to prevent ID conflicts
 * Webpack Configuration: Optimized build configuration for improved bundle size
 * Code Refactoring: Improved debug logging and gradient ID generation for better performance
@@ -191,14 +191,17 @@ The plugin source code is also available at: https://github.com/edequalsawesome/
 
 == Upgrade Notice ==
 
+= 2026.01.12 =
+Major refactor introducing parametric wave controls. New Pointiness and Angle sliders let you create any wave shape from smooth curves to sharp zigzags to lightning bolts. Animation is now a toggle. Legacy styles remain fully backwards compatible.
+
 = 1.3.1 =
-Fixes full-width behavior in block themes and improves compatibility with theme-defined gradient presets. Also brings sparkle controls (size/spread/speed/randomness) to the frontend and aligns editor preview with frontend.
+Fixes full-width behavior in block themes and improves compatibility with theme-defined gradient presets.
 
 = 1.3.0 =
-Major responsive enhancement! Sparkles now automatically scale with container width and respect alignment boundaries. Fixed frontend alignment classes and enhanced color override system for perfect display.
+Fixed frontend alignment classes and enhanced color override system for perfect display.
 
 = 1.2.15 =
-Exciting new update! Added animated and static sparkle/glitter divider styles. Improved gradient system performance and optimized animations. Six unique separator styles now available.
+Improved gradient system performance and optimized animations.
 
 = 1.2.13 =
 Major color control fix. Custom gradients now work properly with full WordPress color controls restored. All color options including gradients, background colors, and custom colors are now available.
