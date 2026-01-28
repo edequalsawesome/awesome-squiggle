@@ -22,6 +22,13 @@
 		var(--animation-duration, 1.6s) linear infinite;
 }
 
+/* Pattern-based wave fill animation */
+.awesome-squiggle-wave .wave-fill {
+	transform-origin: left center;
+	animation: var(--animation-name, wave-flow)
+		var(--animation-duration, 1.6s) linear infinite;
+}
+
 /* Legacy support: squiggle-path and zigzag-path classes */
 .awesome-squiggle-wave .squiggle-path,
 .awesome-squiggle-wave .zigzag-path {
@@ -32,6 +39,7 @@
 
 /* Paused state for all wave types */
 .awesome-squiggle-wave.is-paused .wave-path,
+.awesome-squiggle-wave.is-paused .wave-fill,
 .awesome-squiggle-wave.is-paused .squiggle-path,
 .awesome-squiggle-wave.is-paused .zigzag-path {
 	animation-play-state: paused;
@@ -40,8 +48,11 @@
 /* NEW STYLES: shape presets (squiggle, zigzag, lightning) */
 .wp-block-separator.is-style-squiggle .wave-path,
 .wp-block-separator.is-style-zigzag .wave-path,
-.wp-block-separator.is-style-lightning .wave-path {
-	transform-origin: center;
+.wp-block-separator.is-style-lightning .wave-path,
+.wp-block-separator.is-style-squiggle .wave-fill,
+.wp-block-separator.is-style-zigzag .wave-fill,
+.wp-block-separator.is-style-lightning .wave-fill {
+	transform-origin: left center;
 	animation: var(--animation-name, wave-flow)
 		var(--animation-duration, 1.6s) linear infinite;
 }
@@ -49,7 +60,10 @@
 /* Static state for new styles (when animation is disabled) */
 .wp-block-separator.is-style-squiggle.is-paused .wave-path,
 .wp-block-separator.is-style-zigzag.is-paused .wave-path,
-.wp-block-separator.is-style-lightning.is-paused .wave-path {
+.wp-block-separator.is-style-lightning.is-paused .wave-path,
+.wp-block-separator.is-style-squiggle.is-paused .wave-fill,
+.wp-block-separator.is-style-zigzag.is-paused .wave-fill,
+.wp-block-separator.is-style-lightning.is-paused .wave-fill {
 	animation: none;
 }
 
@@ -80,14 +94,16 @@
 
 /* Frontend-specific selectors to ensure styles apply */
 div.wp-block-separator.awesome-squiggle-wave .wave-path,
+div.wp-block-separator.awesome-squiggle-wave .wave-fill,
 div.wp-block-separator.awesome-squiggle-wave .squiggle-path,
 div.wp-block-separator.awesome-squiggle-wave .zigzag-path {
-	transform-origin: center;
+	transform-origin: left center;
 	animation: var(--animation-name, wave-flow)
 		var(--animation-duration, 1.6s) linear infinite;
 }
 
 div.wp-block-separator.awesome-squiggle-wave.is-paused .wave-path,
+div.wp-block-separator.awesome-squiggle-wave.is-paused .wave-fill,
 div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path,
 div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 	animation: none;
@@ -167,21 +183,23 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 
 /* Ensure the wave path animation works in constrained containers */
 .is-layout-flex .awesome-squiggle-wave .wave-path,
+.is-layout-flex .awesome-squiggle-wave .wave-fill,
 .is-layout-flex .awesome-squiggle-wave .squiggle-path,
 .is-layout-flex .awesome-squiggle-wave .zigzag-path,
 .is-layout-grid .awesome-squiggle-wave .wave-path,
+.is-layout-grid .awesome-squiggle-wave .wave-fill,
 .is-layout-grid .awesome-squiggle-wave .squiggle-path,
 .is-layout-grid .awesome-squiggle-wave .zigzag-path {
 	vector-effect: non-scaling-stroke;
 }
 
-/* UNIFIED WAVE ANIMATIONS */
+/* UNIFIED WAVE ANIMATIONS - 80px = 1 full wave cycle (up + down) for seamless loop */
 @keyframes wave-flow {
 	0% {
 		transform: translateX(0);
 	}
 	100% {
-		transform: translateX(80px);
+		transform: translateX(-80px);
 	}
 }
 
@@ -190,7 +208,7 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 		transform: translateX(0);
 	}
 	100% {
-		transform: translateX(-80px);
+		transform: translateX(80px);
 	}
 }
 
@@ -242,17 +260,30 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
     max-width: none;
 }
 
-/* Full width support: ensure alignfull breaks out of site padding wrappers */
-/* Block themes commonly use a global padding wrapper. Break out only for our separator. */
-.has-global-padding > .wp-block-separator.awesome-squiggle-wave.alignfull {
-    margin-left: calc(var(--wp--style--root--padding-left) * -1);
-    margin-right: calc(var(--wp--style--root--padding-right) * -1);
-}
+/* ========================================
+   FULL WIDTH (alignfull) SUPPORT
+   Theme-agnostic approach with multiple fallbacks
+   ======================================== */
 
-/* Fallback full width breakout when the theme relies on vw-based rule */
-.wp-site-blocks > .wp-block-separator.awesome-squiggle-wave.alignfull {
+/* Base rule: works for centered containers (classic themes, centered layouts) */
+.wp-block-separator.awesome-squiggle-wave.alignfull {
     width: 100vw;
     max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+}
+
+/* Block themes with global padding: use CSS custom properties */
+/* Higher specificity to override base rule when inside padded containers */
+.has-global-padding .wp-block-separator.awesome-squiggle-wave.alignfull,
+.is-layout-constrained .wp-block-separator.awesome-squiggle-wave.alignfull,
+.wp-block-post-content .wp-block-separator.awesome-squiggle-wave.alignfull {
+    margin-left: calc(-1 * var(--wp--style--root--padding-left, clamp(1rem, 3vw, 2rem)));
+    margin-right: calc(-1 * var(--wp--style--root--padding-right, clamp(1rem, 3vw, 2rem)));
+}
+
+/* Direct child of wp-site-blocks: simplest case, standard WP approach */
+.wp-site-blocks > .wp-block-separator.awesome-squiggle-wave.alignfull {
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
 }
@@ -348,6 +379,7 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 @media (prefers-reduced-motion: reduce) {
 	/* Completely disable animations for motion-sensitive users */
 	.awesome-squiggle-wave .wave-path,
+	.awesome-squiggle-wave .wave-fill,
 	.awesome-squiggle-wave .squiggle-path,
 	.awesome-squiggle-wave .zigzag-path {
 		animation: none !important;
@@ -355,6 +387,7 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 
 	/* Provide alternative static visual interest */
 	.awesome-squiggle-wave .wave-path,
+	.awesome-squiggle-wave .wave-fill,
 	.awesome-squiggle-wave .squiggle-path,
 	.awesome-squiggle-wave .zigzag-path {
 		filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
@@ -371,6 +404,7 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 
 /* Add user preference override */
 .awesome-squiggle-wave[data-motion-preference="reduce"] .wave-path,
+.awesome-squiggle-wave[data-motion-preference="reduce"] .wave-fill,
 .awesome-squiggle-wave[data-motion-preference="reduce"] .squiggle-path,
 .awesome-squiggle-wave[data-motion-preference="reduce"] .zigzag-path {
 	animation: none !important;
