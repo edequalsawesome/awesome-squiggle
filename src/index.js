@@ -1423,13 +1423,18 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 								{ finalGradient && gradientId && ( () => {
 									const gradientData = parseGradient( finalGradient );
 									debugLog( '🎨 LONG PATH GRADIENT DATA:', gradientData );
+									// Use userSpaceOnUse with repeat so gradient is visible within viewport
+									// 320px = 8 wavelengths = nice visible gradient span that repeats smoothly
+									const gradientSpan = 320;
 									return (
 										<linearGradient
 											id={ gradientId }
-											x1="0%"
-											y1="0%"
-											x2="100%"
-											y2="0%"
+											gradientUnits="userSpaceOnUse"
+											spreadMethod="repeat"
+											x1="0"
+											y1="0"
+											x2={ gradientSpan }
+											y2="0"
 										>
 											{ gradientData?.stops?.length > 0
 												? gradientData.stops.map( ( stop, index ) => (
@@ -1968,13 +1973,18 @@ addFilter(
 							{ /* Gradient definition if using gradient stroke */ }
 							{ finalGradient && usedGradientId && ( () => {
 								const gradientData = parseGradient( finalGradient );
+								// Use userSpaceOnUse with repeat so gradient is visible within viewport
+								// 320px = 8 wavelengths = nice visible gradient span that repeats smoothly
+								const gradientSpan = 320;
 								return (
 									<linearGradient
 										id={ usedGradientId }
-										x1="0%"
-										y1="0%"
-										x2="100%"
-										y2="0%"
+										gradientUnits="userSpaceOnUse"
+										spreadMethod="repeat"
+										x1="0"
+										y1="0"
+										x2={ gradientSpan }
+										y2="0"
 									>
 										{ gradientData?.stops?.length > 0
 											? gradientData.stops.map( ( stop, index ) => (
