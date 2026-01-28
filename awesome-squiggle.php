@@ -3,7 +3,7 @@
  * Plugin Name: Awesome Squiggle
  * Plugin URI: https://github.com/edequalsawesome/awesome-squiggle
  * Description: Adds animated squiggle variations to the core WordPress separator block
- * Version: 2026.01.23
+ * Version: 2026.01.28
  * Author: eD! Thomas
  * Author URI: https://edequalsaweso.me
  * License: GPL-3.0-or-later
@@ -82,7 +82,7 @@ function awesome_squiggle_enqueue_frontend_styles() {
         'awesome-squiggle-frontend',
         plugin_dir_url(__FILE__) . 'build/style-index.css',
         array(),
-        '2026.01.23'
+        '2026.01.28'
     );
 }
 add_action('wp_enqueue_scripts', 'awesome_squiggle_enqueue_frontend_styles');
@@ -119,9 +119,10 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
         }
 
         // Check if this is a pattern-based block (new) or legacy path-based block
-        // Pattern-based blocks use preserveAspectRatio="xMidYMid slice" and <pattern> element
+        // Pattern-based blocks use preserveAspectRatio with "slice" mode and <pattern> element
         // Legacy blocks use preserveAspectRatio="none" and direct <path> element
         $is_pattern_based = (strpos($block_content, 'xMidYMid slice') !== false) ||
+                           (strpos($block_content, 'xMinYMid slice') !== false) ||
                            (strpos($block_content, '<pattern') !== false);
         $is_legacy = (strpos($block_content, 'preserveAspectRatio="none"') !== false) ||
                      (!$is_pattern_based && strpos($block_content, '<path') !== false);

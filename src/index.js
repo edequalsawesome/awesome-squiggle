@@ -153,20 +153,16 @@ const generateGradientId = (
 	// Use a fixed counter approach to ensure uniqueness but determinism
 	// This will be set once when gradient is first applied and then remain stable
 	const baseId = `${ patternType }-gradient`;
-	// Create a simple deterministic suffix
+	// Create a deterministic suffix that includes clientId for uniqueness
 	let suffix = '';
-	if ( gradient ) {
-		// Simple hash of gradient to make it somewhat unique
-		let hash = 0;
-		for ( let i = 0; i < gradient.length; i++ ) {
-			hash = ( hash << 5 ) - hash + gradient.charCodeAt( i );
-			hash = hash & hash;
-		}
-		suffix = Math.abs( hash ).toString( 36 ).substring( 0, 6 );
-	} else {
-		// Default suffix for non-gradient cases
-		suffix = 'default';
+	// Combine gradient and clientId for unique hash per block instance
+	const hashInput = `${ gradient }-${ clientId }`;
+	let hash = 0;
+	for ( let i = 0; i < hashInput.length; i++ ) {
+		hash = ( hash << 5 ) - hash + hashInput.charCodeAt( i );
+		hash = hash & hash;
 	}
+	suffix = Math.abs( hash ).toString( 36 ).substring( 0, 8 );
 	const id = `${ baseId }-${ suffix }`;
 	return validateGradientId( id );
 };
@@ -1391,7 +1387,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 						<svg
 							key={ `svg-${ gradientId || 'default' }-${ animationId || 'default' }` }
 							viewBox={ `0 0 ${ viewBoxWidth } ${ waveHeight }` }
-							preserveAspectRatio="xMidYMid slice"
+							preserveAspectRatio="xMinYMid slice"
 							role="img"
 							aria-label={ __(
 								`Decorative ${ isZigzag ? 'zigzag' : 'wavy' } divider`,
@@ -1423,14 +1419,16 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 								{ finalGradient && gradientId && ( () => {
 									const gradientData = parseGradient( finalGradient );
 									debugLog( '🎨 LONG PATH GRADIENT DATA:', gradientData );
-									// Use userSpaceOnUse with repeat so gradient is visible within viewport
-									// 320px = 8 wavelengths = nice visible gradient span that repeats smoothly
-									const gradientSpan = 320;
+									// Use userSpaceOnUse with reflect for smooth color transitions
+									// Gradient span of 40px = one half of reflection cycle
+									// Full reflection cycle = 80px = animation distance
+									// This ensures seamless looping with smooth color oscillation
+									const gradientSpan = 40;
 									return (
 										<linearGradient
 											id={ gradientId }
 											gradientUnits="userSpaceOnUse"
-											spreadMethod="repeat"
+											spreadMethod="reflect"
 											x1="0"
 											y1="0"
 											x2={ gradientSpan }
@@ -1942,7 +1940,7 @@ addFilter(
 				<div className={ combinedClassName } style={ inlineStyles }>
 					<svg
 						viewBox={ `0 0 ${ viewBoxWidth } ${ waveHeight }` }
-						preserveAspectRatio="xMidYMid slice"
+						preserveAspectRatio="xMinYMid slice"
 						role="img"
 						aria-label={ __(
 							`Decorative ${ isZigzag ? 'zigzag' : 'wavy' } divider`,
@@ -1973,14 +1971,16 @@ addFilter(
 							{ /* Gradient definition if using gradient stroke */ }
 							{ finalGradient && usedGradientId && ( () => {
 								const gradientData = parseGradient( finalGradient );
-								// Use userSpaceOnUse with repeat so gradient is visible within viewport
-								// 320px = 8 wavelengths = nice visible gradient span that repeats smoothly
-								const gradientSpan = 320;
+								// Use userSpaceOnUse with reflect for smooth color transitions
+								// Gradient span of 40px = one half of reflection cycle
+								// Full reflection cycle = 80px = animation distance
+								// This ensures seamless looping with smooth color oscillation
+								const gradientSpan = 40;
 								return (
 									<linearGradient
 										id={ usedGradientId }
 										gradientUnits="userSpaceOnUse"
-										spreadMethod="repeat"
+										spreadMethod="reflect"
 										x1="0"
 										y1="0"
 										x2={ gradientSpan }

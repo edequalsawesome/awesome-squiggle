@@ -2,7 +2,7 @@
   "$schema": "https://schemas.wp.org/trunk/block.json",
   "apiVersion": 3,
   "name": "awesome-squiggle/separator-styles",
-  "version": "2026.01.12",
+  "version": "2026.01.28",
   "title": "Awesome Squiggle Variations",
   "category": "design",
   "description": "Adds animated squiggle and zig-zag variations to the core separator block.",
@@ -16,5 +16,11 @@
   "textdomain": "awesome-squiggle",
   "editorScript": "file:./index.js",
   "editorStyle": "file:./index.css",
-  "style": "file:./style-index.css"
+  "style": "file:./style-index.css",
+  "attributes": {
+    "patternBased": {
+      "type": "boolean",
+      "default": true
+    }
+  }
 }
