@@ -2,6 +2,22 @@
 
 This file contains the complete version history for the Awesome Squiggle WordPress plugin.
 
+= 2026.01.28 =
+* Major Refactor: Ground-up rebuild with parametric wave generation system
+* New Pointiness Slider: Smoothly transition from soft curves (0%) to sharp angles (100%)
+* New Angle Slider: Lean wave peaks left or right (-60 to +60) for dynamic effects
+* New Lightning Style: Dramatic angled peaks for adding energy to layouts
+* Three Shape Presets: One-click presets for Squiggle, Zig-Zag, and Lightning
+* Seamless Animations: Rewritten animation system with long-path wave generation - no more visible seams
+* Fixed Gradient Display: Gradients now display correctly on all wave paths
+* Fixed Alignfull Frontend: Full-width separators now reach true viewport edges
+* Fixed Alignfull Editor: Full-width separators now extend edge-to-edge in block editor
+* Unified Path Generation: Single generateWavePath() function replaces separate generators
+* Sparkles Extracted: Sparkle functionality moved to separate "Awesome Sparkles" plugin
+* Build Files in Repo: Direct GitHub installation now possible without npm build step
+* Security Enhancement: Improved class name sanitization
+* Backwards Compatible: Legacy 4-style system continues to work
+
 = 1.3.2 =
 * Fixed zigzag and squiggle pattern stretching on wide screens
 * Increased SVG viewBox from 800px to 2400px for consistent rendering across all screen sizes

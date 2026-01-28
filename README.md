@@ -114,6 +114,20 @@ npm run build:production
 
 ## Changelog
 
+### Version 2026.01.28
+- **Complete Reimagining**: Ground-up rebuild with parametric wave generation system
+- **Pointiness Slider**: Smoothly transition from soft curves (0%) to sharp angles (100%)
+- **Angle Slider**: Lean wave peaks left or right (-60 to +60) for dynamic effects
+- **Lightning Style**: New dramatic angled peaks preset for adding energy to layouts
+- **Shape Presets**: One-click presets for Squiggle, Zig-Zag, and Lightning
+- **Seamless Animations**: Rewritten animation system with long-path wave generation - no more visible seams or jumps
+- **Fixed Gradients**: Gradients now display correctly on all wave paths
+- **Fixed Alignfull Frontend**: Full-width separators now reach true viewport edges
+- **Fixed Alignfull Editor**: Full-width separators now extend edge-to-edge in block editor
+- **Direct GitHub Install**: Build files now included in repo - no npm build step required
+- **Security Enhancement**: Improved class name sanitization
+- **Backwards Compatible**: Legacy 4-style system continues to work
+
 ### Version 2026.01.12
 - **Major Refactor**: Converted from style-based to slider-based parametric wave generator
 - **New Wave Controls**: Added Pointiness slider (0-100) for smooth curves to sharp angles

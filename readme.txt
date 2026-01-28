@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2026.01.12
+Stable tag: 2026.01.28
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -79,6 +79,18 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 4. Example of zigzag pattern with gradient colors
 
 == Changelog ==
+
+= 2026.01.28 =
+* Major Refactor: Ground-up rebuild with parametric wave generation system
+* New Pointiness Slider: Smoothly transition from soft curves (0%) to sharp angles (100%)
+* New Angle Slider: Lean wave peaks left or right (-60 to +60) for dynamic effects
+* New Lightning Style: Dramatic angled peaks for adding energy to layouts
+* Three Shape Presets: One-click presets for Squiggle, Zig-Zag, and Lightning
+* Seamless Animations: Rewritten animation system - no more visible seams or jumps
+* Fixed Gradient Display: Gradients now display correctly on all wave paths
+* Fixed Alignfull: Full-width separators now work correctly in both editor and frontend
+* Build Files in Repo: Direct GitHub installation now possible without npm build step
+* Backwards Compatible: Legacy 4-style system continues to work
 
 = 2026.01.12 =
 * Major Refactor: Converted from style-based to slider-based parametric wave generator
@@ -190,6 +202,9 @@ The complete source code is maintained in this plugin package. All compressed fi
 The plugin source code is also available at: https://github.com/edequalsawesome/awesome-squiggle
 
 == Upgrade Notice ==
+
+= 2026.01.28 =
+Complete reimagining of wave separators! New Pointiness and Angle sliders, Lightning style preset, seamless animations, and critical fixes for gradients and full-width alignment. Fully backwards compatible with existing blocks.
 
 = 2026.01.12 =
 Major refactor introducing parametric wave controls. New Pointiness and Angle sliders let you create any wave shape from smooth curves to sharp zigzags to lightning bolts. Animation is now a toggle. Legacy styles remain fully backwards compatible.
