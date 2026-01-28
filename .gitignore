@@ -40,6 +40,9 @@ yarn-error.log*
 # Claude configuration
 .claude/
 
+# Development logs
+Log/
+
 # Local documentation and notes
 RELEASE-NOTES-*.md
 SECURITY-IMPROVEMENTS.md
