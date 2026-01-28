@@ -551,6 +551,80 @@ const generateWavePath = ( amplitude = 10, pathWidth = 800, pointiness = 0, angl
 	return d;
 };
 
+/**
+ * Generate a long continuous wave path with many wavelengths
+ * Uses The Outline's technique: a long path that extends beyond the viewBox
+ * and gets clipped naturally - no pattern tiling seams
+ *
+ * @param {number} amplitude - Wave height (5-25px)
+ * @param {number} pointiness - 0 = smooth curves (squiggle), 100 = sharp points (zigzag)
+ * @param {number} angle - Peak angle in degrees (-60 to +60)
+ * @param {number} strokeWidth - Line thickness (for padding calculation)
+ * @param {number} repetitions - Number of wavelengths to generate (default 50)
+ * @param {number} containerHeight - Height of the container (default 100)
+ * @returns {Object} { d: string, height: number, wavelength: number, totalWidth: number }
+ */
+const generateLongWavePath = ( amplitude = 10, pointiness = 0, angle = 0, strokeWidth = 1, repetitions = 50, containerHeight = 100 ) => {
+	// Security: Validate all inputs
+	amplitude = validateNumericInput( amplitude, 5, 25, 10 );
+	pointiness = validateNumericInput( pointiness, 0, 100, 0 );
+	angle = validateNumericInput( angle, -60, 60, 0 );
+	strokeWidth = validateNumericInput( strokeWidth, 1, 8, 1 );
+
+	const wavelength = 40;
+	// Use the container height directly so viewBox matches container - no scaling issues
+	const height = containerHeight;
+	const midY = height / 2;
+	const totalWidth = wavelength * repetitions;
+
+	// Convert angle to radians for offset calculation
+	const angleRad = ( angle * Math.PI ) / 180;
+	const xOffset = amplitude * Math.sin( angleRad );
+	const yMultiplier = Math.cos( angleRad );
+	const adjustedAmplitude = amplitude * yMultiplier;
+
+	// Start before the viewBox to ensure animation loops seamlessly
+	const startX = -wavelength * 2;
+	let d = `M${ startX },${ midY }`;
+
+	// Generate many wavelengths
+	for ( let i = 0; i < repetitions + 4; i++ ) {
+		const baseX = startX + ( i * wavelength );
+		const isUpPeak = i % 2 === 0;
+
+		if ( pointiness >= 100 ) {
+			// Pure zigzag: straight lines to peaks
+			const peakX = baseX + wavelength / 2 + ( isUpPeak ? xOffset : -xOffset );
+			const peakY = isUpPeak ? midY - adjustedAmplitude : midY + adjustedAmplitude;
+			const endX = baseX + wavelength;
+			d += ` L${ peakX },${ peakY } L${ endX },${ midY }`;
+		} else if ( pointiness <= 0 ) {
+			// Pure squiggle: smooth cubic Bezier curves
+			// Use original control point positions (0.375 and 0.625) for correct curve shape
+			const peakY = isUpPeak ? midY - adjustedAmplitude : midY + adjustedAmplitude;
+			const cp1x = baseX + wavelength * 0.375;
+			const cp2x = baseX + wavelength * 0.625;
+			const endX = baseX + wavelength;
+			d += ` C${ cp1x },${ peakY } ${ cp2x },${ peakY } ${ endX },${ midY }`;
+		} else {
+			// Hybrid: quadratic curves with variable tension
+			const tension = pointiness / 100;
+			const peakX = baseX + wavelength / 2 + ( isUpPeak ? xOffset * tension : -xOffset * tension );
+			const peakY = isUpPeak ? midY - adjustedAmplitude : midY + adjustedAmplitude;
+			const endX = baseX + wavelength;
+
+			// Quadratic control points - blend between smooth (0.375/0.625) and sharp (0.5)
+			const qcp1x = baseX + wavelength * ( 0.375 + tension * 0.125 );
+			const qcp2x = baseX + wavelength * ( 0.625 - tension * 0.125 );
+
+			d += ` Q${ qcp1x },${ peakY } ${ peakX },${ peakY }`;
+			d += ` Q${ qcp2x },${ peakY } ${ endX },${ midY }`;
+		}
+	}
+
+	return { d, height, wavelength, totalWidth };
+};
+
 // Helper function to check if current style is a squiggle style (new or legacy)
 const isSquiggleStyle = ( className ) => {
 	return (
@@ -673,6 +747,11 @@ addFilter(
 				gradientId: {
 					type: 'string',
 					default: undefined,
+				},
+				// NEW: Pattern-based rendering flag for migration
+				patternBased: {
+					type: 'boolean',
+					default: true, // New blocks default to pattern-based
 				},
 			},
 		};
@@ -1240,13 +1319,14 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 
 				<style>
 					{ `
+                        /* Wave animation - shifts by exactly 1 full wave cycle (80px = 2 half-wavelengths) for seamless loop */
                         @keyframes wave-flow {
                             0% { transform: translateX(0); }
-                            100% { transform: translateX(80px); }
+                            100% { transform: translateX(-80px); }
                         }
                         @keyframes wave-flow-reverse {
                             0% { transform: translateX(0); }
-                            100% { transform: translateX(-80px); }
+                            100% { transform: translateX(80px); }
                         }
                         /* Legacy keyframes for backwards compatibility */
                         @keyframes squiggle-flow {
@@ -1266,26 +1346,34 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
                             100% { transform: translateX(-80px); }
                         }
                         .awesome-squiggle-editor-preview .wave-path {
-                            transform-origin: center;
-                            animation: var(--animation-name, wave-flow) var(--animation-duration, 1.6s) linear infinite;
+                            transform-origin: left center;
                         }
                     ` }
 				</style>
 				<div { ...blockProps }>
-					{ /* Calculate viewBox to zoom in on the actual wave portion */ }
+					{ /* Long path SVG rendering - uses The Outline's technique for seamless animation */ }
 					{ ( () => {
-						const effectiveAmplitude = squiggleAmplitude || 15; // Match PHP default
+						const effectiveAmplitude = squiggleAmplitude || 15;
 						const effectiveStrokeWidth = strokeWidth || 1;
-						const editorPadding = Math.max( effectiveStrokeWidth * 2, 5 );
-						const editorViewBoxMinY = 50 - effectiveAmplitude - editorPadding;
-						const editorViewBoxHeight = ( effectiveAmplitude * 2 ) + ( editorPadding * 2 );
-						// Always generate path with max width so viewBox can adjust without missing waves
-						const editorPathWidth = 9600; // Wide enough for any screen
-						// Use 4800 for alignfull (wide/ultra-wide screens), 800 for normal width
-						// Check both className AND align attribute (WordPress stores alignment separately)
-						const isAlignFull = ( className && className.includes( 'alignfull' ) ) ||
-											( attributes.align === 'full' );
-						const editorViewBoxWidth = isAlignFull ? 4800 : 800;
+						// Parse container height from squiggleHeight (e.g., "100px" -> 100)
+						const containerHeight = parseInt( squiggleHeight, 10 ) || 100;
+
+						// Generate long continuous wave path (no pattern tiling = no seams)
+						// Use 150 repetitions = 6000px to cover ultra-wide screens (4K+)
+						// Pass containerHeight so the wave is drawn to fit exactly
+						const { d: wavePath, height: waveHeight, wavelength, totalWidth } =
+							generateLongWavePath(
+								effectiveAmplitude,
+								effectivePointiness,
+								effectiveAngle,
+								effectiveStrokeWidth,
+								150, // 150 wavelengths = 6000px of wave for 4K+ support
+								containerHeight
+							);
+
+						// ViewBox width is very wide to ensure horizontal clipping, not vertical scaling
+						// Height matches container exactly so no vertical scaling occurs
+						const viewBoxWidth = wavelength * 150; // Match the path length
 
 						return (
 					<div
@@ -1297,12 +1385,13 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							backgroundColor: 'transparent',
 							display: 'flex',
 							alignItems: 'center',
+							overflow: 'hidden',
 						} }
 					>
 						<svg
-							key={ `svg-${ gradientId || 'default' }` }
-							viewBox={ `0 ${ editorViewBoxMinY } ${ editorViewBoxWidth } ${ editorViewBoxHeight }` }
-							preserveAspectRatio="none"
+							key={ `svg-${ gradientId || 'default' }-${ animationId || 'default' }` }
+							viewBox={ `0 0 ${ viewBoxWidth } ${ waveHeight }` }
+							preserveAspectRatio="xMidYMid slice"
 							role="img"
 							aria-label={ __(
 								`Decorative ${ isZigzag ? 'zigzag' : 'wavy' } divider`,
@@ -1329,88 +1418,46 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 									'awesome-squiggle'
 								) }
 							</desc>
-							{ finalGradient &&
-								gradientId &&
-								( () => {
-									const gradientData =
-										parseGradient( finalGradient );
-									// Use the actual gradientId if available, or use the generated one from editorLineColor
-									const svgGradientId = gradientId;
-									debugLog(
-										'🎨 SVG GRADIENT DATA:',
-										gradientData
-									);
-									debugLog(
-										'🎨 SVG GRADIENT ID:',
-										svgGradientId
-									);
+							<defs>
+								{ /* Gradient definition if using gradient stroke */ }
+								{ finalGradient && gradientId && ( () => {
+									const gradientData = parseGradient( finalGradient );
+									debugLog( '🎨 LONG PATH GRADIENT DATA:', gradientData );
 									return (
-										<defs>
-											<linearGradient
-												id={ svgGradientId }
-												x1="0%"
-												y1="0%"
-												x2="100%"
-												y2="0%"
-											>
-												{ gradientData?.stops?.length >
-												0
-													? gradientData.stops.map(
-															( stop, index ) => {
-																debugLog(
-																	`🎨 SVG STOP ${ index }:`,
-																	stop
-																);
-																return (
-																	<stop
-																		key={
-																			index
-																		}
-																		offset={
-																			stop.offset
-																		}
-																		stopColor={
-																			stop.color
-																		}
-																	/>
-																);
-															}
-													  )
-													: [
-															<stop
-																key="fallback-0"
-																offset="0%"
-																stopColor="#ff6b35"
-															/>,
-															<stop
-																key="fallback-1"
-																offset="100%"
-																stopColor="#f7931e"
-															/>,
-													  ] }
-											</linearGradient>
-										</defs>
+										<linearGradient
+											id={ gradientId }
+											x1="0%"
+											y1="0%"
+											x2="100%"
+											y2="0%"
+										>
+											{ gradientData?.stops?.length > 0
+												? gradientData.stops.map( ( stop, index ) => (
+													<stop
+														key={ index }
+														offset={ stop.offset }
+														stopColor={ stop.color }
+													/>
+												) )
+												: [
+													<stop key="fallback-0" offset="0%" stopColor="#ff6b35" />,
+													<stop key="fallback-1" offset="100%" stopColor="#f7931e" />,
+												]
+											}
+										</linearGradient>
 									);
 								} )() }
+							</defs>
+							{ /* Long continuous path - animation shifts by exactly 1 wavelength */ }
 							<path
-								d={
-									generateWavePath(
-										squiggleAmplitude || 15, // Match PHP default
-										editorPathWidth, // Wide path, viewBox crops it
-										effectivePointiness,
-										effectiveAngle
-									)
-								}
+								d={ wavePath }
 								fill="none"
 								stroke={ editorLineColor }
-								strokeWidth={ strokeWidth || 1 }
+								strokeWidth={ effectiveStrokeWidth }
 								strokeLinecap="round"
 								strokeLinejoin="round"
 								className={ `wave-path wave-path-${ animationId || 'default' }` }
 								style={ {
-									transformOrigin: 'center',
-									stroke: editorLineColor,
-									display: 'block',
 									animation: finalPaused
 										? 'none'
 										: `${ isReversed ? 'wave-flow-reverse' : 'wave-flow' } ${ animationSpeed || 1.6 }s linear infinite`,
@@ -1860,17 +1907,121 @@ addFilter(
 			inlineStyles.backgroundColor = 'transparent';
 		}
 
-		// Always generate path with max width (9600) so PHP can adjust viewBox without missing waves
-		// ViewBox width determines how much of the path is visible
+		// Check if this is a new-style block (long path approach) or legacy path-based
+		// New blocks use the long path technique for consistent appearance at all widths
+		const useLongPathBased = ! isLegacy && attributes.patternBased !== false;
+
+		// Parse container height from squiggleHeight (e.g., "100px" -> 100)
+		const containerHeight = parseInt( squiggleHeight, 10 ) || 100;
+
+		// Generate the appropriate SVG content based on rendering mode
+		if ( useLongPathBased ) {
+			// LONG PATH RENDERING: Uses The Outline's technique - a long continuous path
+			// that extends beyond the viewBox and gets clipped naturally (no seams!)
+			// Pass containerHeight so wave is drawn at exact container size (no vertical scaling)
+			const { d: wavePath, height: waveHeight, wavelength } =
+				generateLongWavePath(
+					squiggleAmplitude,
+					effectivePointiness,
+					effectiveAngle,
+					strokeWidth,
+					150, // 150 wavelengths = 6000px of wave for 4K+ ultra-wide support
+					containerHeight
+				);
+
+			// ViewBox width matches full path length for proper horizontal clipping
+			// Height matches container exactly so no vertical scaling occurs
+			const viewBoxWidth = wavelength * 150;
+
+			return (
+				<div className={ combinedClassName } style={ inlineStyles }>
+					<svg
+						viewBox={ `0 0 ${ viewBoxWidth } ${ waveHeight }` }
+						preserveAspectRatio="xMidYMid slice"
+						role="img"
+						aria-label={ __(
+							`Decorative ${ isZigzag ? 'zigzag' : 'wavy' } divider`,
+							'awesome-squiggle'
+						) }
+						aria-describedby={ `squiggle-desc-${ animationId || 'default' }` }
+						style={ {
+							width: '100%',
+							height: '100%',
+							display: 'block',
+						} }
+					>
+						<title>
+							{ __(
+								`${ isZigzag ? 'Zigzag' : 'Wavy' } separator`,
+								'awesome-squiggle'
+							) }
+						</title>
+						<desc id={ `squiggle-desc-${ animationId || 'default' }` }>
+							{ __(
+								`A decorative ${ isZigzag ? 'zigzag' : 'wavy' } pattern used as a visual divider between content sections.${
+									finalPaused ? '' : ' This pattern includes gentle animation.'
+								}`,
+								'awesome-squiggle'
+							) }
+						</desc>
+						<defs>
+							{ /* Gradient definition if using gradient stroke */ }
+							{ finalGradient && usedGradientId && ( () => {
+								const gradientData = parseGradient( finalGradient );
+								return (
+									<linearGradient
+										id={ usedGradientId }
+										x1="0%"
+										y1="0%"
+										x2="100%"
+										y2="0%"
+									>
+										{ gradientData?.stops?.length > 0
+											? gradientData.stops.map( ( stop, index ) => (
+												<stop
+													key={ index }
+													offset={ stop.offset }
+													stopColor={ stop.color }
+												/>
+											) )
+											: [
+												<stop key="fallback-0" offset="0%" stopColor="#ff6b35" />,
+												<stop key="fallback-1" offset="100%" stopColor="#f7931e" />,
+											]
+										}
+									</linearGradient>
+								);
+							} )() }
+						</defs>
+						{ /* Long continuous path - animation shifts by exactly 1 wavelength (40px) */ }
+						<path
+							d={ wavePath }
+							fill="none"
+							stroke={ lineColor }
+							strokeWidth={ strokeWidth }
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							className={ `wave-path wave-path-${ animationId || 'default' }` }
+							style={ {
+								animation: finalPaused
+									? 'none'
+									: `${ animationName } ${ animationSpeed }s linear infinite`,
+							} }
+						/>
+					</svg>
+				</div>
+			);
+		}
+
+		// LEGACY PATH-BASED RENDERING: For backwards compatibility with old blocks
+		// Uses stretched path with preserveAspectRatio="none"
 		const pathWidth = 9600; // Wide enough for any screen
-		// Check both className AND align attribute (WordPress stores alignment separately)
 		const isAlignFull = ( className && className.includes( 'alignfull' ) ) ||
 							( attributes.align === 'full' );
-		const viewBoxWidth = isAlignFull ? 4800 : 800;
-
-		// Calculate viewBox to zoom in on the actual wave portion
-		// Path uses midY=50 with amplitude going above/below
-		// Add padding equal to strokeWidth to prevent clipping
+		const isAlignWide = ( className && className.includes( 'alignwide' ) ) ||
+							( attributes.align === 'wide' );
+		// Use wider viewBox for full/wide alignments to prevent gaps
+		const viewBoxWidth = ( isAlignFull || isAlignWide ) ? 4800 : 800;
 		const padding = Math.max( strokeWidth * 2, 5 );
 		const viewBoxMinY = 50 - squiggleAmplitude - padding;
 		const viewBoxHeight = ( squiggleAmplitude * 2 ) + ( padding * 2 );

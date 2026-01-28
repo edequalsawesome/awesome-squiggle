@@ -3,7 +3,7 @@
  * Plugin Name: Awesome Squiggle
  * Plugin URI: https://github.com/edequalsawesome/awesome-squiggle
  * Description: Adds animated squiggle variations to the core WordPress separator block
- * Version: 2026.01.12
+ * Version: 2026.01.23
  * Author: eD! Thomas
  * Author URI: https://edequalsaweso.me
  * License: GPL-3.0-or-later
@@ -82,7 +82,7 @@ function awesome_squiggle_enqueue_frontend_styles() {
         'awesome-squiggle-frontend',
         plugin_dir_url(__FILE__) . 'build/style-index.css',
         array(),
-        '2026.01.12'
+        '2026.01.23'
     );
 }
 add_action('wp_enqueue_scripts', 'awesome_squiggle_enqueue_frontend_styles');
@@ -94,18 +94,18 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
     if ($block['blockName'] !== 'core/separator') {
         return $block_content;
     }
-    
+
     // Check if this is a squiggle or zig-zag separator
     $attrs = $block['attrs'] ?? array();
     $className = $attrs['className'] ?? '';
-    
+
     // Security improvement: Sanitize each class in the className individually
     // Note: sanitize_html_class() is for single classes, not space-separated lists
     $className = implode(' ', array_map('sanitize_html_class', explode(' ', $className)));
-    
+
     // Security validation: Validate block attributes server-side
     $attrs = awesome_squiggle_validate_block_attributes($attrs);
-    
+
     if (strpos($className, 'is-style-') !== false &&
         (strpos($className, 'squiggle') !== false || strpos($className, 'zigzag') !== false || strpos($className, 'lightning') !== false)) {
 
@@ -118,31 +118,53 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
             );
         }
 
-        // Fix viewBox to zoom in on the actual wave portion
-        // This ensures the wave fills the container height properly
-        $amplitude = isset($attrs['squiggleAmplitude']) ? intval($attrs['squiggleAmplitude']) : 15;
-        $amplitude = max(5, min(25, $amplitude)); // Clamp to valid range
-        $stroke_width = isset($attrs['strokeWidth']) ? intval($attrs['strokeWidth']) : 1;
-        $stroke_width = max(1, min(8, $stroke_width)); // Clamp to valid range
+        // Check if this is a pattern-based block (new) or legacy path-based block
+        // Pattern-based blocks use preserveAspectRatio="xMidYMid slice" and <pattern> element
+        // Legacy blocks use preserveAspectRatio="none" and direct <path> element
+        $is_pattern_based = (strpos($block_content, 'xMidYMid slice') !== false) ||
+                           (strpos($block_content, '<pattern') !== false);
+        $is_legacy = (strpos($block_content, 'preserveAspectRatio="none"') !== false) ||
+                     (!$is_pattern_based && strpos($block_content, '<path') !== false);
 
-        $padding = max($stroke_width * 2, 5);
-        $viewbox_min_y = 50 - $amplitude - $padding;
-        $viewbox_height = ($amplitude * 2) + ($padding * 2);
+        // For legacy path-based blocks, apply viewBox fix for proper wave rendering
+        if ($is_legacy) {
+            // Fix viewBox to zoom in on the actual wave portion
+            // This ensures the wave fills the container height properly
+            $amplitude = isset($attrs['squiggleAmplitude']) ? intval($attrs['squiggleAmplitude']) : 15;
+            $amplitude = max(5, min(25, $amplitude)); // Clamp to valid range
+            $stroke_width = isset($attrs['strokeWidth']) ? intval($attrs['strokeWidth']) : 1;
+            $stroke_width = max(1, min(8, $stroke_width)); // Clamp to valid range
 
-        // Replace viewBox with calculated one
-        // Use 4800 for alignfull (wide/ultra-wide screens), 800 for normal width
-        // Check both className and align attribute (WordPress stores alignment separately)
-        $is_full_width = (strpos($className, 'alignfull') !== false) ||
-                         (isset($attrs['align']) && $attrs['align'] === 'full');
-        $viewbox_width = $is_full_width ? 4800 : 800;
+            $padding = max($stroke_width * 2, 5);
+            $viewbox_min_y = 50 - $amplitude - $padding;
+            $viewbox_height = ($amplitude * 2) + ($padding * 2);
 
-        // Match ANY viewBox format and replace with correct calculated values
-        // This fixes both old format (0 0 width 100) and new format (0 minY width height)
-        $block_content = preg_replace(
-            '/viewBox="[^"]*"/',
-            'viewBox="0 ' . $viewbox_min_y . ' ' . $viewbox_width . ' ' . $viewbox_height . '"',
-            $block_content
-        );
+            // Replace viewBox with calculated one
+            // Use 4800 for alignfull/alignwide (wide/ultra-wide screens), 800 for normal width
+            // Check both className and align attribute (WordPress stores alignment separately)
+            $is_full_width = (strpos($className, 'alignfull') !== false) ||
+                             (isset($attrs['align']) && $attrs['align'] === 'full');
+            $is_wide_width = (strpos($className, 'alignwide') !== false) ||
+                             (isset($attrs['align']) && $attrs['align'] === 'wide');
+            $viewbox_width = ($is_full_width || $is_wide_width) ? 4800 : 800;
+
+            // Match ANY viewBox format and replace with correct calculated values
+            // This fixes both old format (0 0 width 100) and new format (0 minY width height)
+            $block_content = preg_replace(
+                '/viewBox="[^"]*"/',
+                'viewBox="0 ' . $viewbox_min_y . ' ' . $viewbox_width . ' ' . $viewbox_height . '"',
+                $block_content
+            );
+
+            // Add data attribute to flag legacy blocks for potential JS migration
+            if (strpos($block_content, 'data-legacy-format') === false) {
+                $block_content = str_replace(
+                    'awesome-squiggle-wave',
+                    'awesome-squiggle-wave" data-legacy-format="true',
+                    $block_content
+                );
+            }
+        }
 
         // Security: Validate and sanitize any ID attributes in the output
         if (isset($attrs['animationId'])) {
@@ -161,7 +183,7 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
             }
         }
     }
-    
+
     return $block_content;
 }
 add_filter('render_block', 'awesome_squiggle_filter_separator_content', 10, 2);
