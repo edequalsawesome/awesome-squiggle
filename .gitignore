@@ -26,6 +26,9 @@ Thumbs.db
 *.swo
 *~
 
+# Playwright MCP
+.playwright-mcp/
+
 # Logs
 *.log
 npm-debug.log*
@@ -53,6 +56,13 @@ gradient-id-debugging-analysis.md
 *-debugging-analysis.md
 *-notes.md
 dev-notes-*.md
+IMPLEMENTATION-PLAN.md
+SPARKLES-EXTRACTION-PLAN.md
+*-PLAN.md
+
+# Database files
+*.db
+tasks.db
 
 # WordPress specific
 wp-config.php
