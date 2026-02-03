@@ -3,7 +3,7 @@
  * Plugin Name: Awesome Squiggle
  * Plugin URI: https://github.com/edequalsawesome/awesome-squiggle
  * Description: Adds animated squiggle variations to the core WordPress separator block
- * Version: 2026.01.28
+ * Version: 2026.02.03
  * Author: eD! Thomas
  * Author URI: https://edequalsaweso.me
  * License: GPL-3.0-or-later
@@ -82,7 +82,7 @@ function awesome_squiggle_enqueue_frontend_styles() {
         'awesome-squiggle-frontend',
         plugin_dir_url(__FILE__) . 'build/style-index.css',
         array(),
-        '2026.01.28'
+        '2026.02.03'
     );
 }
 add_action('wp_enqueue_scripts', 'awesome_squiggle_enqueue_frontend_styles');
@@ -194,19 +194,22 @@ add_filter('render_block', 'awesome_squiggle_filter_separator_content', 10, 2);
  * Validates block attributes when saving posts
  */
 function awesome_squiggle_validate_rest_block_attributes($prepared_post, $request) {
-    // Only process if post content contains squiggle blocks
+    // Only process if post content contains squiggle blocks (including all styles)
     if (isset($prepared_post->post_content) &&
         (strpos($prepared_post->post_content, 'is-style-animated-squiggle') !== false ||
          strpos($prepared_post->post_content, 'is-style-static-squiggle') !== false ||
+         strpos($prepared_post->post_content, 'is-style-squiggle') !== false ||
          strpos($prepared_post->post_content, 'is-style-animated-zigzag') !== false ||
-         strpos($prepared_post->post_content, 'is-style-static-zigzag') !== false)) {
-        
+         strpos($prepared_post->post_content, 'is-style-static-zigzag') !== false ||
+         strpos($prepared_post->post_content, 'is-style-zigzag') !== false ||
+         strpos($prepared_post->post_content, 'is-style-lightning') !== false)) {
+
         // Parse blocks and validate attributes
         $blocks = parse_blocks($prepared_post->post_content);
         $blocks = array_map('awesome_squiggle_validate_parsed_blocks', $blocks);
         $prepared_post->post_content = serialize_blocks($blocks);
     }
-    
+
     return $prepared_post;
 }
 
@@ -214,20 +217,21 @@ function awesome_squiggle_validate_rest_block_attributes($prepared_post, $reques
  * Recursively validate block attributes in parsed blocks
  */
 function awesome_squiggle_validate_parsed_blocks($block) {
-    // Validate separator blocks with squiggle styles
+    // Validate separator blocks with squiggle styles (including lightning)
     if ($block['blockName'] === 'core/separator' &&
         isset($block['attrs']['className']) &&
         (strpos($block['attrs']['className'], 'squiggle') !== false ||
-         strpos($block['attrs']['className'], 'zigzag') !== false)) {
-        
+         strpos($block['attrs']['className'], 'zigzag') !== false ||
+         strpos($block['attrs']['className'], 'lightning') !== false)) {
+
         $block['attrs'] = awesome_squiggle_validate_block_attributes($block['attrs']);
     }
-    
+
     // Recursively validate inner blocks
     if (!empty($block['innerBlocks'])) {
         $block['innerBlocks'] = array_map('awesome_squiggle_validate_parsed_blocks', $block['innerBlocks']);
     }
-    
+
     return $block;
 }
 

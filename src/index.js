@@ -49,10 +49,63 @@ const validateAnimationId = ( id ) => {
 	return validateStringInput( id, allowedPattern, 50 );
 };
 
-// Development-only logging
+// Development-only logging - only runs in development builds
 const debugLog = ( message, ...args ) => {
-	// Temporarily enable logging in all environments for debugging
-	console.log( '[Awesome Squiggle]', message, ...args );
+	if ( process.env.NODE_ENV === 'development' ) {
+		console.log( '[Awesome Squiggle]', message, ...args );
+	}
+};
+
+/**
+ * Validate CSS color values to prevent injection attacks
+ * Only allows safe color formats: hex, rgb/rgba, hsl/hsla, CSS variables, and named colors
+ * @param {string} color - The color value to validate
+ * @param {string} fallback - Fallback color if validation fails
+ * @returns {string} - Validated color or fallback
+ */
+const validateColorValue = ( color, fallback = 'currentColor' ) => {
+	if ( typeof color !== 'string' || ! color ) {
+		return fallback;
+	}
+
+	// Trim and normalize
+	const trimmed = color.trim();
+
+	// Allow 'currentColor' keyword
+	if ( trimmed === 'currentColor' ) {
+		return trimmed;
+	}
+
+	// Allow hex colors: #RGB, #RRGGBB, #RGBA, #RRGGBBAA
+	if ( /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test( trimmed ) ) {
+		return trimmed;
+	}
+
+	// Allow rgb/rgba with only numbers, commas, spaces, dots, and percent signs
+	if ( /^rgba?\(\s*[\d.%,\s/]+\s*\)$/.test( trimmed ) ) {
+		return trimmed;
+	}
+
+	// Allow hsl/hsla with only numbers, commas, spaces, dots, deg, and percent signs
+	if ( /^hsla?\(\s*[\d.%,\s/deg]+\s*\)$/.test( trimmed ) ) {
+		return trimmed;
+	}
+
+	// Allow CSS custom properties (variables) - strict pattern to prevent injection
+	// Only allow --wp--preset--color--{slug} and --wp--preset--gradient--{slug} patterns
+	if ( /^var\(--wp--preset--(color|gradient)--[a-zA-Z0-9-]+\)$/.test( trimmed ) ) {
+		return trimmed;
+	}
+
+	// Allow url() references ONLY to local gradient IDs (validated separately)
+	// Pattern: url(#validatedId) where ID contains only alphanumeric, dash, underscore
+	if ( /^url\(#[a-zA-Z0-9_-]+\)$/.test( trimmed ) ) {
+		return trimmed;
+	}
+
+	// Reject anything else (including url() with external references, javascript:, data:, etc.)
+	debugLog( '⚠️ Rejected invalid color value:', trimmed );
+	return fallback;
 };
 
 // Secure attribute setter
@@ -386,21 +439,23 @@ const parseGradient = ( gradientInput ) => {
 	};
 };
 
-// Test gradient parsing
-debugLog( '🧪 Testing gradient parsing:' );
+// Test gradient parsing - only in development
+if ( process.env.NODE_ENV === 'development' ) {
+	debugLog( '🧪 Testing gradient parsing:' );
 	const testGradient1 = parseGradient(
 		'luminous-vivid-amber-to-luminous-vivid-orange'
 	);
 	const testGradient2 = parseGradient( 'cool-to-warm-spectrum' );
-debugLog( 'luminous-vivid-amber-to-luminous-vivid-orange:', testGradient1 );
-debugLog( '  stops:', testGradient1?.stops );
-debugLog( 'cool-to-warm-spectrum:', testGradient2 );
-debugLog( '  stops:', testGradient2?.stops );
+	debugLog( 'luminous-vivid-amber-to-luminous-vivid-orange:', testGradient1 );
+	debugLog( '  stops:', testGradient1?.stops );
+	debugLog( 'cool-to-warm-spectrum:', testGradient2 );
+	debugLog( '  stops:', testGradient2?.stops );
 
-// Test the actual CSS gradient parsing
-const testCss =
-	'linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%)';
-debugLog( 'Direct CSS test:', parseGradient( testCss ) );
+	// Test the actual CSS gradient parsing
+	const testCss =
+		'linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%)';
+	debugLog( 'Direct CSS test:', parseGradient( testCss ) );
+}
 
 // Generate SVG path data for the squiggle
 const generateSquigglePath = ( amplitude = 10, pathWidth = 800 ) => {
@@ -1243,24 +1298,24 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					gradientId
 				);
 			} else {
-				// Use solid color logic
+				// Use solid color logic with validation to prevent injection
 				if ( backgroundColor ) {
-					lineColor = `var(--wp--preset--color--${ backgroundColor })`;
+					lineColor = validateColorValue( `var(--wp--preset--color--${ backgroundColor })` );
 				} else if ( customBackgroundColor ) {
-					lineColor = customBackgroundColor;
+					lineColor = validateColorValue( customBackgroundColor );
 				} else if ( style?.color?.background ) {
-					lineColor = style.color.background;
+					lineColor = validateColorValue( style.color.background );
 				} else {
 					const classNameColor =
 						extractColorFromClassName( className );
 					if ( classNameColor ) {
-						lineColor = classNameColor;
+						lineColor = validateColorValue( classNameColor );
 					} else if ( textColor ) {
-						lineColor = `var(--wp--preset--color--${ textColor })`;
+						lineColor = validateColorValue( `var(--wp--preset--color--${ textColor })` );
 					} else if ( customTextColor ) {
-						lineColor = customTextColor;
+						lineColor = validateColorValue( customTextColor );
 					} else if ( style?.color?.text ) {
-						lineColor = style.color.text;
+						lineColor = validateColorValue( style.color.text );
 					}
 				}
 				editorLineColor = lineColor;
@@ -1388,32 +1443,14 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							key={ `svg-${ gradientId || 'default' }-${ animationId || 'default' }` }
 							viewBox={ `0 0 ${ viewBoxWidth } ${ waveHeight }` }
 							preserveAspectRatio="xMinYMid slice"
-							role="img"
-							aria-label={ __(
-								`Decorative ${ isZigzag ? 'zigzag' : 'wavy' } divider`,
-								'awesome-squiggle'
-							) }
-							aria-describedby={ `squiggle-desc-${ animationId || 'default' }` }
+							aria-hidden="true"
+							focusable="false"
 							style={ {
 								width: '100%',
 								height: '100%',
 								display: 'block',
 							} }
 						>
-							<title>
-								{ __(
-									`${ isZigzag ? 'Zigzag' : 'Wavy' } separator`,
-									'awesome-squiggle'
-								) }
-							</title>
-							<desc id={ `squiggle-desc-${ animationId || 'default' }` }>
-								{ __(
-									`A decorative ${ isZigzag ? 'zigzag' : 'wavy' } pattern used as a visual divider between content sections.${
-										isAnimated && !finalPaused ? ' This pattern includes gentle animation.' : ''
-									}`,
-									'awesome-squiggle'
-								) }
-							</desc>
 							<defs>
 								{ /* Gradient definition if using gradient stroke */ }
 								{ finalGradient && gradientId && ( () => {
@@ -1819,24 +1856,24 @@ addFilter(
 				lineColor = 'currentColor';
 			}
 		} else {
-			// Check all possible color sources in priority order
+			// Check all possible color sources in priority order with validation to prevent injection
 			if ( backgroundColor ) {
-				lineColor = `var(--wp--preset--color--${ backgroundColor })`;
+				lineColor = validateColorValue( `var(--wp--preset--color--${ backgroundColor })` );
 			} else if ( customBackgroundColor ) {
-				lineColor = customBackgroundColor;
+				lineColor = validateColorValue( customBackgroundColor );
 			} else if ( style?.color?.background ) {
-				lineColor = style.color.background;
+				lineColor = validateColorValue( style.color.background );
 			} else {
 				// Try to extract color from className
 				const classNameColor = extractColorFromClassName( className );
 				if ( classNameColor ) {
-					lineColor = classNameColor;
+					lineColor = validateColorValue( classNameColor );
 				} else if ( textColor ) {
-					lineColor = `var(--wp--preset--color--${ textColor })`;
+					lineColor = validateColorValue( `var(--wp--preset--color--${ textColor })` );
 				} else if ( customTextColor ) {
-					lineColor = customTextColor;
+					lineColor = validateColorValue( customTextColor );
 				} else if ( style?.color?.text ) {
-					lineColor = style.color.text;
+					lineColor = validateColorValue( style.color.text );
 				}
 			}
 		}
@@ -1941,32 +1978,14 @@ addFilter(
 					<svg
 						viewBox={ `0 0 ${ viewBoxWidth } ${ waveHeight }` }
 						preserveAspectRatio="xMinYMid slice"
-						role="img"
-						aria-label={ __(
-							`Decorative ${ isZigzag ? 'zigzag' : 'wavy' } divider`,
-							'awesome-squiggle'
-						) }
-						aria-describedby={ `squiggle-desc-${ animationId || 'default' }` }
+						aria-hidden="true"
+						focusable="false"
 						style={ {
 							width: '100%',
 							height: '100%',
 							display: 'block',
 						} }
 					>
-						<title>
-							{ __(
-								`${ isZigzag ? 'Zigzag' : 'Wavy' } separator`,
-								'awesome-squiggle'
-							) }
-						</title>
-						<desc id={ `squiggle-desc-${ animationId || 'default' }` }>
-							{ __(
-								`A decorative ${ isZigzag ? 'zigzag' : 'wavy' } pattern used as a visual divider between content sections.${
-									finalPaused ? '' : ' This pattern includes gentle animation.'
-								}`,
-								'awesome-squiggle'
-							) }
-						</desc>
 						<defs>
 							{ /* Gradient definition if using gradient stroke */ }
 							{ finalGradient && usedGradientId && ( () => {
@@ -2041,32 +2060,14 @@ addFilter(
 				<svg
 					viewBox={ `0 ${ viewBoxMinY } ${ viewBoxWidth } ${ viewBoxHeight }` }
 					preserveAspectRatio="none"
-					role="img"
-					aria-label={ __(
-						`Decorative ${ isZigzag ? 'zigzag' : 'wavy' } divider`,
-						'awesome-squiggle'
-					) }
-					aria-describedby={ `squiggle-desc-${ animationId || 'default' }` }
+					aria-hidden="true"
+					focusable="false"
 					style={ {
 						width: '100%',
 						height: '100%',
 						display: 'block',
 					} }
 				>
-					<title>
-						{ __(
-							`${ isZigzag ? 'Zigzag' : 'Wavy' } separator`,
-							'awesome-squiggle'
-						) }
-					</title>
-					<desc id={ `squiggle-desc-${ animationId || 'default' }` }>
-						{ __(
-							`A decorative ${ isZigzag ? 'zigzag' : 'wavy' } pattern used as a visual divider between content sections.${
-								finalPaused ? '' : ' This pattern includes gentle animation.'
-							}`,
-							'awesome-squiggle'
-						) }
-					</desc>
 					{ finalGradient &&
 						usedGradientId &&
 						( () => {

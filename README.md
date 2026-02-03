@@ -114,6 +114,14 @@ npm run build:production
 
 ## Changelog
 
+### Version 2026.02.03
+- **Security**: Debug logging now only runs in development builds
+- **Security**: Added strict color validation to prevent SVG stroke injection attacks
+- **Security**: REST API validation now includes lightning style blocks
+- **Accessibility**: Decorative SVGs now properly hidden from assistive technology
+- **Accessibility**: Removed redundant ARIA labels from purely decorative separators
+- **Performance**: Reduced production bundle size by removing test code from builds
+
 ### Version 2026.01.28
 - **Complete Reimagining**: Ground-up rebuild with parametric wave generation system
 - **Pointiness Slider**: Smoothly transition from soft curves (0%) to sharp angles (100%)

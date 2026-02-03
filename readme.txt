@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2026.01.28
+Stable tag: 2026.02.03
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -79,6 +79,14 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 4. Example of zigzag pattern with gradient colors
 
 == Changelog ==
+
+= 2026.02.03 =
+* Security: Debug logging now only runs in development builds
+* Security: Added strict color validation to prevent SVG stroke injection attacks
+* Security: REST API validation now includes lightning style blocks
+* Accessibility: Decorative SVGs now properly hidden from assistive technology
+* Accessibility: Removed redundant ARIA labels from purely decorative separators
+* Performance: Reduced production bundle size by removing test code from builds
 
 = 2026.01.28 =
 * Major Refactor: Ground-up rebuild with parametric wave generation system
@@ -202,6 +210,9 @@ The complete source code is maintained in this plugin package. All compressed fi
 The plugin source code is also available at: https://github.com/edequalsawesome/awesome-squiggle
 
 == Upgrade Notice ==
+
+= 2026.02.03 =
+Security and accessibility improvements. Debug logging now development-only, color validation prevents injection attacks, and decorative SVGs properly hidden from screen readers.
 
 = 2026.01.28 =
 Complete reimagining of wave separators! New Pointiness and Angle sliders, Lightning style preset, seamless animations, and critical fixes for gradients and full-width alignment. Fully backwards compatible with existing blocks.
