@@ -1112,48 +1112,8 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			gradientIdRefHook.current = gradientId;
 		}, [ clientId, isCustom, gradientId, isZigzag, setAttributes ] );
 
-		// Track if this block was just duplicated
-		const wasDuplicated = useRef( false );
-
-		// Only check for duplicates ONCE when block is first created
-		useEffect( () => {
-			if (
-				isCustom &&
-				gradientId &&
-				! wasDuplicated.current &&
-				! blockInitializedRef.current
-			) {
-				// Small delay to let editor settle
-				const timeoutId = setTimeout( () => {
-					// Mark that we've checked
-					wasDuplicated.current = true;
-
-					// Check if this gradient ID is already in use by another block
-					const allGradients = document.querySelectorAll(
-						`linearGradient[id="${ gradientId }"]`
-					);
-
-					// If we find more than one gradient definition, it's a duplicate
-					if ( allGradients.length > 1 ) {
-						// This is a duplicate - generate a new ID
-						const newGradientId = generateGradientId(
-							isZigzag ? 'zigzag' : 'squiggle',
-							'',
-							''
-						);
-						setSecureAttributes( setAttributes, {
-							gradientId: newGradientId,
-						} );
-						debugLog(
-							'🔄 Detected duplicate gradient ID on new block, generated new one:',
-							newGradientId
-						);
-					}
-				}, 200 );
-
-				return () => clearTimeout( timeoutId );
-			}
-		}, [] ); // Empty deps - check only once on mount
+		// Duplicate gradient detection is handled above via the block store check
+		// (getBlocks() lookup), which is authoritative and race-condition-free.
 
 		// Ensure gradient ID exists when gradient is present
 		useEffect( () => {
