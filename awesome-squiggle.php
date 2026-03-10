@@ -61,6 +61,22 @@ function awesome_squiggle_init() {
 add_action('init', 'awesome_squiggle_init');
 
 /**
+ * Enqueue frontend styles on all pages
+ * block.json only loads styles when the registered block is present,
+ * but this plugin extends core/separator (not its own block),
+ * so the style won't auto-load on frontend pages with squiggle separators.
+ */
+function awesome_squiggle_enqueue_frontend_styles() {
+    wp_enqueue_style(
+        'awesome-squiggle-frontend',
+        plugin_dir_url( __FILE__ ) . 'build/style-index.css',
+        array(),
+        AWESOME_SQUIGGLE_VERSION
+    );
+}
+add_action( 'wp_enqueue_scripts', 'awesome_squiggle_enqueue_frontend_styles' );
+
+/**
  * Filter separator block content on frontend to ensure squiggle styles are applied
  */
 function awesome_squiggle_filter_separator_content($block_content, $block) {
@@ -82,13 +98,13 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
     if (strpos($className, 'is-style-') !== false &&
         (strpos($className, 'squiggle') !== false || strpos($className, 'zigzag') !== false || strpos($className, 'lightning') !== false)) {
 
-        // Ensure our CSS class is included
+        // Ensure our CSS class is included via WP_HTML_Tag_Processor (safe DOM manipulation)
         if (strpos($block_content, 'awesome-squiggle-wave') === false) {
-            $block_content = str_replace(
-                'wp-block-separator',
-                'wp-block-separator awesome-squiggle-wave',
-                $block_content
-            );
+            $processor = new WP_HTML_Tag_Processor( $block_content );
+            if ( $processor->next_tag( array( 'class_name' => 'wp-block-separator' ) ) ) {
+                $processor->add_class( 'awesome-squiggle-wave' );
+            }
+            $block_content = $processor->get_updated_html();
         }
 
         // Check if this is a pattern-based block (new) or legacy path-based block
@@ -142,19 +158,32 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
         }
 
         // Security: Validate and sanitize any ID attributes in the output
+        // Uses WP_HTML_Tag_Processor to surgically replace IDs in attributes only
         if (isset($attrs['animationId'])) {
             $validated_animation_id = awesome_squiggle_validate_squiggle_id($attrs['animationId'], 'animation');
-            // Replace any instances of the original ID with the validated one
             if ($attrs['animationId'] !== $validated_animation_id) {
-                $block_content = str_replace($attrs['animationId'], $validated_animation_id, $block_content);
+                $processor = new WP_HTML_Tag_Processor( $block_content );
+                while ( $processor->next_tag() ) {
+                    $id_attr = $processor->get_attribute( 'id' );
+                    if ( $id_attr === $attrs['animationId'] ) {
+                        $processor->set_attribute( 'id', $validated_animation_id );
+                    }
+                }
+                $block_content = $processor->get_updated_html();
             }
         }
 
         if (isset($attrs['gradientId'])) {
             $validated_gradient_id = awesome_squiggle_validate_squiggle_id($attrs['gradientId'], 'gradient');
-            // Replace any instances of the original ID with the validated one
             if ($attrs['gradientId'] !== $validated_gradient_id) {
-                $block_content = str_replace($attrs['gradientId'], $validated_gradient_id, $block_content);
+                $processor = new WP_HTML_Tag_Processor( $block_content );
+                while ( $processor->next_tag() ) {
+                    $id_attr = $processor->get_attribute( 'id' );
+                    if ( $id_attr === $attrs['gradientId'] ) {
+                        $processor->set_attribute( 'id', $validated_gradient_id );
+                    }
+                }
+                $block_content = $processor->get_updated_html();
             }
         }
     }
@@ -168,15 +197,9 @@ add_filter('render_block', 'awesome_squiggle_filter_separator_content', 10, 2);
  * Validates block attributes when saving posts
  */
 function awesome_squiggle_validate_rest_block_attributes($prepared_post, $request) {
-    // Only process if post content contains squiggle blocks (including all styles)
+    // Only process if post content contains squiggle blocks (single regex instead of 7 strpos calls)
     if (isset($prepared_post->post_content) &&
-        (strpos($prepared_post->post_content, 'is-style-animated-squiggle') !== false ||
-         strpos($prepared_post->post_content, 'is-style-static-squiggle') !== false ||
-         strpos($prepared_post->post_content, 'is-style-squiggle') !== false ||
-         strpos($prepared_post->post_content, 'is-style-animated-zigzag') !== false ||
-         strpos($prepared_post->post_content, 'is-style-static-zigzag') !== false ||
-         strpos($prepared_post->post_content, 'is-style-zigzag') !== false ||
-         strpos($prepared_post->post_content, 'is-style-lightning') !== false)) {
+        preg_match('/is-style-(?:animated-|static-)?(?:squiggle|zigzag|lightning)/', $prepared_post->post_content)) {
 
         // Parse blocks and validate attributes
         $blocks = parse_blocks($prepared_post->post_content);
@@ -201,12 +224,21 @@ function awesome_squiggle_validate_parsed_blocks($block) {
         $block['attrs'] = awesome_squiggle_validate_block_attributes($block['attrs']);
     }
 
-    // Recursively validate inner blocks
-    if (!empty($block['innerBlocks'])) {
+    // Recursively validate inner blocks (with is_array guard for malformed block JSON)
+    if (!empty($block['innerBlocks']) && is_array($block['innerBlocks'])) {
         $block['innerBlocks'] = array_map('awesome_squiggle_validate_parsed_blocks', $block['innerBlocks']);
     }
 
     return $block;
 }
 
-add_filter('rest_pre_insert_post', 'awesome_squiggle_validate_rest_block_attributes', 10, 2); 
+add_filter('rest_pre_insert_post', 'awesome_squiggle_validate_rest_block_attributes', 10, 2);
+
+/**
+ * Clean up hooks on plugin deactivation
+ */
+function awesome_squiggle_deactivate() {
+    remove_filter( 'render_block', 'awesome_squiggle_filter_separator_content' );
+    remove_filter( 'rest_pre_insert_post', 'awesome_squiggle_validate_rest_block_attributes' );
+}
+register_deactivation_hook( __FILE__, 'awesome_squiggle_deactivate' );
