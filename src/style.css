@@ -194,6 +194,8 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 }
 
 /* UNIFIED WAVE ANIMATIONS - 80px = 1 full wave cycle (up + down) for seamless loop */
+/* Decorative animations — direction should not be flipped for RTL */
+/* rtl:begin:ignore */
 @keyframes wave-flow {
 	0% {
 		transform: translateX(0);
@@ -248,6 +250,7 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 		transform: translateX(-80px);
 	}
 }
+/* rtl:end:ignore */
 
 /* Improved spacing controls support */
 .wp-block-separator.awesome-squiggle-wave {

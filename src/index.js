@@ -9,7 +9,7 @@ import {
 import { __, sprintf } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
-import { useEffect, useRef, useState, useSelect } from '@wordpress/element';
+import { useEffect, useRef, useState, useMemo } from '@wordpress/element';
 import { select } from '@wordpress/data';
 import './style.css';
 
@@ -726,6 +726,31 @@ const isLegacyStyle = ( className ) => {
 	return isLegacyAnimatedStyle( className ) || isLegacyStaticStyle( className );
 };
 
+// Extract color information from WordPress classes
+const extractColorFromClassName = ( classNameStr ) => {
+	if ( ! classNameStr ) return null;
+
+	// Look for background color classes (has-{color}-background-color)
+	const bgColorMatch = classNameStr.match(
+		/has-([a-zA-Z0-9-]+)-background-color/
+	);
+	if ( bgColorMatch ) {
+		const colorSlug = bgColorMatch[ 1 ];
+		return `var(--wp--preset--color--${ colorSlug })`;
+	}
+
+	// Look for text color classes (has-{color}-color)
+	const textColorMatch = classNameStr.match(
+		/has-([a-zA-Z0-9-]+)-color(?!\s*background)/
+	);
+	if ( textColorMatch ) {
+		const colorSlug = textColorMatch[ 1 ];
+		return `var(--wp--preset--color--${ colorSlug })`;
+	}
+
+	return null;
+};
+
 // Helper function to check if current style is any custom style (squiggle, zig-zag, or lightning)
 const isCustomStyle = ( className ) => {
 	return (
@@ -940,87 +965,60 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			gradientId,
 		} = attributes;
 
-		// Initialize custom style attributes when custom style is applied
-		if ( isCustom && strokeWidth === undefined ) {
-			// Calculate defaults based on style
-			const defaultAmplitude = ( isZigzag || isLightning ) ? 15 : 10;
-			const defaultPointiness = ( isZigzag || isLightning ) ? 100 : 0;
-			const defaultAngle = isLightning ? 40 : 0;
-			// For legacy styles, infer animation from class; for new styles, default to true
-			const defaultIsAnimated = isLegacy ? isLegacyAnimatedStyle( className ) : true;
-
+		// Batch all initialization into a single setAttributes call to avoid cascading re-renders
+		if ( isCustom ) {
+			const batchUpdates = {};
 			const patternType = isLightning ? 'lightning' : ( isZigzag ? 'zigzag' : 'squiggle' );
-			const newAnimationId = generateAnimationId(
-				patternType,
-				clientId,
-				1,
-				defaultAmplitude
-			);
-			const currentGradient = gradient || style?.color?.gradient || '';
-			const newGradientId = generateGradientId(
-				patternType,
-				currentGradient,
-				clientId
-			);
-			setSecureAttributes( setAttributes, {
-				strokeWidth: 1,
-				animationSpeed: 6, // Default to speed level 6 (which converts to 2.5s duration)
-				squiggleAmplitude: defaultAmplitude,
-				squiggleHeight: '100px',
-				animationId: newAnimationId,
-				isReversed: false,
-				gradientId: newGradientId,
-				// NEW: Parametric wave defaults based on style
-				pointiness: defaultPointiness,
-				angle: defaultAngle,
-				isAnimated: defaultIsAnimated,
-			} );
-		}
 
-		// Ensure each block has a unique animation ID
-		if ( isCustom && ! animationId ) {
-			const patternType = isZigzag ? 'zigzag' : 'squiggle';
-			const defaultAmplitude = isZigzag ? 15 : 10;
-			setSecureAttributes( setAttributes, {
-				animationId: generateAnimationId(
-					patternType,
-					clientId,
-					strokeWidth || 1,
-					squiggleAmplitude || defaultAmplitude
-				),
-			} );
-		}
+			if ( strokeWidth === undefined ) {
+				// Full initialization for new blocks
+				const defaultAmplitude = ( isZigzag || isLightning ) ? 15 : 10;
+				const defaultPointiness = ( isZigzag || isLightning ) ? 100 : 0;
+				const defaultAngle = isLightning ? 40 : 0;
+				const defaultIsAnimated = isLegacy ? isLegacyAnimatedStyle( className ) : true;
+				const currentGradient = gradient || style?.color?.gradient || '';
 
-		// Ensure each block has a unique gradient ID
-		if ( isCustom && ! gradientId ) {
-			setSecureAttributes( setAttributes, {
-				gradientId: generateGradientId(
-					isZigzag ? 'zigzag' : 'squiggle',
-					'',
-					''
-				),
-			} );
-		}
+				Object.assign( batchUpdates, {
+					strokeWidth: 1,
+					animationSpeed: 6,
+					squiggleAmplitude: defaultAmplitude,
+					squiggleHeight: '100px',
+					animationId: generateAnimationId( patternType, clientId, 1, defaultAmplitude ),
+					isReversed: false,
+					gradientId: generateGradientId( patternType, currentGradient, clientId ),
+					pointiness: defaultPointiness,
+					angle: defaultAngle,
+					isAnimated: defaultIsAnimated,
+				} );
+			} else {
+				// Ensure IDs exist for existing blocks
+				if ( ! animationId ) {
+					const defaultAmplitude = isZigzag ? 15 : 10;
+					batchUpdates.animationId = generateAnimationId(
+						patternType, clientId, strokeWidth || 1, squiggleAmplitude || defaultAmplitude
+					);
+				}
+				if ( ! gradientId ) {
+					batchUpdates.gradientId = generateGradientId(
+						isZigzag ? 'zigzag' : 'squiggle', '', ''
+					);
+				}
+				// Regenerate gradient ID when switching between squiggle and zigzag
+				if (
+					gradientId &&
+					( ( isSquiggle && gradientId.includes( 'zigzag' ) ) ||
+						( isZigzag && gradientId.includes( 'squiggle' ) ) )
+				) {
+					batchUpdates.gradientId = generateGradientId(
+						isZigzag ? 'zigzag' : 'squiggle', '', ''
+					);
+					debugLog( '🔄 Regenerated gradient ID for style switch:', batchUpdates.gradientId );
+				}
+			}
 
-		// Hooks already declared at the top of the component
-
-		// Regenerate gradient ID when switching between squiggle and zigzag to avoid conflicts
-		if (
-			isCustom &&
-			gradientId &&
-			( ( isSquiggle && gradientId.includes( 'zigzag' ) ) ||
-				( isZigzag && gradientId.includes( 'squiggle' ) ) )
-		) {
-			const newGradientId = generateGradientId(
-				isZigzag ? 'zigzag' : 'squiggle',
-				'',
-				''
-			);
-			setSecureAttributes( setAttributes, { gradientId: newGradientId } );
-			debugLog(
-				'🔄 Regenerated gradient ID for style switch:',
-				newGradientId
-			);
+			if ( Object.keys( batchUpdates ).length > 0 ) {
+				setSecureAttributes( setAttributes, batchUpdates );
+			}
 		}
 
 		// MIGRATION: Convert legacy styles to new parametric styles
@@ -1203,35 +1201,10 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			return () => {
 				observer.disconnect();
 			};
-		}, [ isCustom, containerWidth ] );
+		}, [ isCustom ] ); // eslint-disable-line react-hooks/exhaustive-deps -- observer should persist, not recreate on width change
 
 		// Remove this overly aggressive duplicate check that runs too often
 		// and causes gradient IDs to regenerate during block validation
-
-		// Extract color information from WordPress classes (same logic as save)
-		const extractColorFromClassName = ( className ) => {
-			if ( ! className ) return null;
-
-			// Look for background color classes (has-{color}-background-color)
-			const bgColorMatch = className.match(
-				/has-([a-zA-Z0-9-]+)-background-color/
-			);
-			if ( bgColorMatch ) {
-				const colorSlug = bgColorMatch[ 1 ];
-				return `var(--wp--preset--color--${ colorSlug })`;
-			}
-
-			// Look for text color classes (has-{color}-color)
-			const textColorMatch = className.match(
-				/has-([a-zA-Z0-9-]+)-color(?!\s*background)/
-			);
-			if ( textColorMatch ) {
-				const colorSlug = textColorMatch[ 1 ];
-				return `var(--wp--preset--color--${ colorSlug })`;
-			}
-
-			return null;
-		};
 
 		// Get line color for editor preview - same priority order as save function
 		let lineColor = 'currentColor';
@@ -1358,75 +1331,35 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 
 		// blockProps already declared at the top with hooks
 
+		// Memoize SVG path generation — only recalculate when wave parameters change
+		const effectiveAmplitude = squiggleAmplitude || 15;
+		const effectiveStrokeWidth = strokeWidth || 1;
+		const containerHeight = parseInt( squiggleHeight, 10 ) || 100;
+
+		const wavePathData = useMemo( () => {
+			return generateLongWavePath(
+				effectiveAmplitude,
+				effectivePointiness,
+				effectiveAngle,
+				effectiveStrokeWidth,
+				150,
+				containerHeight
+			);
+		}, [ effectiveAmplitude, effectivePointiness, effectiveAngle, effectiveStrokeWidth, containerHeight ] );
+
+		const { d: wavePath, height: waveHeight, wavelength } = wavePathData;
+		const viewBoxWidth = wavelength * 150;
+
 		return (
 			<>
 				{ /* Render the original block edit hidden to preserve all standard WordPress controls */ }
-				<div style={ { display: 'none' } }>
+				<div style={ { display: 'none' } } aria-hidden="true">
 					<BlockEdit
 						{ ...props }
 						setAttributes={ setAttributesWithGradientCheck }
 					/>
 				</div>
-
-				<style>
-					{ `
-                        /* Wave animation - shifts by exactly 1 full wave cycle (80px = 2 half-wavelengths) for seamless loop */
-                        @keyframes wave-flow {
-                            0% { transform: translateX(0); }
-                            100% { transform: translateX(-80px); }
-                        }
-                        @keyframes wave-flow-reverse {
-                            0% { transform: translateX(0); }
-                            100% { transform: translateX(80px); }
-                        }
-                        /* Legacy keyframes for backwards compatibility */
-                        @keyframes squiggle-flow {
-                            0% { transform: translateX(0); }
-                            100% { transform: translateX(80px); }
-                        }
-                        @keyframes squiggle-flow-reverse {
-                            0% { transform: translateX(0); }
-                            100% { transform: translateX(-80px); }
-                        }
-                        @keyframes zigzag-flow {
-                            0% { transform: translateX(0); }
-                            100% { transform: translateX(80px); }
-                        }
-                        @keyframes zigzag-flow-reverse {
-                            0% { transform: translateX(0); }
-                            100% { transform: translateX(-80px); }
-                        }
-                        .awesome-squiggle-editor-preview .wave-path {
-                            transform-origin: left center;
-                        }
-                    ` }
-				</style>
 				<div { ...blockProps }>
-					{ /* Long path SVG rendering - uses The Outline's technique for seamless animation */ }
-					{ ( () => {
-						const effectiveAmplitude = squiggleAmplitude || 15;
-						const effectiveStrokeWidth = strokeWidth || 1;
-						// Parse container height from squiggleHeight (e.g., "100px" -> 100)
-						const containerHeight = parseInt( squiggleHeight, 10 ) || 100;
-
-						// Generate long continuous wave path (no pattern tiling = no seams)
-						// Use 150 repetitions = 6000px to cover ultra-wide screens (4K+)
-						// Pass containerHeight so the wave is drawn to fit exactly
-						const { d: wavePath, height: waveHeight, wavelength, totalWidth } =
-							generateLongWavePath(
-								effectiveAmplitude,
-								effectivePointiness,
-								effectiveAngle,
-								effectiveStrokeWidth,
-								150, // 150 wavelengths = 6000px of wave for 4K+ support
-								containerHeight
-							);
-
-						// ViewBox width is very wide to ensure horizontal clipping, not vertical scaling
-						// Height matches container exactly so no vertical scaling occurs
-						const viewBoxWidth = wavelength * 150; // Match the path length
-
-						return (
 					<div
 						ref={ containerRef }
 						className="awesome-squiggle-editor-preview"
@@ -1505,8 +1438,6 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							/>
 						</svg>
 					</div>
-						);
-					} )() }
 				</div>
 
 				{ /* Add our custom pattern-specific controls to the inspector */ }
@@ -1771,31 +1702,6 @@ addFilter(
 			className,
 		} );
 
-		// Extract color information from WordPress classes
-		const extractColorFromClassName = ( className ) => {
-			if ( ! className ) return null;
-
-			// Look for background color classes (has-{color}-background-color)
-			const bgColorMatch = className.match(
-				/has-([a-zA-Z0-9-]+)-background-color/
-			);
-			if ( bgColorMatch ) {
-				const colorSlug = bgColorMatch[ 1 ];
-				return `var(--wp--preset--color--${ colorSlug })`;
-			}
-
-			// Look for text color classes (has-{color}-color)
-			const textColorMatch = className.match(
-				/has-([a-zA-Z0-9-]+)-color(?!\s*background)/
-			);
-			if ( textColorMatch ) {
-				const colorSlug = textColorMatch[ 1 ];
-				return `var(--wp--preset--color--${ colorSlug })`;
-			}
-
-			return null;
-		};
-
 		// Determine if animation should be paused
 		// For legacy styles, check class name; for new styles, use isAnimated attribute
 		const isAnimated = isLegacy
@@ -1974,7 +1880,7 @@ addFilter(
 			const viewBoxWidth = wavelength * 150;
 
 			return (
-				<div className={ combinedClassName } style={ inlineStyles }>
+				<div className={ combinedClassName } style={ inlineStyles } role="separator">
 					<svg
 						viewBox={ `0 0 ${ viewBoxWidth } ${ waveHeight }` }
 						preserveAspectRatio="xMinYMid slice"
@@ -2056,7 +1962,7 @@ addFilter(
 		const viewBoxHeight = ( squiggleAmplitude * 2 ) + ( padding * 2 );
 
 		return (
-			<div className={ combinedClassName } style={ inlineStyles }>
+			<div className={ combinedClassName } style={ inlineStyles } role="separator">
 				<svg
 					viewBox={ `0 ${ viewBoxMinY } ${ viewBoxWidth } ${ viewBoxHeight }` }
 					preserveAspectRatio="none"
