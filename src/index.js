@@ -290,6 +290,8 @@ const resolveGradientToCss = ( input ) => {
 const resolveCssVarBackgroundImage = ( css ) => {
 	try {
 		if ( typeof window === 'undefined' || ! window.document ) return null;
+		// Only allow CSS var() references and gradient functions — reject anything else
+		if ( ! /^(var\(|linear-gradient\(|radial-gradient\()/.test( css ) ) return null;
 		const el = document.createElement( 'div' );
 		// Keep it out of flow and invisible
 		el.style.position = 'absolute';
