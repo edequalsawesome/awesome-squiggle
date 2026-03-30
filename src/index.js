@@ -9,8 +9,8 @@ import {
 import { __, sprintf } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
-import { useEffect, useRef, useState, useMemo } from '@wordpress/element';
-import { select } from '@wordpress/data';
+import { useEffect, useMemo } from '@wordpress/element';
+import domReady from '@wordpress/dom-ready';
 import './style.css';
 
 // Input validation helpers
@@ -49,6 +49,9 @@ const debugLog = ( message, ...args ) => {
 		console.log( '[Awesome Squiggle]', message, ...args );
 	}
 };
+
+// Cache for resolved CSS variable values — avoids repeated DOM element creation
+const resolvedCssVarCache = new Map();
 
 /**
  * Validate CSS color values — allows hex, rgb/rgba, hsl/hsla, WP CSS variables, and url(#id).
@@ -153,7 +156,14 @@ const setSecureAttributes = ( setAttributes, updates ) => {
 				secureUpdates[ key ] = value === true;
 				break;
 			case 'gradient':
-				secureUpdates[ key ] = value;
+				// Allow linear/radial gradients, WP preset vars, and known slugs
+				if ( typeof value === 'string' && (
+					/^(linear|radial)-gradient\(/.test( value ) ||
+					/^var\(--wp--preset--gradient--[a-zA-Z0-9-]+\)$/.test( value ) ||
+					/^[a-zA-Z0-9-]+$/.test( value )
+				) ) {
+					secureUpdates[ key ] = value;
+				}
 				break;
 			default:
 				secureUpdates[ key ] = value;
@@ -280,8 +290,10 @@ const resolveGradientToCss = ( input ) => {
 const resolveCssVarBackgroundImage = ( css ) => {
 	try {
 		if ( typeof window === 'undefined' || ! window.document ) return null;
+		if (resolvedCssVarCache.has(css)) return resolvedCssVarCache.get(css);
 		// Only allow CSS var() references and gradient functions — reject anything else
 		if ( ! /^(var\(|linear-gradient\(|radial-gradient\()/.test( css ) ) return null;
+		if (/url\s*\(/i.test(css)) return null;
 		const el = document.createElement( 'div' );
 		// Keep it out of flow and invisible
 		el.style.position = 'absolute';
@@ -294,8 +306,10 @@ const resolveCssVarBackgroundImage = ( css ) => {
 		const computed = getComputedStyle( el ).backgroundImage;
 		document.body.removeChild( el );
 		if ( computed && computed !== 'none' ) {
+			resolvedCssVarCache.set(css, computed);
 			return computed;
 		}
+		resolvedCssVarCache.set(css, null);
 		return null;
 	} catch ( e ) {
 		return null;
@@ -709,18 +723,12 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 		const { attributes, setAttributes, name, clientId } = props;
 
 		// ALL hooks must be declared at the top level, before ANY conditional logic
-		const blockInitializedRef = useRef( false );
-		const gradientIdRefHook = useRef( attributes?.gradientId );
-		
-		// Container width measurement for dynamic viewBox sizing
-		const [containerWidth, setContainerWidth] = useState(800);
-		const containerRef = useRef(null);
 
 		// Pre-calculate values needed for useBlockProps
 		const {
 			className = '',
 			squiggleHeight = '100px',
-			animationSpeed = 1.6,
+			animationSpeed = 2.5,
 			isReversed = false,
 			// NEW: Parametric wave controls (with defaults based on style)
 			isAnimated: isAnimatedAttr,
@@ -889,59 +897,6 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			}
 		}, [ isCustom, strokeWidth, animationId, gradientId, isSquiggle, isZigzag, isLightning, clientId ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-		// Detect if this is a fresh block that needs ID generation
-		useEffect( () => {
-			debugLog( '🔍 Block initialization check:', {
-				isCustom,
-				clientId,
-				blockInitialized: blockInitializedRef.current,
-				currentGradientId: gradientId,
-				hasGradient: !! ( gradient || style?.color?.gradient ),
-				gradientIdRef: gradientIdRefHook.current,
-			} );
-
-			// If this is a custom style block with gradient but the gradient ID hasn't changed from our ref,
-			// it might be a duplicate
-			if ( isCustom && gradientId && ! blockInitializedRef.current ) {
-				// Check if another block already has this gradient ID
-				const allBlocks = select( 'core/block-editor' ).getBlocks();
-				const otherBlocksWithSameId = allBlocks.filter(
-					( block ) =>
-						block.clientId !== clientId &&
-						block.attributes.gradientId === gradientId
-				);
-
-				if ( otherBlocksWithSameId.length > 0 ) {
-					debugLog(
-						'🔄 Duplicate gradient ID detected on initialization, regenerating'
-					);
-					const defaultAmplitude = isZigzag ? 15 : 10;
-					const newAnimationId = generateAnimationId(
-						isZigzag ? 'zigzag' : 'squiggle',
-						clientId,
-						strokeWidth || 1,
-						squiggleAmplitude || defaultAmplitude
-					);
-					const newGradientId = generateGradientId(
-						isZigzag ? 'zigzag' : 'squiggle',
-						'',
-						clientId
-					);
-					setSecureAttributes( setAttributes, {
-						animationId: newAnimationId,
-						gradientId: newGradientId,
-					} );
-					gradientIdRefHook.current = newGradientId;
-				}
-			}
-
-			blockInitializedRef.current = true;
-			gradientIdRefHook.current = gradientId;
-		}, [ clientId, isCustom, gradientId, isZigzag, setAttributes ] );
-
-		// Duplicate gradient detection is handled above via the block store check
-		// (getBlocks() lookup), which is authoritative and race-condition-free.
-
 		// Ensure gradient ID exists when gradient is present
 		useEffect( () => {
 			const customGradient = gradient || style?.color?.gradient;
@@ -967,28 +922,6 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			isZigzag,
 			setAttributes,
 		] );
-
-		// Container width measurement for dynamic path generation
-		useEffect( () => {
-			if ( ! isCustom || ! containerRef.current ) {
-				return;
-			}
-
-			const observer = new ResizeObserver( ( entries ) => {
-				for ( const entry of entries ) {
-					const newWidth = entry.contentRect.width;
-					if ( newWidth !== containerWidth ) {
-						setContainerWidth( newWidth );
-					}
-				}
-			} );
-
-			observer.observe( containerRef.current );
-
-			return () => {
-				observer.disconnect();
-			};
-		}, [ isCustom ] ); // eslint-disable-line react-hooks/exhaustive-deps -- observer should persist, not recreate on width change
 
 		// Remove this overly aggressive duplicate check that runs too often
 		// and causes gradient IDs to regenerate during block validation
@@ -1133,7 +1066,6 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 				</div>
 				<div { ...blockProps }>
 					<div
-						ref={ containerRef }
 						className="awesome-squiggle-editor-preview"
 						style={ {
 							width: '100%',
@@ -1354,7 +1286,6 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 									currentValue
 								);
 							})() }
-							aria-describedby="stroke-width-help"
 							onKeyDown={ ( e ) => {
 								const currentValue = strokeWidth || 1;
 								if ( e.shiftKey && e.key === 'ArrowLeft' ) {
@@ -1372,9 +1303,6 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 								}
 							} }
 						/>
-						<div id="stroke-width-help" className="screen-reader-text">
-							{ __( 'Hold Shift and use arrow keys for larger increments', 'awesome-squiggle' ) }
-						</div>
 						<SelectControl
 							label={ __(
 								isZigzag
@@ -1384,12 +1312,12 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							) }
 							value={ squiggleHeight || '100px' }
 							options={ [
-								{ label: '50px', value: '50px' },
-								{ label: '75px', value: '75px' },
-								{ label: '100px', value: '100px' },
-								{ label: '125px', value: '125px' },
-								{ label: '150px', value: '150px' },
-								{ label: '200px', value: '200px' },
+								{ label: __( 'Extra Small (50px)', 'awesome-squiggle' ), value: '50px' },
+								{ label: __( 'Small (75px)', 'awesome-squiggle' ), value: '75px' },
+								{ label: __( 'Medium (100px)', 'awesome-squiggle' ), value: '100px' },
+								{ label: __( 'Large (125px)', 'awesome-squiggle' ), value: '125px' },
+								{ label: __( 'Extra Large (150px)', 'awesome-squiggle' ), value: '150px' },
+								{ label: __( 'Jumbo (200px)', 'awesome-squiggle' ), value: '200px' },
 							] }
 							onChange={ ( value ) =>
 								setSecureAttributes( setAttributes, {
@@ -1441,7 +1369,7 @@ addFilter(
 		const {
 			strokeWidth = 1,
 			animationSpeed = 2.5, // Default duration for speed level 6
-			squiggleAmplitude = 15, // Match PHP default
+			squiggleAmplitude,
 			squiggleHeight = '100px',
 			animationId,
 			isReversed,
@@ -1457,6 +1385,9 @@ addFilter(
 			pointiness: pointinessAttr,
 			angle: angleAttr,
 		} = attributes;
+
+		// Style-aware amplitude default: zigzag/lightning default to 15, squiggle to 10
+		const effectiveAmplitudeDefault = (isZigzag || isLightning) ? 15 : 10;
 
 		// Calculate effective values for pointiness and angle
 		const effectivePointiness = pointinessAttr !== undefined
@@ -1501,6 +1432,7 @@ addFilter(
 
 		// Variable to store the gradient ID consistently
 		let usedGradientId = null;
+		let parsedGradientData = null;
 
 		if ( customGradient ) {
 			// Always use the stored gradient ID, never generate in save
@@ -1508,14 +1440,14 @@ addFilter(
 				usedGradientId = gradientId;
 				finalGradient = customGradient;
 				lineColor = `url(#${ usedGradientId })`;
-				const parsedGradient = parseGradient( customGradient );
+				parsedGradientData = parseGradient( customGradient );
 				debugLog(
 					'🎨 SAVE GRADIENT DEBUG: Using gradient:',
 					customGradient,
 					'Parsed:',
-					parsedGradient
+					parsedGradientData
 				);
-				debugLog( '🎨 SAVE GRADIENT STOPS:', parsedGradient?.stops );
+				debugLog( '🎨 SAVE GRADIENT STOPS:', parsedGradientData?.stops );
 				debugLog(
 					'🎨 SAVE GRADIENT ID for',
 					isZigzag ? 'ZIGZAG' : 'SQUIGGLE',
@@ -1613,7 +1545,7 @@ addFilter(
 		// Pass containerHeight so wave is drawn at exact container size (no vertical scaling)
 		const { d: wavePath, height: waveHeight, wavelength } =
 			generateLongWavePath(
-				squiggleAmplitude,
+				squiggleAmplitude || effectiveAmplitudeDefault,
 				effectivePointiness,
 				effectiveAngle,
 				strokeWidth,
@@ -1641,7 +1573,8 @@ addFilter(
 					<defs>
 						{ /* Gradient definition if using gradient stroke */ }
 						{ finalGradient && usedGradientId && ( () => {
-							const gradientData = parseGradient( finalGradient );
+							// Reuse parsed gradient data from earlier (avoids duplicate parseGradient call)
+							const gradientData = parsedGradientData;
 							// Use userSpaceOnUse with reflect for smooth color transitions
 							// Gradient span of 40px = one half of reflection cycle
 							// Full reflection cycle = 80px = animation distance
@@ -1697,7 +1630,7 @@ addFilter(
 );
 
 // Register block styles - shape presets only, animation is now a toggle
-wp.domReady( () => {
+domReady( () => {
 	// Squiggle Style (smooth curves, pointiness: 0)
 	registerBlockStyle( 'core/separator', {
 		name: 'squiggle',

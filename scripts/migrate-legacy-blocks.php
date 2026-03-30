@@ -16,6 +16,8 @@ if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
  */
 class Awesome_Squiggle_CLI_Command {
 
+	// WARNING: These keys are used in SQL LIKE clauses — keep them as hardcoded strings.
+
 	/**
 	 * Legacy class name to new format mapping.
 	 *
@@ -87,7 +89,7 @@ class Awesome_Squiggle_CLI_Command {
 			$where_clauses[] = $wpdb->prepare( 'post_content LIKE %s', '%' . $wpdb->esc_like( $class ) . '%' );
 		}
 
-		$sql   = "SELECT ID, post_title, post_content FROM {$wpdb->posts} WHERE (" . implode( ' OR ', $where_clauses ) . ") AND post_status != 'trash'";
+		$sql   = "SELECT ID, post_title, post_content FROM {$wpdb->posts} WHERE (" . implode( ' OR ', $where_clauses ) . ") AND post_status != 'trash' AND post_type IN ('post', 'page', 'wp_block')";
 		$posts = $wpdb->get_results( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- dynamic IN clause with esc_like
 
 		if ( empty( $posts ) ) {
@@ -97,8 +99,9 @@ class Awesome_Squiggle_CLI_Command {
 
 		WP_CLI::log( sprintf( 'Found %d post(s) with legacy Awesome Squiggle blocks.', count( $posts ) ) );
 
-		$posts_updated  = 0;
-		$blocks_migrated = 0;
+		$posts_updated      = 0;
+		$posts_would_update = 0;
+		$blocks_migrated    = 0;
 
 		foreach ( $posts as $post ) {
 			$blocks         = parse_blocks( $post->post_content );
@@ -119,6 +122,7 @@ class Awesome_Squiggle_CLI_Command {
 					$post->post_title,
 					$migrated_count
 				) );
+				$posts_would_update++;
 			} else {
 				$result = wp_update_post(
 					array(
@@ -154,7 +158,7 @@ class Awesome_Squiggle_CLI_Command {
 			WP_CLI::success( sprintf(
 				'Dry run complete. Would update %d block(s) across %d post(s).',
 				$blocks_migrated,
-				count( array_filter( array( $blocks_migrated > 0 ) ) ) ? count( $posts ) : 0
+				$posts_would_update
 			) );
 		} else {
 			WP_CLI::success( sprintf(

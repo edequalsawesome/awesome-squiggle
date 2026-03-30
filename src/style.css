@@ -1,6 +1,5 @@
 .awesome-squiggle-wave {
 	display: block;
-	height: 100px;
 	overflow: hidden;
 	position: relative;
 	background-color: transparent !important; /* Container always transparent */
@@ -35,38 +34,13 @@
 	animation-play-state: paused;
 }
 
-/* NEW STYLES: shape presets (squiggle, zigzag, lightning) */
-.wp-block-separator.is-style-squiggle .wave-path,
-.wp-block-separator.is-style-zigzag .wave-path,
-.wp-block-separator.is-style-lightning .wave-path,
-.wp-block-separator.is-style-squiggle .wave-fill,
-.wp-block-separator.is-style-zigzag .wave-fill,
-.wp-block-separator.is-style-lightning .wave-fill {
-	transform-origin: left center;
-	animation: var(--animation-name, wave-flow)
-		var(--animation-duration, 1.6s) linear infinite;
-}
-
-/* Static state for new styles (when animation is disabled) */
+/* Static state for style presets (when animation is disabled) */
 .wp-block-separator.is-style-squiggle.is-paused .wave-path,
 .wp-block-separator.is-style-zigzag.is-paused .wave-path,
 .wp-block-separator.is-style-lightning.is-paused .wave-path,
 .wp-block-separator.is-style-squiggle.is-paused .wave-fill,
 .wp-block-separator.is-style-zigzag.is-paused .wave-fill,
 .wp-block-separator.is-style-lightning.is-paused .wave-fill {
-	animation: none;
-}
-
-/* Frontend-specific selectors to ensure styles apply */
-div.wp-block-separator.awesome-squiggle-wave .wave-path,
-div.wp-block-separator.awesome-squiggle-wave .wave-fill {
-	transform-origin: left center;
-	animation: var(--animation-name, wave-flow)
-		var(--animation-duration, 1.6s) linear infinite;
-}
-
-div.wp-block-separator.awesome-squiggle-wave.is-paused .wave-path,
-div.wp-block-separator.awesome-squiggle-wave.is-paused .wave-fill {
 	animation: none;
 }
 
@@ -311,10 +285,11 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .wave-fill {
 	animation: none !important;
 }
 
-/* Hide unstyled separators to prevent flash */
+/* Fallback for squiggle separators before wave class is applied */
 .wp-block-separator.is-style-squiggle:not(.awesome-squiggle-wave),
 .wp-block-separator.is-style-zigzag:not(.awesome-squiggle-wave),
 .wp-block-separator.is-style-lightning:not(.awesome-squiggle-wave) {
-	opacity: 0;
-	visibility: hidden;
+	border-top: 2px solid currentColor;
+	height: auto;
+	min-height: 0;
 }
