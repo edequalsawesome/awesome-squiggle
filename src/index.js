@@ -37,14 +37,8 @@ const validateStringInput = ( value, allowedPattern, maxLength = 100 ) => {
 	return value;
 };
 
-const validateGradientId = ( id ) => {
-	// Only allow alphanumeric, dash, and underscore
-	const allowedPattern = /^[a-zA-Z0-9_-]+$/;
-	return validateStringInput( id, allowedPattern, 50 );
-};
-
-const validateAnimationId = ( id ) => {
-	// Only allow alphanumeric, dash, and underscore
+// Validate IDs (animation, gradient) — alphanumeric, dash, and underscore only
+const validateId = ( id ) => {
 	const allowedPattern = /^[a-zA-Z0-9_-]+$/;
 	return validateStringInput( id, allowedPattern, 50 );
 };
@@ -136,10 +130,10 @@ const setSecureAttributes = ( setAttributes, updates ) => {
 				secureUpdates[ key ] = value === true;
 				break;
 			case 'animationId':
-				secureUpdates[ key ] = validateAnimationId( value );
+				secureUpdates[ key ] = validateId( value );
 				break;
 			case 'gradientId':
-				secureUpdates[ key ] = validateGradientId( value );
+				secureUpdates[ key ] = validateId( value );
 				break;
 			case 'squiggleHeight':
 				// Validate against allowed height values
@@ -190,7 +184,7 @@ const generateAnimationId = (
 	}
 	const suffix = Math.abs( hash ).toString( 36 ).substring( 0, 6 );
 	const id = `${ baseId }-${ suffix }`;
-	return validateAnimationId( id );
+	return validateId( id );
 };
 
 // Generate deterministic gradient ID to ensure save function stability
@@ -213,7 +207,7 @@ const generateGradientId = (
 	}
 	suffix = Math.abs( hash ).toString( 36 ).substring( 0, 8 );
 	const id = `${ baseId }-${ suffix }`;
-	return validateGradientId( id );
+	return validateId( id );
 };
 
 // WordPress default gradients mapping with optimized versions
@@ -437,25 +431,13 @@ const parseGradient = ( gradientInput ) => {
 	};
 };
 
-// Test gradient parsing - only in development
-if ( process.env.NODE_ENV === 'development' ) {
-	debugLog( '🧪 Testing gradient parsing:' );
-	const testGradient1 = parseGradient(
-		'luminous-vivid-amber-to-luminous-vivid-orange'
-	);
-	const testGradient2 = parseGradient( 'cool-to-warm-spectrum' );
-	debugLog( 'luminous-vivid-amber-to-luminous-vivid-orange:', testGradient1 );
-	debugLog( '  stops:', testGradient1?.stops );
-	debugLog( 'cool-to-warm-spectrum:', testGradient2 );
-	debugLog( '  stops:', testGradient2?.stops );
+// TODO: generateSquigglePath and generateZigzagPath below are equivalent to
+// generateWavePath(amplitude, width, 0, 0) and generateWavePath(amplitude, width, 100, 0).
+// They're kept for now because the legacy save path references them, and changing save
+// output would trigger block validation errors. Remove when legacy blocks get a
+// proper deprecation/migration.
 
-	// Test the actual CSS gradient parsing
-	const testCss =
-		'linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%)';
-	debugLog( 'Direct CSS test:', parseGradient( testCss ) );
-}
-
-// Generate SVG path data for the squiggle
+// Generate SVG path data for the squiggle (legacy — see generateWavePath)
 const generateSquigglePath = ( amplitude = 10, pathWidth = 800 ) => {
 	// Security: Validate amplitude bounds
 	amplitude = validateNumericInput( amplitude, 5, 25, 10 );
@@ -489,8 +471,7 @@ const generateSquigglePath = ( amplitude = 10, pathWidth = 800 ) => {
 	return d;
 };
 
-// Generate SVG path data for the zig-zag (Charlie Brown stripe style)
-// LEGACY: Kept for backwards compatibility, use generateWavePath for new code
+// Generate SVG path data for the zig-zag (legacy — see generateWavePath)
 const generateZigzagPath = ( amplitude = 15, pathWidth = 800 ) => {
 	// Security: Validate amplitude bounds
 	amplitude = validateNumericInput( amplitude, 5, 25, 15 );
