@@ -26,32 +26,6 @@ if (!defined('ABSPATH')) {
 define( 'AWESOME_SQUIGGLE_VERSION', '2026.03.10' );
 
 /**
- * Validate squiggle IDs (animation/gradient) against allowed characters.
- * Returns a UUID fallback if the ID doesn't match the expected pattern.
- */
-function awesome_squiggle_validate_squiggle_id($id, $type = 'animation') {
-    // Strict server-side validation
-    if (!preg_match('/^[a-zA-Z0-9_-]{1,50}$/', $id)) {
-        // Generate secure fallback
-        return $type . '-' . wp_generate_uuid4();
-    }
-    return sanitize_key($id);
-}
-
-/**
- * Sanitize animation and gradient IDs in block attributes.
- */
-function awesome_squiggle_validate_block_attributes($attributes) {
-    if (isset($attributes['animationId'])) {
-        $attributes['animationId'] = awesome_squiggle_validate_squiggle_id($attributes['animationId'], 'animation');
-    }
-    if (isset($attributes['gradientId'])) {
-        $attributes['gradientId'] = awesome_squiggle_validate_squiggle_id($attributes['gradientId'], 'gradient');
-    }
-    return $attributes;
-}
-
-/**
  * Initialize the Awesome Squiggle plugin
  */
 function awesome_squiggle_init() {
@@ -89,8 +63,6 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
 
     // sanitize_html_class() only handles a single class, so split and rejoin
     $className = implode(' ', array_map('sanitize_html_class', explode(' ', $className)));
-
-    $attrs = awesome_squiggle_validate_block_attributes($attrs);
 
     if (strpos($className, 'is-style-') !== false &&
         (strpos($className, 'squiggle') !== false || strpos($className, 'zigzag') !== false || strpos($className, 'lightning') !== false)) {
