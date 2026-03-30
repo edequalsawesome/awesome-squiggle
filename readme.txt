@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.3
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2026.03.10
+Stable tag: 2026.03.30
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -17,10 +17,11 @@ Transform boring horizontal separators into beautiful, flowing wave dividers! Aw
 
 **Features:**
 
-* Three shape presets for the core Separator block:
+* Four shape presets for the core Separator block:
   * **Squiggle**: Smooth, flowing wave curves
   * **Zig-Zag**: Sharp, angular Charlie Brown-style pattern
   * **Lightning**: Sharp angles with a dynamic lean
+  * **Pixel**: 8-bit staircase wave (Scott Pilgrim aesthetic)
 
 * **Parametric wave controls:**
   * Pointiness (0-100%): Smooth curves to sharp angles
@@ -50,7 +51,7 @@ Transform boring horizontal separators into beautiful, flowing wave dividers! Aw
 2. Activate the plugin through the 'Plugins' menu in WordPress
 3. Add a core Separator block to your content
 4. In the block toolbar, click the Styles button
-5. Select from four available squiggle/zigzag styles
+5. Select from available wave styles
 6. Customize using the Squiggle Settings panel in the block sidebar
 
 == Frequently Asked Questions ==
@@ -80,12 +81,23 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 
 == Changelog ==
 
+= 2026.03.30 =
+* Architecture: Frontend rendering moved to PHP dynamic render — SVG generated server-side from block attributes
+* Architecture: JS save function outputs minimal markup; PHP is the single source of truth
+* Architecture: Block deprecation support for seamless upgrade of existing blocks
+* New: Pixel block style — 8-bit staircase wave with Scott Pilgrim aesthetic
+* New: PHP renderer class (includes/class-awesome-squiggle-renderer.php)
+* New: PHPUnit test suite (50 tests, 100 assertions)
+* Fix: Consistent stroke width on mobile via vector-effect: non-scaling-stroke
+* Fix: Removed CSS stroke-width override that flattened user settings on small screens
+* Fix: Removed height: auto rule that caused SVG scaling issues on narrow viewports
+
 = 2026.03.10 =
 * Performance: Optimized rendering and animation pipeline
 * Enhancement: Added RTL (right-to-left) language support for animations
 * Standards: Improved WordPress coding standards compliance
 * Maintenance: Replaced string operations with WP_HTML_Tag_Processor for safer DOM manipulation
-* Maintenance: Added plugin deactivation cleanup hook
+* Maintenance: Replaced string operations with WP_HTML_Tag_Processor for safer DOM manipulation
 
 = 2026.02.03 =
 * Security: Debug logging now only runs in development builds
@@ -105,7 +117,7 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 * Fixed Gradient Display: Gradients now display correctly on all wave paths
 * Fixed Alignfull: Full-width separators now work correctly in both editor and frontend
 * Build Files in Repo: Direct GitHub installation now possible without npm build step
-* Backwards Compatible: Legacy 4-style system continues to work
+* Migration Path: WP-CLI command migrates legacy 4-style blocks to new format
 
 = 2026.01.12 =
 * Major Refactor: Converted from style-based to slider-based parametric wave generator
@@ -113,8 +125,8 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 * Angle Control: Added Angle slider (-60 to +60) for leaning wave peaks (lightning bolt effect)
 * Animation Toggle: Animation is now controlled via toggle instead of separate styles
 * Three Shape Presets: Squiggle (smooth), Zig-Zag (sharp), Lightning (sharp + angled)
-* Backwards Compatible: Legacy styles (animated-squiggle, static-squiggle, etc.) still work
-* Unified Path Generation: Single generateWavePath() function for all wave types
+* Migration Path: Legacy styles (animated-squiggle, static-squiggle, etc.) migrate via WP-CLI or block deprecation
+* Unified Path Generation: Parametric wave path generator for all wave types
 * Sparkle Extraction: Sparkle styles extracted to separate "Awesome Sparkles" plugin
 
 = 1.3.2 =
@@ -218,8 +230,11 @@ The plugin source code is also available at: https://github.com/edequalsawesome/
 
 == Upgrade Notice ==
 
+= 2026.03.30 =
+Major architecture upgrade: frontend SVG now rendered server-side via PHP for reliability and consistency. New Pixel block style (8-bit staircase wave). Fixed mobile stroke-width issues. Existing blocks upgrade seamlessly via block deprecation.
+
 = 2026.03.10 =
-Performance and standards improvements. RTL support, safer DOM manipulation via WP_HTML_Tag_Processor, and plugin deactivation cleanup.
+Performance and standards improvements. RTL support and safer DOM manipulation via WP_HTML_Tag_Processor.
 
 = 2026.02.03 =
 Security and accessibility improvements. Debug logging now development-only, color validation prevents injection attacks, and decorative SVGs properly hidden from screen readers.
@@ -228,7 +243,7 @@ Security and accessibility improvements. Debug logging now development-only, col
 Complete reimagining of wave separators! New Pointiness and Angle sliders, Lightning style preset, seamless animations, and critical fixes for gradients and full-width alignment. Fully backwards compatible with existing blocks.
 
 = 2026.01.12 =
-Major refactor introducing parametric wave controls. New Pointiness and Angle sliders let you create any wave shape from smooth curves to sharp zigzags to lightning bolts. Animation is now a toggle. Legacy styles remain fully backwards compatible.
+Major refactor introducing parametric wave controls. New Pointiness and Angle sliders let you create any wave shape from smooth curves to sharp zigzags to lightning bolts. Animation is now a toggle. Legacy styles migrate via WP-CLI command or block deprecation.
 
 = 1.3.1 =
 Fixes full-width behavior in block themes and improves compatibility with theme-defined gradient presets.

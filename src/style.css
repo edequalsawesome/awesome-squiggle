@@ -19,6 +19,7 @@
 	transform-origin: center;
 	animation: var(--animation-name, wave-flow)
 		var(--animation-duration, 1.6s) linear infinite;
+	vector-effect: non-scaling-stroke;
 }
 
 /* Pattern-based wave fill animation */
@@ -38,9 +39,11 @@
 .wp-block-separator.is-style-squiggle.is-paused .wave-path,
 .wp-block-separator.is-style-zigzag.is-paused .wave-path,
 .wp-block-separator.is-style-lightning.is-paused .wave-path,
+.wp-block-separator.is-style-pixel.is-paused .wave-path,
 .wp-block-separator.is-style-squiggle.is-paused .wave-fill,
 .wp-block-separator.is-style-zigzag.is-paused .wave-fill,
-.wp-block-separator.is-style-lightning.is-paused .wave-fill {
+.wp-block-separator.is-style-lightning.is-paused .wave-fill,
+.wp-block-separator.is-style-pixel.is-paused .wave-fill {
 	animation: none;
 }
 
@@ -72,11 +75,12 @@
 	padding: 0 !important;
 }
 
-/* Improved responsive height handling */
+/* Responsive height: respect the inline height from block attributes.
+   Only set min-height as a safety floor — never override to auto,
+   which collapses the container and causes SVG scaling/stroke issues. */
 .awesome-squiggle-wave,
 .wp-block-separator.awesome-squiggle-wave {
 	min-height: 50px;
-	height: auto;
 }
 
 /* ========================================
@@ -124,10 +128,8 @@
 	height: inherit;
 }
 
-/* Ensure the wave path animation works in constrained containers */
-.is-layout-flex .awesome-squiggle-wave .wave-path,
+/* Ensure the wave fill animation works in constrained containers */
 .is-layout-flex .awesome-squiggle-wave .wave-fill,
-.is-layout-grid .awesome-squiggle-wave .wave-path,
 .is-layout-grid .awesome-squiggle-wave .wave-fill {
 	vector-effect: non-scaling-stroke;
 }
@@ -202,31 +204,11 @@
 	max-width: none; /* Allow custom width to take precedence */
 }
 
-/* Force transparent background for ALL wave separators */
-.wp-block-separator.is-style-squiggle,
-.wp-block-separator.is-style-zigzag,
-.wp-block-separator.is-style-lightning {
-	background-color: transparent !important;
-	background: transparent !important;
-	border: none !important;
-}
-
-/* Override WordPress background color classes with extreme specificity */
-.wp-block-separator.is-style-squiggle.has-background-color,
-.wp-block-separator.is-style-zigzag.has-background-color,
-.wp-block-separator.is-style-lightning.has-background-color,
-.wp-block-separator.is-style-squiggle.has-text-color,
-.wp-block-separator.is-style-zigzag.has-text-color,
-.wp-block-separator.is-style-lightning.has-text-color,
-.wp-block-separator.is-style-squiggle[class*="background-color"],
-.wp-block-separator.is-style-zigzag[class*="background-color"],
-.wp-block-separator.is-style-lightning[class*="background-color"],
-.wp-block-separator.is-style-squiggle[class*="has-background"],
-.wp-block-separator.is-style-zigzag[class*="has-background"],
-.wp-block-separator.is-style-lightning[class*="has-background"],
-.wp-block-separator.is-style-squiggle[style*="background"],
-.wp-block-separator.is-style-zigzag[style*="background"],
-.wp-block-separator.is-style-lightning[style*="background"] {
+/* Force transparent background for ALL wave separators.
+   The [class] selector adds specificity to override WordPress background
+   color classes, attribute selectors, and inline style overrides without
+   needing to enumerate every possible class combination. */
+.wp-block-separator.awesome-squiggle-wave[class] {
 	background-color: transparent !important;
 	background: transparent !important;
 	border: none !important;
@@ -243,11 +225,6 @@
 	.awesome-squiggle-wave {
 		min-height: 50px;
 	}
-
-	/* Reduce wave complexity on very small screens for performance */
-	.awesome-squiggle-wave .wave-path {
-		stroke-width: 2px;
-	}
 }
 
 /* High contrast mode support */
@@ -259,16 +236,16 @@
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-	/* Completely disable animations for motion-sensitive users */
 	.awesome-squiggle-wave .wave-path,
 	.awesome-squiggle-wave .wave-fill {
 		animation: none !important;
 	}
+}
 
-	/* Provide alternative static visual interest */
-	.awesome-squiggle-wave .wave-path,
-	.awesome-squiggle-wave .wave-fill {
-		filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+/* Windows High Contrast / forced-colors mode */
+@media (forced-colors: active) {
+	.awesome-squiggle-wave .wave-path {
+		stroke: CanvasText;
 	}
 }
 
@@ -278,10 +255,18 @@
 	animation: none !important;
 }
 
+/* Pixel style: crisp edges for 8-bit aesthetic */
+.wp-block-separator.is-style-pixel .wave-path {
+	shape-rendering: crispEdges;
+	stroke-linecap: square;
+	stroke-linejoin: miter;
+}
+
 /* Fallback for squiggle separators before wave class is applied */
 .wp-block-separator.is-style-squiggle:not(.awesome-squiggle-wave),
 .wp-block-separator.is-style-zigzag:not(.awesome-squiggle-wave),
-.wp-block-separator.is-style-lightning:not(.awesome-squiggle-wave) {
+.wp-block-separator.is-style-lightning:not(.awesome-squiggle-wave),
+.wp-block-separator.is-style-pixel:not(.awesome-squiggle-wave) {
 	border-top: 2px solid currentcolor;
 	height: auto;
 	min-height: 0;

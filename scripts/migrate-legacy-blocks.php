@@ -62,6 +62,9 @@ class Awesome_Squiggle_CLI_Command {
 	 * [--dry-run]
 	 * : Show what would change without saving.
 	 *
+	 * [--post-types=<types>]
+	 * : Comma-separated list of post types to scan. Default: post,page,wp_block.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     # Preview changes
@@ -70,11 +73,15 @@ class Awesome_Squiggle_CLI_Command {
 	 *     # Run the migration
 	 *     wp awesome-squiggle migrate-legacy
 	 *
+	 *     # Include custom post types
+	 *     wp awesome-squiggle migrate-legacy --post-types=post,page,wp_block,product,portfolio
+	 *
 	 * @param array $args       Positional arguments.
 	 * @param array $assoc_args Associative arguments.
 	 */
 	public function __invoke( $args, $assoc_args ) {
-		$dry_run = WP_CLI\Utils\get_flag_value( $assoc_args, 'dry-run', false );
+		$dry_run    = WP_CLI\Utils\get_flag_value( $assoc_args, 'dry-run', false );
+		$post_types = WP_CLI\Utils\get_flag_value( $assoc_args, 'post-types', 'post,page,wp_block' );
 
 		if ( $dry_run ) {
 			WP_CLI::log( '🏃 Dry run mode — no changes will be saved.' );
@@ -89,8 +96,21 @@ class Awesome_Squiggle_CLI_Command {
 			$where_clauses[] = $wpdb->prepare( 'post_content LIKE %s', '%' . $wpdb->esc_like( $class ) . '%' );
 		}
 
-		$sql   = "SELECT ID, post_title, post_content FROM {$wpdb->posts} WHERE (" . implode( ' OR ', $where_clauses ) . ") AND post_status != 'trash' AND post_type IN ('post', 'page', 'wp_block')";
-		$posts = $wpdb->get_results( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- dynamic IN clause with esc_like
+		// Build post type IN clause with proper escaping
+		$type_list = array_values( array_unique( array_filter( array_map( 'trim', explode( ',', $post_types ) ) ) ) );
+		if ( empty( $type_list ) ) {
+			WP_CLI::error( 'No valid post types specified.' );
+			return;
+		}
+		$type_placeholders = implode( ',', array_fill( 0, count( $type_list ), '%s' ) );
+
+		$sql   = $wpdb->prepare(
+			"SELECT ID, post_title, post_content FROM {$wpdb->posts} WHERE (" . implode( ' OR ', $where_clauses ) . ") AND post_status != 'trash' AND post_type IN ($type_placeholders)", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- dynamic clauses with esc_like and prepare
+			...$type_list
+		);
+		$posts = $wpdb->get_results( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		WP_CLI::log( sprintf( 'Scanning post types: %s', implode( ', ', $type_list ) ) );
 
 		if ( empty( $posts ) ) {
 			WP_CLI::success( 'No posts found with legacy Awesome Squiggle blocks.' );

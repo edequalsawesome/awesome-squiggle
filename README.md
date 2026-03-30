@@ -4,10 +4,11 @@ A WordPress plugin that adds parametric wave styles to the core Separator block.
 
 ## Features
 
-- Three shape presets for the core Separator block:
+- Four shape presets for the core Separator block:
   - **Squiggle**: Smooth, flowing wave curves
   - **Zig-Zag**: Sharp, angular Charlie Brown-style pattern
   - **Lightning**: Sharp angles with a dynamic lean
+  - **Pixel**: 8-bit staircase wave (Scott Pilgrim aesthetic)
 - Parametric wave controls:
   - **Pointiness** (0-100%): Smooth curves to sharp angles
   - **Angle** (-60 to +60): Lean the wave peaks for lightning effects
@@ -41,10 +42,11 @@ A WordPress plugin that adds parametric wave styles to the core Separator block.
 
 1. Add a core **Separator** block to your content
 2. In the block toolbar, click the **Styles** button (or use the Styles panel in the sidebar)
-3. Select from three shape presets:
+3. Select from four shape presets:
    - **Squiggle** — Smooth, flowing wave curves
    - **Zig-Zag** — Sharp, angular Charlie Brown-style pattern
    - **Lightning** — Sharp angles with a dynamic lean
+   - **Pixel** — 8-bit staircase wave (Scott Pilgrim aesthetic)
 4. Use the **Wave Settings** panel in the block sidebar to fine-tune:
    - Pointiness, angle, amplitude, animation toggle, speed, and direction
 5. Apply colors using WordPress's standard color controls, including gradient support
@@ -109,12 +111,22 @@ npm run build:production
 
 ## Changelog
 
+### Version 2026.03.30
+- **Architecture: PHP Dynamic Render**: Frontend SVG is now generated server-side from block attributes, eliminating the three-way source-of-truth problem between editor JS, save JS, and PHP
+- **Architecture: Minimal Save**: JS save function outputs a lightweight placeholder; PHP `render_block` filter handles all frontend markup
+- **Architecture: Deprecation Support**: Existing blocks with old full-SVG save format are handled via block deprecation, preventing "unexpected content" editor warnings
+- **Fix: Mobile Stroke Width**: Consistent stroke thickness across all viewport sizes via `vector-effect: non-scaling-stroke`
+- **Fix: CSS Overrides Removed**: Eliminated `stroke-width: 2px` at 480px and `height: auto` that caused mobile rendering issues
+- **New: Pixel Block Style**: 8-bit staircase wave with Scott Pilgrim aesthetic, phase warping for lightning-bolt lean
+- **New: PHP Renderer Class**: `includes/class-awesome-squiggle-renderer.php` with wave path generation, gradient parsing, color resolution, and input validation
+- **New: PHPUnit Test Suite**: 50 tests, 100 assertions covering wave path generation, gradient parsing, color resolution, and security
+
 ### Version 2026.03.10
 - **Performance**: Optimized rendering and animation pipeline
 - **RTL Support**: Added right-to-left language support for animations
 - **Standards**: Improved WordPress coding standards compliance
 - **Maintenance**: Replaced string operations with `WP_HTML_Tag_Processor` for safer DOM manipulation
-- **Maintenance**: Added plugin deactivation cleanup hook
+- **Maintenance**: Replaced string operations with `WP_HTML_Tag_Processor` for safer DOM manipulation
 
 ### Version 2026.02.03
 - **Security**: Debug logging now only runs in development builds
@@ -136,7 +148,7 @@ npm run build:production
 - **Fixed Alignfull Editor**: Full-width separators now extend edge-to-edge in block editor
 - **Direct GitHub Install**: Build files now included in repo - no npm build step required
 - **Security Enhancement**: Improved class name sanitization
-- **Backwards Compatible**: Legacy 4-style system continues to work
+- **Migration Path**: WP-CLI command migrates legacy 4-style blocks to new format
 
 ### Version 2026.01.12
 - **Major Refactor**: Converted from style-based to slider-based parametric wave generator
@@ -144,8 +156,8 @@ npm run build:production
 - **Angle Control**: Added Angle slider (-60 to +60) for leaning wave peaks (lightning bolt effect)
 - **Animation Toggle**: Animation is now controlled via toggle instead of separate styles
 - **Three Shape Presets**: Squiggle (smooth), Zig-Zag (sharp), Lightning (sharp + angled)
-- **Backwards Compatible**: Legacy styles (animated-squiggle, static-squiggle, etc.) still work
-- **Unified Path Generation**: Single generateWavePath() function for all wave types
+- **Migration Path**: Legacy styles (animated-squiggle, static-squiggle, etc.) migrate via WP-CLI or block deprecation
+- **Unified Path Generation**: Parametric wave path generator for all wave types
 - **Sparkle Extraction**: Sparkle styles extracted to separate "Awesome Sparkles" plugin
 
 ### Version 1.3.2

@@ -1,9 +1,10 @@
 {
 	"name": "awesome-squiggle",
-    "version": "2026.03.10",
+	"version": "2026.03.30",
 	"description": "WordPress plugin that adds animated squiggle styles to the core Separator block",
 	"files": [
 		"build",
+		"includes",
 		"src",
 		"awesome-squiggle.php",
 		"readme.txt",
@@ -11,7 +12,7 @@
 		"LICENSE.md",
 		"changelog.txt"
 	],
-  "scripts": {
+	"scripts": {
 		"build": "wp-scripts build",
 		"build:production": "NODE_ENV=production wp-scripts build && node scripts/strip-debug.js",
 		"restore-debug": "git checkout HEAD -- awesome-squiggle.php",
@@ -24,11 +25,12 @@
 		"lint:md:docs": "wp-scripts lint-md-docs",
 		"lint:pkg-json": "wp-scripts lint-pkg-json",
 		"packages-update": "wp-scripts packages-update",
-    "plugin-zip": "wp-scripts plugin-zip",
-    "release:gh": "gh release create v$npm_package_version awesome-squiggle.zip -t 'Awesome Squiggle v$npm_package_version' -F RELEASE_NOTES_v$npm_package_version.md",
-    "test:e2e": "wp-scripts test-e2e",
-    "test:unit": "wp-scripts test-unit-js"
-  },
+		"plugin-zip": "wp-scripts plugin-zip",
+		"release:gh": "gh release create v$npm_package_version awesome-squiggle.zip -t 'Awesome Squiggle v$npm_package_version' -F RELEASE_NOTES_v$npm_package_version.md",
+		"test:e2e": "wp-scripts test-e2e",
+		"test:unit": "wp-scripts test-unit-js",
+		"test:php": "vendor/bin/phpunit"
+	},
 	"devDependencies": {
 		"@wordpress/block-editor": "^11.0.0",
 		"@wordpress/blocks": "^12.0.0",
