@@ -23,6 +23,11 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Register WP-CLI migration command
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+    require_once __DIR__ . '/scripts/migrate-legacy-blocks.php';
+}
+
 define( 'AWESOME_SQUIGGLE_VERSION', '2026.03.10' );
 
 /**
@@ -74,56 +79,6 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
                 $processor->add_class( 'awesome-squiggle-wave' );
             }
             $block_content = $processor->get_updated_html();
-        }
-
-        // Check if this is a pattern-based block (new) or legacy path-based block
-        // Pattern-based blocks use preserveAspectRatio with "slice" mode and <pattern> element
-        // Legacy blocks use preserveAspectRatio="none" and direct <path> element
-        $is_pattern_based = (strpos($block_content, 'xMidYMid slice') !== false) ||
-                           (strpos($block_content, 'xMinYMid slice') !== false) ||
-                           (strpos($block_content, '<pattern') !== false);
-        $is_legacy = (strpos($block_content, 'preserveAspectRatio="none"') !== false) ||
-                     (!$is_pattern_based && strpos($block_content, '<path') !== false);
-
-        // For legacy path-based blocks, apply viewBox fix for proper wave rendering
-        if ($is_legacy) {
-            // Fix viewBox to zoom in on the actual wave portion
-            // This ensures the wave fills the container height properly
-            $amplitude = isset($attrs['squiggleAmplitude']) ? intval($attrs['squiggleAmplitude']) : 15;
-            $amplitude = max(5, min(25, $amplitude)); // Clamp to valid range
-            $stroke_width = isset($attrs['strokeWidth']) ? intval($attrs['strokeWidth']) : 1;
-            $stroke_width = max(1, min(8, $stroke_width)); // Clamp to valid range
-
-            $padding = max($stroke_width * 2, 5);
-            $viewbox_min_y = 50 - $amplitude - $padding;
-            $viewbox_height = ($amplitude * 2) + ($padding * 2);
-
-            // Replace viewBox with calculated one
-            // Use 4800 for alignfull/alignwide (wide/ultra-wide screens), 800 for normal width
-            // Check both className and align attribute (WordPress stores alignment separately)
-            $is_full_width = (strpos($className, 'alignfull') !== false) ||
-                             (isset($attrs['align']) && $attrs['align'] === 'full');
-            $is_wide_width = (strpos($className, 'alignwide') !== false) ||
-                             (isset($attrs['align']) && $attrs['align'] === 'wide');
-            $viewbox_width = ($is_full_width || $is_wide_width) ? 4800 : 800;
-
-            // Match ANY viewBox format and replace with correct calculated values
-            // This fixes both old format (0 0 width 100) and new format (0 minY width height)
-            $block_content = preg_replace(
-                '/viewBox="[^"]*"/',
-                'viewBox="0 ' . $viewbox_min_y . ' ' . $viewbox_width . ' ' . $viewbox_height . '"',
-                $block_content,
-                1
-            );
-
-            // Add data attribute to flag legacy blocks for potential JS migration
-            if (strpos($block_content, 'data-legacy-format') === false) {
-                $processor = new WP_HTML_Tag_Processor( $block_content );
-                if ( $processor->next_tag( array( 'class_name' => 'awesome-squiggle-wave' ) ) ) {
-                    $processor->set_attribute( 'data-legacy-format', 'true' );
-                }
-                $block_content = $processor->get_updated_html();
-            }
         }
 
     }

@@ -29,19 +29,9 @@
 		var(--animation-duration, 1.6s) linear infinite;
 }
 
-/* Legacy support: squiggle-path and zigzag-path classes */
-.awesome-squiggle-wave .squiggle-path,
-.awesome-squiggle-wave .zigzag-path {
-	transform-origin: center;
-	animation: var(--animation-name, wave-flow)
-		var(--animation-duration, 1.6s) linear infinite;
-}
-
 /* Paused state for all wave types */
 .awesome-squiggle-wave.is-paused .wave-path,
-.awesome-squiggle-wave.is-paused .wave-fill,
-.awesome-squiggle-wave.is-paused .squiggle-path,
-.awesome-squiggle-wave.is-paused .zigzag-path {
+.awesome-squiggle-wave.is-paused .wave-fill {
 	animation-play-state: paused;
 }
 
@@ -67,45 +57,16 @@
 	animation: none;
 }
 
-/* LEGACY STYLES: backwards compatibility with 4-style system */
-.wp-block-separator.is-style-animated-squiggle .squiggle-path,
-.wp-block-separator.is-style-animated-squiggle .wave-path {
-	transform-origin: center;
-	animation: var(--animation-name, wave-flow)
-		var(--animation-duration, 1.6s) linear infinite;
-}
-
-.wp-block-separator.is-style-static-squiggle .squiggle-path,
-.wp-block-separator.is-style-static-squiggle .wave-path {
-	animation: none;
-}
-
-.wp-block-separator.is-style-animated-zigzag .zigzag-path,
-.wp-block-separator.is-style-animated-zigzag .wave-path {
-	transform-origin: center;
-	animation: var(--animation-name, wave-flow)
-		var(--animation-duration, 1.6s) linear infinite;
-}
-
-.wp-block-separator.is-style-static-zigzag .zigzag-path,
-.wp-block-separator.is-style-static-zigzag .wave-path {
-	animation: none;
-}
-
 /* Frontend-specific selectors to ensure styles apply */
 div.wp-block-separator.awesome-squiggle-wave .wave-path,
-div.wp-block-separator.awesome-squiggle-wave .wave-fill,
-div.wp-block-separator.awesome-squiggle-wave .squiggle-path,
-div.wp-block-separator.awesome-squiggle-wave .zigzag-path {
+div.wp-block-separator.awesome-squiggle-wave .wave-fill {
 	transform-origin: left center;
 	animation: var(--animation-name, wave-flow)
 		var(--animation-duration, 1.6s) linear infinite;
 }
 
 div.wp-block-separator.awesome-squiggle-wave.is-paused .wave-path,
-div.wp-block-separator.awesome-squiggle-wave.is-paused .wave-fill,
-div.wp-block-separator.awesome-squiggle-wave.is-paused .squiggle-path,
-div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
+div.wp-block-separator.awesome-squiggle-wave.is-paused .wave-fill {
 	animation: none;
 }
 
@@ -184,12 +145,8 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 /* Ensure the wave path animation works in constrained containers */
 .is-layout-flex .awesome-squiggle-wave .wave-path,
 .is-layout-flex .awesome-squiggle-wave .wave-fill,
-.is-layout-flex .awesome-squiggle-wave .squiggle-path,
-.is-layout-flex .awesome-squiggle-wave .zigzag-path,
 .is-layout-grid .awesome-squiggle-wave .wave-path,
-.is-layout-grid .awesome-squiggle-wave .wave-fill,
-.is-layout-grid .awesome-squiggle-wave .squiggle-path,
-.is-layout-grid .awesome-squiggle-wave .zigzag-path {
+.is-layout-grid .awesome-squiggle-wave .wave-fill {
 	vector-effect: non-scaling-stroke;
 }
 
@@ -214,42 +171,6 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 	}
 }
 
-/* LEGACY ANIMATIONS: kept for backwards compatibility */
-@keyframes squiggle-flow {
-	0% {
-		transform: translateX(0);
-	}
-	100% {
-		transform: translateX(80px);
-	}
-}
-
-@keyframes squiggle-flow-reverse {
-	0% {
-		transform: translateX(0);
-	}
-	100% {
-		transform: translateX(-80px);
-	}
-}
-
-@keyframes zigzag-flow {
-	0% {
-		transform: translateX(0);
-	}
-	100% {
-		transform: translateX(80px);
-	}
-}
-
-@keyframes zigzag-flow-reverse {
-	0% {
-		transform: translateX(0);
-	}
-	100% {
-		transform: translateX(-80px);
-	}
-}
 /* rtl:end:ignore */
 
 /* Improved spacing controls support */
@@ -314,14 +235,10 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 	max-width: none; /* Allow custom width to take precedence */
 }
 
-/* Force transparent background for ALL wave separators (new and legacy styles) */
+/* Force transparent background for ALL wave separators */
 .wp-block-separator.is-style-squiggle,
 .wp-block-separator.is-style-zigzag,
-.wp-block-separator.is-style-lightning,
-.wp-block-separator.is-style-animated-squiggle,
-.wp-block-separator.is-style-animated-zigzag,
-.wp-block-separator.is-style-static-squiggle,
-.wp-block-separator.is-style-static-zigzag {
+.wp-block-separator.is-style-lightning {
 	background-color: transparent !important;
 	background: transparent !important;
 	border: none !important;
@@ -331,38 +248,18 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 .wp-block-separator.is-style-squiggle.has-background-color,
 .wp-block-separator.is-style-zigzag.has-background-color,
 .wp-block-separator.is-style-lightning.has-background-color,
-.wp-block-separator.is-style-animated-squiggle.has-background-color,
-.wp-block-separator.is-style-animated-zigzag.has-background-color,
-.wp-block-separator.is-style-static-squiggle.has-background-color,
-.wp-block-separator.is-style-static-zigzag.has-background-color,
 .wp-block-separator.is-style-squiggle.has-text-color,
 .wp-block-separator.is-style-zigzag.has-text-color,
 .wp-block-separator.is-style-lightning.has-text-color,
-.wp-block-separator.is-style-animated-squiggle.has-text-color,
-.wp-block-separator.is-style-animated-zigzag.has-text-color,
-.wp-block-separator.is-style-static-squiggle.has-text-color,
-.wp-block-separator.is-style-static-zigzag.has-text-color,
 .wp-block-separator.is-style-squiggle[class*="background-color"],
 .wp-block-separator.is-style-zigzag[class*="background-color"],
 .wp-block-separator.is-style-lightning[class*="background-color"],
-.wp-block-separator.is-style-animated-squiggle[class*="background-color"],
-.wp-block-separator.is-style-animated-zigzag[class*="background-color"],
-.wp-block-separator.is-style-static-squiggle[class*="background-color"],
-.wp-block-separator.is-style-static-zigzag[class*="background-color"],
 .wp-block-separator.is-style-squiggle[class*="has-background"],
 .wp-block-separator.is-style-zigzag[class*="has-background"],
 .wp-block-separator.is-style-lightning[class*="has-background"],
-.wp-block-separator.is-style-animated-squiggle[class*="has-background"],
-.wp-block-separator.is-style-animated-zigzag[class*="has-background"],
-.wp-block-separator.is-style-static-squiggle[class*="has-background"],
-.wp-block-separator.is-style-static-zigzag[class*="has-background"],
 .wp-block-separator.is-style-squiggle[style*="background"],
 .wp-block-separator.is-style-zigzag[style*="background"],
-.wp-block-separator.is-style-lightning[style*="background"],
-.wp-block-separator.is-style-animated-squiggle[style*="background"],
-.wp-block-separator.is-style-animated-zigzag[style*="background"],
-.wp-block-separator.is-style-static-squiggle[style*="background"],
-.wp-block-separator.is-style-static-zigzag[style*="background"] {
+.wp-block-separator.is-style-lightning[style*="background"] {
 	background-color: transparent !important;
 	background: transparent !important;
 	border: none !important;
@@ -381,17 +278,14 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 	}
 
 	/* Reduce wave complexity on very small screens for performance */
-	.awesome-squiggle-wave .wave-path,
-	.awesome-squiggle-wave .squiggle-path {
+	.awesome-squiggle-wave .wave-path {
 		stroke-width: 2px;
 	}
 }
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-	.awesome-squiggle-wave .wave-path,
-	.awesome-squiggle-wave .squiggle-path,
-	.awesome-squiggle-wave .zigzag-path {
+	.awesome-squiggle-wave .wave-path {
 		stroke-width: 3px;
 	}
 }
@@ -400,50 +294,27 @@ div.wp-block-separator.awesome-squiggle-wave.is-paused .zigzag-path {
 @media (prefers-reduced-motion: reduce) {
 	/* Completely disable animations for motion-sensitive users */
 	.awesome-squiggle-wave .wave-path,
-	.awesome-squiggle-wave .wave-fill,
-	.awesome-squiggle-wave .squiggle-path,
-	.awesome-squiggle-wave .zigzag-path {
+	.awesome-squiggle-wave .wave-fill {
 		animation: none !important;
 	}
 
 	/* Provide alternative static visual interest */
 	.awesome-squiggle-wave .wave-path,
-	.awesome-squiggle-wave .wave-fill,
-	.awesome-squiggle-wave .squiggle-path,
-	.awesome-squiggle-wave .zigzag-path {
+	.awesome-squiggle-wave .wave-fill {
 		filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
-	}
-
-	/* Legacy static styles */
-	.awesome-squiggle-wave.is-style-static-squiggle .squiggle-path,
-	.wp-block-separator.is-style-static-squiggle .squiggle-path,
-	.awesome-squiggle-wave.is-style-static-zigzag .zigzag-path,
-	.wp-block-separator.is-style-static-zigzag .zigzag-path {
-		animation: none;
 	}
 }
 
 /* Add user preference override */
 .awesome-squiggle-wave[data-motion-preference="reduce"] .wave-path,
-.awesome-squiggle-wave[data-motion-preference="reduce"] .wave-fill,
-.awesome-squiggle-wave[data-motion-preference="reduce"] .squiggle-path,
-.awesome-squiggle-wave[data-motion-preference="reduce"] .zigzag-path {
+.awesome-squiggle-wave[data-motion-preference="reduce"] .wave-fill {
 	animation: none !important;
 }
 
-/* Editor-specific styles */
-.wp-block-awesome-squiggle-animated-squiggle-divider {
-	margin: 2em 0;
-}
-
-/* Hide unstyled separators to prevent flash (legacy and new styles) */
+/* Hide unstyled separators to prevent flash */
 .wp-block-separator.is-style-squiggle:not(.awesome-squiggle-wave),
 .wp-block-separator.is-style-zigzag:not(.awesome-squiggle-wave),
-.wp-block-separator.is-style-lightning:not(.awesome-squiggle-wave),
-.wp-block-separator.is-style-animated-squiggle:not(.awesome-squiggle-wave),
-.wp-block-separator.is-style-static-squiggle:not(.awesome-squiggle-wave),
-.wp-block-separator.is-style-animated-zigzag:not(.awesome-squiggle-wave),
-.wp-block-separator.is-style-static-zigzag:not(.awesome-squiggle-wave) {
+.wp-block-separator.is-style-lightning:not(.awesome-squiggle-wave) {
 	opacity: 0;
 	visibility: hidden;
 }
