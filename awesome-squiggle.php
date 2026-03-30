@@ -154,34 +154,6 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
             }
         }
 
-        // If an ID was modified by validation, walk the rendered HTML to update it
-        if (isset($attrs['animationId'])) {
-            $validated_animation_id = awesome_squiggle_validate_squiggle_id($attrs['animationId'], 'animation');
-            if ($attrs['animationId'] !== $validated_animation_id) {
-                $processor = new WP_HTML_Tag_Processor( $block_content );
-                while ( $processor->next_tag() ) {
-                    $id_attr = $processor->get_attribute( 'id' );
-                    if ( $id_attr === $attrs['animationId'] ) {
-                        $processor->set_attribute( 'id', $validated_animation_id );
-                    }
-                }
-                $block_content = $processor->get_updated_html();
-            }
-        }
-
-        if (isset($attrs['gradientId'])) {
-            $validated_gradient_id = awesome_squiggle_validate_squiggle_id($attrs['gradientId'], 'gradient');
-            if ($attrs['gradientId'] !== $validated_gradient_id) {
-                $processor = new WP_HTML_Tag_Processor( $block_content );
-                while ( $processor->next_tag() ) {
-                    $id_attr = $processor->get_attribute( 'id' );
-                    if ( $id_attr === $attrs['gradientId'] ) {
-                        $processor->set_attribute( 'id', $validated_gradient_id );
-                    }
-                }
-                $block_content = $processor->get_updated_html();
-            }
-        }
     }
 
     return $block_content;
@@ -189,52 +161,9 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
 add_filter('render_block', 'awesome_squiggle_filter_separator_content', 10, 2);
 
 /**
- * Server-side validation hook for REST API requests
- * Validates block attributes when saving posts
- */
-function awesome_squiggle_validate_rest_block_attributes($prepared_post, $request) {
-    // Only process if post content contains squiggle blocks (single regex instead of 7 strpos calls)
-    if (isset($prepared_post->post_content) &&
-        preg_match('/is-style-(?:animated-|static-)?(?:squiggle|zigzag|lightning)/', $prepared_post->post_content)) {
-
-        // Parse blocks and validate attributes
-        $blocks = parse_blocks($prepared_post->post_content);
-        $blocks = array_map('awesome_squiggle_validate_parsed_blocks', $blocks);
-        $prepared_post->post_content = serialize_blocks($blocks);
-    }
-
-    return $prepared_post;
-}
-
-/**
- * Recursively validate block attributes in parsed blocks
- */
-function awesome_squiggle_validate_parsed_blocks($block) {
-    // Validate separator blocks with squiggle styles (including lightning)
-    if ($block['blockName'] === 'core/separator' &&
-        isset($block['attrs']['className']) &&
-        (strpos($block['attrs']['className'], 'squiggle') !== false ||
-         strpos($block['attrs']['className'], 'zigzag') !== false ||
-         strpos($block['attrs']['className'], 'lightning') !== false)) {
-
-        $block['attrs'] = awesome_squiggle_validate_block_attributes($block['attrs']);
-    }
-
-    // Recursively validate inner blocks (with is_array guard for malformed block JSON)
-    if (!empty($block['innerBlocks']) && is_array($block['innerBlocks'])) {
-        $block['innerBlocks'] = array_map('awesome_squiggle_validate_parsed_blocks', $block['innerBlocks']);
-    }
-
-    return $block;
-}
-
-add_filter('rest_pre_insert_post', 'awesome_squiggle_validate_rest_block_attributes', 10, 2);
-
-/**
  * Clean up hooks on plugin deactivation
  */
 function awesome_squiggle_deactivate() {
     remove_filter( 'render_block', 'awesome_squiggle_filter_separator_content' );
-    remove_filter( 'rest_pre_insert_post', 'awesome_squiggle_validate_rest_block_attributes' );
 }
 register_deactivation_hook( __FILE__, 'awesome_squiggle_deactivate' );
