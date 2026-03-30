@@ -13,7 +13,7 @@ import { useEffect, useRef, useState, useMemo } from '@wordpress/element';
 import { select } from '@wordpress/data';
 import './style.css';
 
-// Security validation functions
+// Input validation helpers
 const validateNumericInput = ( value, min, max, defaultValue ) => {
 	if ( typeof value !== 'number' || isNaN( value ) ) {
 		return defaultValue;
@@ -57,11 +57,8 @@ const debugLog = ( message, ...args ) => {
 };
 
 /**
- * Validate CSS color values to prevent injection attacks
- * Only allows safe color formats: hex, rgb/rgba, hsl/hsla, CSS variables, and named colors
- * @param {string} color - The color value to validate
- * @param {string} fallback - Fallback color if validation fails
- * @returns {string} - Validated color or fallback
+ * Validate CSS color values — allows hex, rgb/rgba, hsl/hsla, WP CSS variables, and url(#id).
+ * Returns fallback for anything else.
  */
 const validateColorValue = ( color, fallback = 'currentColor' ) => {
 	if ( typeof color !== 'string' || ! color ) {
@@ -103,12 +100,11 @@ const validateColorValue = ( color, fallback = 'currentColor' ) => {
 		return trimmed;
 	}
 
-	// Reject anything else (including url() with external references, javascript:, data:, etc.)
 	debugLog( '⚠️ Rejected invalid color value:', trimmed );
 	return fallback;
 };
 
-// Secure attribute setter
+// Attribute setter with validation and clamping
 const setSecureAttributes = ( setAttributes, updates ) => {
 	const secureUpdates = {};
 
@@ -1314,7 +1310,14 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 
 		return (
 			<>
-				{ /* Render the original block edit hidden to preserve all standard WordPress controls */ }
+				{ /*
+				  * WORKAROUND: Render the original BlockEdit in a hidden wrapper.
+				  * This preserves WordPress's built-in color, gradient, and alignment
+				  * controls (which live inside BlockEdit) while we render our own
+				  * SVG preview. There is no cleaner Gutenberg extension point for
+				  * replacing the visual output while keeping the inspector controls.
+				  * If a better API becomes available, this should be replaced.
+				  */ }
 				<div style={ { display: 'none' } } aria-hidden="true">
 					<BlockEdit
 						{ ...props }

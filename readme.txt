@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2026.02.03
+Stable tag: 2026.03.10
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -79,6 +79,13 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 4. Example of zigzag pattern with gradient colors
 
 == Changelog ==
+
+= 2026.03.10 =
+* Performance: Optimized rendering and animation pipeline
+* Enhancement: Added RTL (right-to-left) language support for animations
+* Standards: Improved WordPress coding standards compliance
+* Maintenance: Replaced string operations with WP_HTML_Tag_Processor for safer DOM manipulation
+* Maintenance: Added plugin deactivation cleanup hook
 
 = 2026.02.03 =
 * Security: Debug logging now only runs in development builds
@@ -210,6 +217,9 @@ The complete source code is maintained in this plugin package. All compressed fi
 The plugin source code is also available at: https://github.com/edequalsawesome/awesome-squiggle
 
 == Upgrade Notice ==
+
+= 2026.03.10 =
+Performance and standards improvements. RTL support, safer DOM manipulation via WP_HTML_Tag_Processor, and plugin deactivation cleanup.
 
 = 2026.02.03 =
 Security and accessibility improvements. Debug logging now development-only, color validation prevents injection attacks, and decorative SVGs properly hidden from screen readers.
