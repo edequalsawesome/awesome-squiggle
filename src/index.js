@@ -830,8 +830,12 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			gradientId,
 		} = attributes;
 
-		// Batch all initialization into a single setAttributes call to avoid cascading re-renders
-		if ( isCustom ) {
+		// Initialize custom block attributes via effect (not during render)
+		useEffect( () => {
+			if ( ! isCustom ) {
+				return;
+			}
+
 			const batchUpdates = {};
 			const patternType = isLightning ? 'lightning' : ( isZigzag ? 'zigzag' : 'squiggle' );
 
@@ -840,7 +844,6 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 				const defaultAmplitude = ( isZigzag || isLightning ) ? 15 : 10;
 				const defaultPointiness = ( isZigzag || isLightning ) ? 100 : 0;
 				const defaultAngle = isLightning ? 40 : 0;
-				const defaultIsAnimated = true;
 				const currentGradient = gradient || style?.color?.gradient || '';
 
 				Object.assign( batchUpdates, {
@@ -853,7 +856,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					gradientId: generateGradientId( patternType, currentGradient, clientId ),
 					pointiness: defaultPointiness,
 					angle: defaultAngle,
-					isAnimated: defaultIsAnimated,
+					isAnimated: true,
 				} );
 			} else {
 				// Ensure IDs exist for existing blocks
@@ -884,7 +887,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			if ( Object.keys( batchUpdates ).length > 0 ) {
 				setSecureAttributes( setAttributes, batchUpdates );
 			}
-		}
+		}, [ isCustom, strokeWidth, animationId, gradientId, isSquiggle, isZigzag, isLightning, clientId ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 		// Detect if this is a fresh block that needs ID generation
 		useEffect( () => {
@@ -1015,29 +1018,11 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			const customGradient = gradient || style?.color?.gradient;
 
 			if ( customGradient ) {
-				// Ensure we have a gradient ID when using gradients
-				if ( ! gradientId ) {
-					const newGradientId = generateGradientId(
-						isZigzag ? 'zigzag' : 'squiggle',
-						'',
-						''
-					);
-					setSecureAttributes( setAttributes, {
-						gradientId: newGradientId,
-					} );
-					debugLog(
-						'🆕 Generated gradient ID for new gradient:',
-						newGradientId
-					);
-				}
-
 				finalGradient = customGradient;
-				// Always use the current gradientId for the editor
-				// Only use existing gradientId, don't generate new ones in the editor preview
+				// Use gradient ID if available; the initialization effect will generate one if missing
 				if ( gradientId ) {
 					editorLineColor = `url(#${ gradientId })`;
 				} else {
-					// If no gradientId yet, the useEffect will handle generating it
 					editorLineColor = 'currentColor';
 				}
 				const parsedGradient = parseGradient( customGradient );
@@ -1086,22 +1071,20 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			);
 		}
 
-		// finalPaused is already calculated at the top with hooks
-
-		// Clean up the className to remove conflicting is-paused class when it shouldn't be there
-		let cleanClassName = className;
-		if (
-			cleanClassName &&
-			cleanClassName.includes( 'is-paused' ) &&
-			! finalPaused
-		) {
-			cleanClassName = cleanClassName
-				.replace( /\bis-paused\b/g, '' )
-				.replace( /\s+/g, ' ' )
-				.trim();
-			// Update the className in attributes to remove the stale is-paused class
-			setAttributes( { className: cleanClassName } );
-		}
+		// Clean up stale is-paused class via effect (not during render)
+		useEffect( () => {
+			if (
+				className &&
+				className.includes( 'is-paused' ) &&
+				! finalPaused
+			) {
+				const cleanClassName = className
+					.replace( /\bis-paused\b/g, '' )
+					.replace( /\s+/g, ' ' )
+					.trim();
+				setAttributes( { className: cleanClassName } );
+			}
+		}, [ className, finalPaused, setAttributes ] );
 
 		// Memoize SVG path generation — must be called unconditionally (React hooks rules)
 		const effectiveAmplitude = squiggleAmplitude || 15;
