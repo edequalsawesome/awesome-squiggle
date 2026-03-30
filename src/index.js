@@ -158,7 +158,7 @@ const setSecureAttributes = ( setAttributes, updates ) => {
 			case 'gradient':
 				// Allow linear/radial gradients, WP preset vars, and known slugs
 				if ( typeof value === 'string' && (
-					/^(linear|radial)-gradient\(/.test( value ) ||
+					/^linear-gradient\(/.test( value ) ||
 					/^var\(--wp--preset--gradient--[a-zA-Z0-9-]+\)$/.test( value ) ||
 					/^[a-zA-Z0-9-]+$/.test( value )
 				) ) {

@@ -282,7 +282,7 @@
 .wp-block-separator.is-style-squiggle:not(.awesome-squiggle-wave),
 .wp-block-separator.is-style-zigzag:not(.awesome-squiggle-wave),
 .wp-block-separator.is-style-lightning:not(.awesome-squiggle-wave) {
-	border-top: 2px solid currentColor;
+	border-top: 2px solid currentcolor;
 	height: auto;
 	min-height: 0;
 }

@@ -51,8 +51,9 @@ function awesome_squiggle_filter_separator_content( $block_content, $block ) {
     $className = $attrs['className'] ?? '';
     $className = implode( ' ', array_map( 'sanitize_html_class', explode( ' ', $className ) ) );
 
-    if ( strpos( $className, 'is-style-' ) !== false &&
-        ( strpos( $className, 'squiggle' ) !== false || strpos( $className, 'zigzag' ) !== false || strpos( $className, 'lightning' ) !== false ) ) {
+    // Match exact current style tokens only — not legacy substrings like animated-squiggle
+    $class_list = explode( ' ', $className );
+    if ( array_intersect( $class_list, array( 'is-style-squiggle', 'is-style-zigzag', 'is-style-lightning' ) ) ) {
 
         // Enqueue frontend styles only when a squiggle separator is actually rendered
         if ( ! wp_style_is( 'awesome-squiggle-frontend', 'enqueued' ) ) {
