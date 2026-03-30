@@ -322,6 +322,7 @@ class RendererTest extends TestCase {
 		$this->assertStringContainsString( '<path', $html );
 		$this->assertStringContainsString( 'awesome-squiggle-wave', $html );
 		$this->assertStringContainsString( 'role="separator"', $html );
+		$this->assertStringContainsString( 'aria-label="Decorative separator"', $html );
 		$this->assertStringContainsString( 'aria-hidden="true"', $html );
 		$this->assertStringContainsString( 'vector-effect="non-scaling-stroke"', $html );
 	}
@@ -500,8 +501,12 @@ class RendererTest extends TestCase {
 			)
 		);
 
-		// Script injection should be sanitized away (validateId strips non-alphanumeric)
+		// validateId strips everything non-alphanumeric/dash/underscore
 		$this->assertStringNotContainsString( '<script>', $html );
+		$this->assertStringNotContainsString( 'alert(1)', $html );
+		$this->assertStringNotContainsString( 'test">', $html );
+		// Should fall back to default class since the malicious ID is rejected
+		$this->assertStringContainsString( 'wave-path-default', $html );
 	}
 
 	public function test_render_rejects_invalid_gradient_id() {
