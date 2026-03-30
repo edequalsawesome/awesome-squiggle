@@ -148,7 +148,7 @@ npm run build:production
 - **Fixed Alignfull Editor**: Full-width separators now extend edge-to-edge in block editor
 - **Direct GitHub Install**: Build files now included in repo - no npm build step required
 - **Security Enhancement**: Improved class name sanitization
-- **Backwards Compatible**: Legacy 4-style system continues to work
+- **Migration Path**: WP-CLI command migrates legacy 4-style blocks to new format
 
 ### Version 2026.01.12
 - **Major Refactor**: Converted from style-based to slider-based parametric wave generator
@@ -156,7 +156,7 @@ npm run build:production
 - **Angle Control**: Added Angle slider (-60 to +60) for leaning wave peaks (lightning bolt effect)
 - **Animation Toggle**: Animation is now controlled via toggle instead of separate styles
 - **Three Shape Presets**: Squiggle (smooth), Zig-Zag (sharp), Lightning (sharp + angled)
-- **Backwards Compatible**: Legacy styles (animated-squiggle, static-squiggle, etc.) still work
+- **Migration Path**: Legacy styles (animated-squiggle, static-squiggle, etc.) migrate via WP-CLI or block deprecation
 - **Unified Path Generation**: Parametric wave path generator for all wave types
 - **Sparkle Extraction**: Sparkle styles extracted to separate "Awesome Sparkles" plugin
 

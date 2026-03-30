@@ -117,7 +117,7 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 * Fixed Gradient Display: Gradients now display correctly on all wave paths
 * Fixed Alignfull: Full-width separators now work correctly in both editor and frontend
 * Build Files in Repo: Direct GitHub installation now possible without npm build step
-* Backwards Compatible: Legacy 4-style system continues to work
+* Migration Path: WP-CLI command migrates legacy 4-style blocks to new format
 
 = 2026.01.12 =
 * Major Refactor: Converted from style-based to slider-based parametric wave generator
@@ -125,7 +125,7 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 * Angle Control: Added Angle slider (-60 to +60) for leaning wave peaks (lightning bolt effect)
 * Animation Toggle: Animation is now controlled via toggle instead of separate styles
 * Three Shape Presets: Squiggle (smooth), Zig-Zag (sharp), Lightning (sharp + angled)
-* Backwards Compatible: Legacy styles (animated-squiggle, static-squiggle, etc.) still work
+* Migration Path: Legacy styles (animated-squiggle, static-squiggle, etc.) migrate via WP-CLI or block deprecation
 * Unified Path Generation: Parametric wave path generator for all wave types
 * Sparkle Extraction: Sparkle styles extracted to separate "Awesome Sparkles" plugin
 
@@ -243,7 +243,7 @@ Security and accessibility improvements. Debug logging now development-only, col
 Complete reimagining of wave separators! New Pointiness and Angle sliders, Lightning style preset, seamless animations, and critical fixes for gradients and full-width alignment. Fully backwards compatible with existing blocks.
 
 = 2026.01.12 =
-Major refactor introducing parametric wave controls. New Pointiness and Angle sliders let you create any wave shape from smooth curves to sharp zigzags to lightning bolts. Animation is now a toggle. Legacy styles remain fully backwards compatible.
+Major refactor introducing parametric wave controls. New Pointiness and Angle sliders let you create any wave shape from smooth curves to sharp zigzags to lightning bolts. Animation is now a toggle. Legacy styles migrate via WP-CLI command or block deprecation.
 
 = 1.3.1 =
 Fixes full-width behavior in block themes and improves compatibility with theme-defined gradient presets.

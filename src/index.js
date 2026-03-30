@@ -819,11 +819,6 @@ addFilter(
 					type: 'string',
 					default: undefined,
 				},
-				// NEW: Pattern-based rendering flag for migration
-				patternBased: {
-					type: 'boolean',
-					default: true, // New blocks default to pattern-based
-				},
 			},
 		};
 	},
