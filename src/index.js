@@ -1103,19 +1103,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			setAttributes( { className: cleanClassName } );
 		}
 
-		// If not a custom style, just return the normal block edit but still use our gradient wrapper
-		if ( ! isCustom ) {
-			return (
-				<BlockEdit
-					{ ...props }
-					setAttributes={ setAttributesWithGradientCheck }
-				/>
-			);
-		}
-
-		// blockProps already declared at the top with hooks
-
-		// Memoize SVG path generation — only recalculate when wave parameters change
+		// Memoize SVG path generation — must be called unconditionally (React hooks rules)
 		const effectiveAmplitude = squiggleAmplitude || 15;
 		const effectiveStrokeWidth = strokeWidth || 1;
 		const containerHeight = parseInt( squiggleHeight, 10 ) || 100;
@@ -1130,6 +1118,16 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 				containerHeight
 			);
 		}, [ effectiveAmplitude, effectivePointiness, effectiveAngle, effectiveStrokeWidth, containerHeight ] );
+
+		// If not a custom style, just return the normal block edit but still use our gradient wrapper
+		if ( ! isCustom ) {
+			return (
+				<BlockEdit
+					{ ...props }
+					setAttributes={ setAttributesWithGradientCheck }
+				/>
+			);
+		}
 
 		const { d: wavePath, height: waveHeight, wavelength } = wavePathData;
 		const viewBoxWidth = wavelength * 150;
