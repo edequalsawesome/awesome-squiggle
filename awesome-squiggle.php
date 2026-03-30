@@ -26,8 +26,8 @@ if (!defined('ABSPATH')) {
 define( 'AWESOME_SQUIGGLE_VERSION', '2026.03.10' );
 
 /**
- * Server-side validation for squiggle IDs
- * Provides security hardening against client-side manipulation
+ * Validate squiggle IDs (animation/gradient) against allowed characters.
+ * Returns a UUID fallback if the ID doesn't match the expected pattern.
  */
 function awesome_squiggle_validate_squiggle_id($id, $type = 'animation') {
     // Strict server-side validation
@@ -39,8 +39,7 @@ function awesome_squiggle_validate_squiggle_id($id, $type = 'animation') {
 }
 
 /**
- * Validate block attributes for security
- * Ensures animation and gradient IDs are properly sanitized
+ * Sanitize animation and gradient IDs in block attributes.
  */
 function awesome_squiggle_validate_block_attributes($attributes) {
     if (isset($attributes['animationId'])) {
@@ -88,11 +87,9 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
     $attrs = $block['attrs'] ?? array();
     $className = $attrs['className'] ?? '';
 
-    // Security improvement: Sanitize each class in the className individually
-    // Note: sanitize_html_class() is for single classes, not space-separated lists
+    // sanitize_html_class() only handles a single class, so split and rejoin
     $className = implode(' ', array_map('sanitize_html_class', explode(' ', $className)));
 
-    // Security validation: Validate block attributes server-side
     $attrs = awesome_squiggle_validate_block_attributes($attrs);
 
     if (strpos($className, 'is-style-') !== false &&
@@ -157,8 +154,7 @@ function awesome_squiggle_filter_separator_content($block_content, $block) {
             }
         }
 
-        // Security: Validate and sanitize any ID attributes in the output
-        // Uses WP_HTML_Tag_Processor to surgically replace IDs in attributes only
+        // If an ID was modified by validation, walk the rendered HTML to update it
         if (isset($attrs['animationId'])) {
             $validated_animation_id = awesome_squiggle_validate_squiggle_id($attrs['animationId'], 'animation');
             if ($attrs['animationId'] !== $validated_animation_id) {

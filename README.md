@@ -27,8 +27,7 @@ A WordPress plugin that adds parametric wave styles to the core Separator block.
 - No external dependencies
 - Works inside Group, Row, Stack, and other layout blocks
 - **Performance optimized** for smooth rendering
-- **Accessibility focused** with motion preferences and keyboard navigation
-- **Screen reader compatible** with comprehensive ARIA support
+- **Accessibility considered**: decorative SVGs hidden from assistive tech, respects `prefers-reduced-motion`, uses WordPress native controls
 
 ## Installation
 
@@ -42,34 +41,34 @@ A WordPress plugin that adds parametric wave styles to the core Separator block.
 
 1. Add a core **Separator** block to your content
 2. In the block toolbar, click the **Styles** button (or use the Styles panel in the sidebar)
-3. Select from four available styles:
-   - **"Animated Squiggle"** - Smooth flowing waves
-   - **"Static Squiggle"** - Curved waves without animation
-   - **"Animated Zig-Zag"** - Sharp angular animation
-   - **"Static Zig-Zag"** - Angular divider without animation
-4. Customize using the **Squiggle Settings** panel in the block sidebar
-5. Apply colors using WordPress's standard color controls or enable gradient mode for colorful effects
+3. Select from three shape presets:
+   - **Squiggle** — Smooth, flowing wave curves
+   - **Zig-Zag** — Sharp, angular Charlie Brown-style pattern
+   - **Lightning** — Sharp angles with a dynamic lean
+4. Use the **Wave Settings** panel in the block sidebar to fine-tune:
+   - Pointiness, angle, amplitude, animation toggle, speed, and direction
+5. Apply colors using WordPress's standard color controls, including gradient support
 
 ## Customization Options
 
-When a squiggle or zig-zag style is applied, you'll find these options in the block sidebar:
+When a wave style is applied, the block sidebar shows two panels:
 
-### Squiggle/Zig-Zag Settings
-- **Animation Speed**: Control how fast the pattern flows (0.5-5 seconds)
-- **Pattern Amplitude**: Adjust the height of the wave/zig-zag peaks (5-25px)  
-- **Reverse Animation**: Make the pattern animate in the opposite direction
+### Wave Settings
+- **Amplitude** (5-25px): Height of wave peaks
+- **Pointiness** (0-100%): Smooth curves to sharp angles
+- **Angle** (-60 to +60): Lean wave peaks left or right
+- **Animate**: Toggle animation on/off
+- **Animation Speed** (1-10): Higher = faster
+- **Reverse Direction**: Flip animation direction
 
-### Pattern Dimensions
-- **Stroke Width**: Adjust the thickness of the line (1-8px)
-- **Pattern Height**: Set the height of the container (50px-200px)
+### Dimensions
+- **Stroke Width** (1-8px): Line thickness
+- **Height** (50-200px): Container height
 
 ### Colors & Gradients
-Use WordPress's standard color controls or enable gradient mode:
-- **Background Color**: Sets the line color
-- **Text Color**: Alternative way to set the line color
-- **Custom Colors**: Use the color picker for exact color control
-- **Gradient Mode**: Enable beautiful gradient effects with optimized performance
-- **Gradient Picker**: Choose from WordPress preset gradients or create custom ones
+Uses WordPress's standard color controls:
+- Background color, text color, or custom color picker for the line
+- Gradient picker (theme presets or custom) for gradient strokes
 
 ## Development
 
@@ -87,16 +86,12 @@ npm run build
 npm run build:production
 ```
 
-## Accessibility Features
+## Accessibility
 
-This plugin prioritizes accessibility and inclusive design:
-
-- **Motion Sensitivity**: Completely disables animations for users with `prefers-reduced-motion` settings
-- **Keyboard Navigation**: Advanced keyboard controls with Shift+arrow shortcuts for precise adjustments
-- **Screen Reader Support**: Comprehensive ARIA labels and descriptions for all SVG elements
-- **Alternative Visual Cues**: Static drop shadows and opacity adjustments when animations are disabled
-- **Descriptive Help Text**: Real-time feedback and context-aware control descriptions
-- **Focus Management**: Proper focus handling and keyboard interaction patterns
+- **Reduced motion**: Animations are disabled when `prefers-reduced-motion` is active
+- **Decorative SVGs**: Marked `aria-hidden="true"` and `focusable="false"` so assistive tech ignores them
+- **Native controls**: All inspector panel controls use standard WordPress components (inherits their keyboard/screen reader support)
+- **Keyboard shortcut**: Shift+arrow keys on the stroke width slider for larger increments
 
 ## Security Features
 
@@ -113,6 +108,13 @@ npm run build:production
 ```
 
 ## Changelog
+
+### Version 2026.03.10
+- **Performance**: Optimized rendering and animation pipeline
+- **RTL Support**: Added right-to-left language support for animations
+- **Standards**: Improved WordPress coding standards compliance
+- **Maintenance**: Replaced string operations with `WP_HTML_Tag_Processor` for safer DOM manipulation
+- **Maintenance**: Added plugin deactivation cleanup hook
 
 ### Version 2026.02.03
 - **Security**: Debug logging now only runs in development builds
