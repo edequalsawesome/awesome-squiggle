@@ -73,5 +73,6 @@ wp-config.php
 *.temp
 .cache/
 .phpunit.cache/
+.phpunit.result.cache
 
 CODEX-REVIEW.md
