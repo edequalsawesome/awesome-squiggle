@@ -2,7 +2,7 @@
 Contributors: eDThomas
 Donate link: https://edequalsaweso.me
 Tags: separator, block, blocks, gutenberg, gutenberg blocks
-Requires at least: 6.0
+Requires at least: 6.3
 Tested up to: 6.8
 Requires PHP: 7.4
 Stable tag: 2026.03.10
