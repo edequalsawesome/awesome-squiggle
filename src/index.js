@@ -1537,9 +1537,12 @@ addFilter(
 			[ `--animation-name` ]: animationName,
 		};
 
-		// Merge any existing styles but exclude the color object and override background
+		// Merge existing styles, excluding color (handled via SVG stroke) and
+		// spacing (padding makes no sense on a decorative wave separator —
+		// it creates gaps between the wave and container edge, especially
+		// breaking alignfull where the wave should reach the viewport edges)
 		if ( style ) {
-			const { color, ...otherStyles } = style;
+			const { color, spacing, ...otherStyles } = style;
 			Object.assign( inlineStyles, otherStyles );
 			inlineStyles.backgroundColor = 'transparent';
 		}
