@@ -126,7 +126,7 @@ npm run build:production
 - **RTL Support**: Added right-to-left language support for animations
 - **Standards**: Improved WordPress coding standards compliance
 - **Maintenance**: Replaced string operations with `WP_HTML_Tag_Processor` for safer DOM manipulation
-- **Maintenance**: Added plugin deactivation cleanup hook
+- **Maintenance**: Replaced string operations with `WP_HTML_Tag_Processor` for safer DOM manipulation
 
 ### Version 2026.02.03
 - **Security**: Debug logging now only runs in development builds
@@ -157,7 +157,7 @@ npm run build:production
 - **Animation Toggle**: Animation is now controlled via toggle instead of separate styles
 - **Three Shape Presets**: Squiggle (smooth), Zig-Zag (sharp), Lightning (sharp + angled)
 - **Backwards Compatible**: Legacy styles (animated-squiggle, static-squiggle, etc.) still work
-- **Unified Path Generation**: Single generateWavePath() function for all wave types
+- **Unified Path Generation**: Parametric wave path generator for all wave types
 - **Sparkle Extraction**: Sparkle styles extracted to separate "Awesome Sparkles" plugin
 
 ### Version 1.3.2

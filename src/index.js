@@ -689,25 +689,17 @@ const generatePixelWavePath = (
 	return { d, height, wavelength, totalWidth };
 };
 
-// Helper function to check if current style is a squiggle style
-const isSquiggleStyle = ( className ) => {
-	return className && className.includes( 'is-style-squiggle' );
-};
+// Exact class token check — matches the PHP has_class() helper
+const hasClass = ( className, target ) =>
+	typeof className === 'string' &&
+	className.split( /\s+/ ).includes( target );
 
-// Helper function to check if current style is a zig-zag style
-const isZigzagStyle = ( className ) => {
-	return className && className.includes( 'is-style-zigzag' );
-};
-
-// Helper function to check if current style is a lightning style
-const isLightningStyle = ( className ) => {
-	return className && className.includes( 'is-style-lightning' );
-};
-
-// Helper function to check if current style is a pixel style
-const isPixelStyle = ( className ) => {
-	return className && className.includes( 'is-style-pixel' );
-};
+const isSquiggleStyle = ( className ) =>
+	hasClass( className, 'is-style-squiggle' );
+const isZigzagStyle = ( className ) => hasClass( className, 'is-style-zigzag' );
+const isLightningStyle = ( className ) =>
+	hasClass( className, 'is-style-lightning' );
+const isPixelStyle = ( className ) => hasClass( className, 'is-style-pixel' );
 
 // Extract color information from WordPress classes.
 // Priority: background-color classes first, then text-color.
@@ -1031,10 +1023,12 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					);
 				}
 				if ( ! gradientId ) {
+					const currentGradientForId =
+						gradient || style?.color?.gradient || '';
 					batchUpdates.gradientId = generateGradientId(
 						isZigzag ? 'zigzag' : 'squiggle',
-						'',
-						''
+						currentGradientForId,
+						clientId
 					);
 				}
 				// Regenerate gradient ID when switching between squiggle and zigzag
@@ -1043,10 +1037,12 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					( ( isSquiggle && gradientId.includes( 'zigzag' ) ) ||
 						( isZigzag && gradientId.includes( 'squiggle' ) ) )
 				) {
+					const currentGradientForId =
+						gradient || style?.color?.gradient || '';
 					batchUpdates.gradientId = generateGradientId(
 						isZigzag ? 'zigzag' : 'squiggle',
-						'',
-						''
+						currentGradientForId,
+						clientId
 					);
 					debugLog(
 						'🔄 Regenerated gradient ID for style switch:',
@@ -1076,8 +1072,8 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			if ( isCustom && customGradient && ! gradientId ) {
 				const newGradientId = generateGradientId(
 					isZigzag ? 'zigzag' : 'squiggle',
-					'',
-					''
+					customGradient,
+					clientId
 				);
 				setSecureAttributes( setAttributes, {
 					gradientId: newGradientId,
@@ -1133,11 +1129,8 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 				}
 				debugLog(
 					'🎨 GRADIENT DEBUG: Using gradient:',
-					customGradient,
-					'Parsed:',
-					parsedGradientData
+					customGradient
 				);
-				debugLog( '🎨 GRADIENT STOPS:', parsedGradientData?.stops );
 				debugLog(
 					'🎨 GRADIENT ID for',
 					isZigzag ? 'ZIGZAG' : 'SQUIGGLE',

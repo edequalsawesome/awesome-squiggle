@@ -97,7 +97,11 @@ class Awesome_Squiggle_CLI_Command {
 		}
 
 		// Build post type IN clause with proper escaping
-		$type_list       = array_map( 'trim', explode( ',', $post_types ) );
+		$type_list = array_values( array_unique( array_filter( array_map( 'trim', explode( ',', $post_types ) ) ) ) );
+		if ( empty( $type_list ) ) {
+			WP_CLI::error( 'No valid post types specified.' );
+			return;
+		}
 		$type_placeholders = implode( ',', array_fill( 0, count( $type_list ), '%s' ) );
 
 		$sql   = $wpdb->prepare(

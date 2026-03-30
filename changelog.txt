@@ -32,7 +32,7 @@ This file contains the complete version history for the Awesome Squiggle WordPre
 * Fixed Gradient Display: Gradients now display correctly on all wave paths
 * Fixed Alignfull Frontend: Full-width separators now reach true viewport edges
 * Fixed Alignfull Editor: Full-width separators now extend edge-to-edge in block editor
-* Unified Path Generation: Single generateWavePath() function replaces separate generators
+* Unified Path Generation: Parametric wave path generator for all wave types
 * Sparkles Extracted: Sparkle functionality moved to separate "Awesome Sparkles" plugin
 * Build Files in Repo: Direct GitHub installation now possible without npm build step
 * Security Enhancement: Improved class name sanitization

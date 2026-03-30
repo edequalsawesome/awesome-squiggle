@@ -28,6 +28,12 @@ if ( ! function_exists( 'esc_attr' ) ) {
 	}
 }
 
+if ( ! function_exists( 'esc_attr__' ) ) {
+	function esc_attr__( $text, $domain = 'default' ) {
+		return esc_attr( $text );
+	}
+}
+
 if ( ! function_exists( 'wp_style_is' ) ) {
 	function wp_style_is( $handle, $list = 'enqueued' ) {
 		return false;

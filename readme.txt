@@ -97,7 +97,7 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 * Enhancement: Added RTL (right-to-left) language support for animations
 * Standards: Improved WordPress coding standards compliance
 * Maintenance: Replaced string operations with WP_HTML_Tag_Processor for safer DOM manipulation
-* Maintenance: Added plugin deactivation cleanup hook
+* Maintenance: Replaced string operations with WP_HTML_Tag_Processor for safer DOM manipulation
 
 = 2026.02.03 =
 * Security: Debug logging now only runs in development builds
@@ -126,7 +126,7 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 * Animation Toggle: Animation is now controlled via toggle instead of separate styles
 * Three Shape Presets: Squiggle (smooth), Zig-Zag (sharp), Lightning (sharp + angled)
 * Backwards Compatible: Legacy styles (animated-squiggle, static-squiggle, etc.) still work
-* Unified Path Generation: Single generateWavePath() function for all wave types
+* Unified Path Generation: Parametric wave path generator for all wave types
 * Sparkle Extraction: Sparkle styles extracted to separate "Awesome Sparkles" plugin
 
 = 1.3.2 =
@@ -234,7 +234,7 @@ The plugin source code is also available at: https://github.com/edequalsawesome/
 Major architecture upgrade: frontend SVG now rendered server-side via PHP for reliability and consistency. New Pixel block style (8-bit staircase wave). Fixed mobile stroke-width issues. Existing blocks upgrade seamlessly via block deprecation.
 
 = 2026.03.10 =
-Performance and standards improvements. RTL support, safer DOM manipulation via WP_HTML_Tag_Processor, and plugin deactivation cleanup.
+Performance and standards improvements. RTL support and safer DOM manipulation via WP_HTML_Tag_Processor.
 
 = 2026.02.03 =
 Security and accessibility improvements. Debug logging now development-only, color validation prevents injection attacks, and decorative SVGs properly hidden from screen readers.

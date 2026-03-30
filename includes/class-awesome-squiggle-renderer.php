@@ -363,13 +363,15 @@ class Awesome_Squiggle_Renderer {
 			}
 		}
 
-		// CSS var for a preset gradient
+		// CSS var for a preset gradient — resolve from map or pass through for browser resolution
 		if ( strpos( $value, 'var(--wp--preset--gradient--' ) === 0 ) {
 			if ( preg_match( '/var\(--wp--preset--gradient--([^)]+)\)/', $value, $m ) ) {
 				if ( isset( self::$wp_default_gradients[ $m[1] ] ) ) {
 					return self::$wp_default_gradients[ $m[1] ];
 				}
 			}
+			// Theme-defined preset not in our map — pass through for browser resolution
+			return $value;
 		}
 
 		// Already a concrete linear-gradient
@@ -540,13 +542,17 @@ class Awesome_Squiggle_Renderer {
 		// Check for gradient (highest priority)
 		$custom_gradient = $gradient ?? ( $style['color']['gradient'] ?? null );
 
-		if ( $custom_gradient && $gradient_id ) {
-			$validated_id  = self::validate_id( $gradient_id );
-			if ( $validated_id ) {
-				$final_gradient = $custom_gradient;
-				$line_color     = 'url(#' . $validated_id . ')';
-				$gradient_data  = self::parse_gradient( $custom_gradient );
+		if ( $custom_gradient ) {
+			$validated_id = $gradient_id ? self::validate_id( $gradient_id ) : '';
+			// Generate a runtime ID for legacy blocks saved without a gradient ID
+			if ( ! $validated_id ) {
+				$validated_id = 'gradient-' . substr( md5( $custom_gradient ), 0, 8 );
 			}
+			$final_gradient = $custom_gradient;
+			$line_color     = 'url(#' . $validated_id . ')';
+			$gradient_data  = self::parse_gradient( $custom_gradient );
+			// Store validated ID for use in gradient defs
+			$gradient_id    = $validated_id;
 		}
 
 		if ( ! $final_gradient ) {
@@ -753,7 +759,7 @@ class Awesome_Squiggle_Renderer {
 		// ── Assemble final HTML ──
 
 		$html = sprintf(
-			'<div class="%s" style="%s" role="separator" aria-label="Decorative separator">'
+			'<div class="%s" style="%s" role="separator" aria-label="%s">'
 			. '<svg viewBox="0 0 %d %d" preserveAspectRatio="xMinYMid slice" aria-hidden="true" focusable="false" style="width:100%%;height:100%%;display:block;">'
 			. '%s'
 			. '<path d="%s" fill="none" stroke="%s" stroke-width="%s" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" class="%s" style="%s"/>'
@@ -761,6 +767,7 @@ class Awesome_Squiggle_Renderer {
 			. '</div>',
 			esc_attr( $combined_class ),
 			esc_attr( $wrapper_style ),
+			esc_attr__( 'Decorative separator', 'awesome-squiggle' ),
 			$viewbox_w,
 			$wave_height,
 			$defs_html,

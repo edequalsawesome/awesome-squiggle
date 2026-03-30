@@ -181,14 +181,15 @@ class RendererTest extends TestCase {
 		$this->assertNotNull( $result['gradient'] );
 	}
 
-	public function test_resolve_color_gradient_without_id_falls_through() {
+	public function test_resolve_color_gradient_without_id_generates_runtime_id() {
 		$result = Awesome_Squiggle_Renderer::resolve_line_color( array(
 			'gradient'        => 'linear-gradient(135deg, #ff0000 0%, #0000ff 100%)',
-			// No gradientId
+			// No gradientId — renderer should generate a runtime ID
 			'backgroundColor' => 'primary',
 		) );
-		// Without gradientId, should fall through to backgroundColor
-		$this->assertStringContainsString( 'var(--wp--preset--color--primary)', $result['line_color'] );
+		// Should generate a runtime gradient ID and use the gradient
+		$this->assertStringContainsString( 'url(#gradient-', $result['line_color'] );
+		$this->assertNotNull( $result['gradient'] );
 	}
 
 	public function test_resolve_color_background_preset() {
