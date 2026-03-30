@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.3
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2026.03.10
+Stable tag: 2026.03.30
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -17,10 +17,11 @@ Transform boring horizontal separators into beautiful, flowing wave dividers! Aw
 
 **Features:**
 
-* Three shape presets for the core Separator block:
+* Four shape presets for the core Separator block:
   * **Squiggle**: Smooth, flowing wave curves
   * **Zig-Zag**: Sharp, angular Charlie Brown-style pattern
   * **Lightning**: Sharp angles with a dynamic lean
+  * **Pixel**: 8-bit staircase wave (Scott Pilgrim aesthetic)
 
 * **Parametric wave controls:**
   * Pointiness (0-100%): Smooth curves to sharp angles
@@ -50,7 +51,7 @@ Transform boring horizontal separators into beautiful, flowing wave dividers! Aw
 2. Activate the plugin through the 'Plugins' menu in WordPress
 3. Add a core Separator block to your content
 4. In the block toolbar, click the Styles button
-5. Select from four available squiggle/zigzag styles
+5. Select from available wave styles
 6. Customize using the Squiggle Settings panel in the block sidebar
 
 == Frequently Asked Questions ==
@@ -79,6 +80,17 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 4. Example of zigzag pattern with gradient colors
 
 == Changelog ==
+
+= 2026.03.30 =
+* Architecture: Frontend rendering moved to PHP dynamic render — SVG generated server-side from block attributes
+* Architecture: JS save function outputs minimal markup; PHP is the single source of truth
+* Architecture: Block deprecation support for seamless upgrade of existing blocks
+* New: Pixel block style — 8-bit staircase wave with Scott Pilgrim aesthetic
+* New: PHP renderer class (includes/class-awesome-squiggle-renderer.php)
+* New: PHPUnit test suite (50 tests, 100 assertions)
+* Fix: Consistent stroke width on mobile via vector-effect: non-scaling-stroke
+* Fix: Removed CSS stroke-width override that flattened user settings on small screens
+* Fix: Removed height: auto rule that caused SVG scaling issues on narrow viewports
 
 = 2026.03.10 =
 * Performance: Optimized rendering and animation pipeline
@@ -217,6 +229,9 @@ The complete source code is maintained in this plugin package. All compressed fi
 The plugin source code is also available at: https://github.com/edequalsawesome/awesome-squiggle
 
 == Upgrade Notice ==
+
+= 2026.03.30 =
+Major architecture upgrade: frontend SVG now rendered server-side via PHP for reliability and consistency. New Pixel block style (8-bit staircase wave). Fixed mobile stroke-width issues. Existing blocks upgrade seamlessly via block deprecation.
 
 = 2026.03.10 =
 Performance and standards improvements. RTL support, safer DOM manipulation via WP_HTML_Tag_Processor, and plugin deactivation cleanup.

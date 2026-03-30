@@ -4,10 +4,11 @@ A WordPress plugin that adds parametric wave styles to the core Separator block.
 
 ## Features
 
-- Three shape presets for the core Separator block:
+- Four shape presets for the core Separator block:
   - **Squiggle**: Smooth, flowing wave curves
   - **Zig-Zag**: Sharp, angular Charlie Brown-style pattern
   - **Lightning**: Sharp angles with a dynamic lean
+  - **Pixel**: 8-bit staircase wave (Scott Pilgrim aesthetic)
 - Parametric wave controls:
   - **Pointiness** (0-100%): Smooth curves to sharp angles
   - **Angle** (-60 to +60): Lean the wave peaks for lightning effects
@@ -41,10 +42,11 @@ A WordPress plugin that adds parametric wave styles to the core Separator block.
 
 1. Add a core **Separator** block to your content
 2. In the block toolbar, click the **Styles** button (or use the Styles panel in the sidebar)
-3. Select from three shape presets:
+3. Select from four shape presets:
    - **Squiggle** — Smooth, flowing wave curves
    - **Zig-Zag** — Sharp, angular Charlie Brown-style pattern
    - **Lightning** — Sharp angles with a dynamic lean
+   - **Pixel** — 8-bit staircase wave (Scott Pilgrim aesthetic)
 4. Use the **Wave Settings** panel in the block sidebar to fine-tune:
    - Pointiness, angle, amplitude, animation toggle, speed, and direction
 5. Apply colors using WordPress's standard color controls, including gradient support
@@ -108,6 +110,16 @@ npm run build:production
 ```
 
 ## Changelog
+
+### Version 2026.03.30
+- **Architecture: PHP Dynamic Render**: Frontend SVG is now generated server-side from block attributes, eliminating the three-way source-of-truth problem between editor JS, save JS, and PHP
+- **Architecture: Minimal Save**: JS save function outputs a lightweight placeholder; PHP `render_block` filter handles all frontend markup
+- **Architecture: Deprecation Support**: Existing blocks with old full-SVG save format are handled via block deprecation, preventing "unexpected content" editor warnings
+- **Fix: Mobile Stroke Width**: Consistent stroke thickness across all viewport sizes via `vector-effect: non-scaling-stroke`
+- **Fix: CSS Overrides Removed**: Eliminated `stroke-width: 2px` at 480px and `height: auto` that caused mobile rendering issues
+- **New: Pixel Block Style**: 8-bit staircase wave with Scott Pilgrim aesthetic, phase warping for lightning-bolt lean
+- **New: PHP Renderer Class**: `includes/class-awesome-squiggle-renderer.php` with wave path generation, gradient parsing, color resolution, and input validation
+- **New: PHPUnit Test Suite**: 50 tests, 100 assertions covering wave path generation, gradient parsing, color resolution, and security
 
 ### Version 2026.03.10
 - **Performance**: Optimized rendering and animation pipeline

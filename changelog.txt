@@ -2,6 +2,18 @@
 
 This file contains the complete version history for the Awesome Squiggle WordPress plugin.
 
+= 2026.03.30 =
+* Architecture: Moved frontend rendering to PHP dynamic render — SVG is now generated server-side from block attributes
+* Architecture: JS save function now outputs minimal markup; PHP is the single source of truth for frontend output
+* Architecture: Added block deprecation support so existing blocks don't show validation errors in the editor
+* Fix: Consistent stroke width on mobile — added vector-effect: non-scaling-stroke globally
+* Fix: Removed CSS stroke-width override at 480px that was flattening user's stroke setting to 2px
+* Fix: Removed height: auto rule that collapsed containers and caused SVG scaling issues on narrow viewports
+* New: Pixel block style — 8-bit staircase wave with Scott Pilgrim aesthetic, phase warping for lightning-bolt lean
+* New: PHP renderer class (includes/class-awesome-squiggle-renderer.php) with full wave path generation, gradient parsing, and color resolution
+* New: PHPUnit test suite with 50 tests and 100 assertions
+* Maintenance: Added includes/ directory to plugin ZIP packaging
+
 = 2026.02.03 =
 * Security: Debug logging now only runs in development builds
 * Security: Added strict color validation to prevent SVG stroke injection attacks
