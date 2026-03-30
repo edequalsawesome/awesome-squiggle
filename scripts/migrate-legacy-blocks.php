@@ -63,7 +63,7 @@ class Awesome_Squiggle_CLI_Command {
 	 * : Show what would change without saving.
 	 *
 	 * [--post-types=<types>]
-	 * : Comma-separated list of post types to scan. Default: post,page,wp_block.
+	 * : Comma-separated list of post types to scan. Default: post,page,wp_block,wp_template,wp_template_part.
 	 *
 	 * ## EXAMPLES
 	 *
@@ -74,14 +74,14 @@ class Awesome_Squiggle_CLI_Command {
 	 *     wp awesome-squiggle migrate-legacy
 	 *
 	 *     # Include custom post types
-	 *     wp awesome-squiggle migrate-legacy --post-types=post,page,wp_block,product,portfolio
+	 *     wp awesome-squiggle migrate-legacy --post-types=post,page,wp_block,wp_template,wp_template_part,product
 	 *
 	 * @param array $args       Positional arguments.
 	 * @param array $assoc_args Associative arguments.
 	 */
 	public function __invoke( $args, $assoc_args ) {
 		$dry_run    = WP_CLI\Utils\get_flag_value( $assoc_args, 'dry-run', false );
-		$post_types = WP_CLI\Utils\get_flag_value( $assoc_args, 'post-types', 'post,page,wp_block' );
+		$post_types = WP_CLI\Utils\get_flag_value( $assoc_args, 'post-types', 'post,page,wp_block,wp_template,wp_template_part' );
 
 		if ( $dry_run ) {
 			WP_CLI::log( '🏃 Dry run mode — no changes will be saved.' );
