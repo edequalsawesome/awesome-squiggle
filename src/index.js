@@ -1495,6 +1495,13 @@ addFilter(
 		// Clean up duplicate class names and ensure proper ordering
 		let classNames = [ 'wp-block-separator', 'awesome-squiggle-wave' ];
 
+		// Add alignment class from attributes.align (WordPress stores alignment
+		// separately and normally adds the class via the block wrapper, but since
+		// we replace the save output entirely, we need to add it ourselves)
+		if ( attributes.align ) {
+			classNames.push( `align${ attributes.align }` );
+		}
+
 		// Parse existing className to avoid duplicates
 		if ( className ) {
 			const existingClasses = className
