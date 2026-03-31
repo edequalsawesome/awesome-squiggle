@@ -696,6 +696,18 @@ class Awesome_Squiggle_Renderer {
 			}
 		}
 
+		// Preserve classes from $block_content that WordPress's layout system
+		// may have already injected (e.g., wp-container-content-* for column span).
+		// We're replacing the entire block HTML, so we need to carry these forward.
+		if ( $block_content && preg_match( '/class="([^"]*)"/', $block_content, $existing_match ) ) {
+			foreach ( explode( ' ', $existing_match[1] ) as $cls ) {
+				$cls = trim( $cls );
+				if ( $cls && ! in_array( $cls, $classes, true ) ) {
+					$classes[] = $cls;
+				}
+			}
+		}
+
 		if ( $is_paused && ! in_array( 'is-paused', $classes, true ) ) {
 			$classes[] = 'is-paused';
 		}
