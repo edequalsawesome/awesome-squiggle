@@ -54,7 +54,12 @@ export const validateId = ( id ) => {
  *
  * Inputs longer than MAX_COLOR_LENGTH (200 chars) are rejected outright
  * without running the regex tests — defense-in-depth against pathological
- * inputs and an explicit "short CSS color values only" contract.
+ * inputs and an explicit "short CSS color values only" contract. Note: the
+ * length check measures the RAW input, before trimming, so a value padded
+ * with enough leading/trailing whitespace to exceed 200 chars is rejected
+ * even if the trimmed form would have been valid. This is the conservative
+ * DoS posture; legitimate WP block-editor color values never have that much
+ * surrounding whitespace.
  *
  * Surrounding whitespace is trimmed before validation; the trimmed value is
  * what is returned on success. Callers comparing input vs output for equality
@@ -74,6 +79,12 @@ export const validateColorValue = ( color, fallback = 'currentColor' ) => {
 		! color ||
 		color.length > MAX_COLOR_LENGTH
 	) {
+		if ( typeof color === 'string' && color.length > MAX_COLOR_LENGTH ) {
+			debugLog(
+				'⚠️ Rejected color value exceeding length cap:',
+				`${ color.length } chars (max ${ MAX_COLOR_LENGTH })`
+			);
+		}
 		return fallback;
 	}
 

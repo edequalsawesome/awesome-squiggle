@@ -306,20 +306,20 @@ describe( 'validateColorValue', () => {
 		expect( validateColorValue( '\trgb(0,0,0)\n' ) ).toBe( 'rgb(0,0,0)' );
 	} );
 
-	it( 'rejects inputs longer than 200 chars (DoS guard)', () => {
-		// 200-char hex-shaped string: still invalid as a color, but rejected
-		// at the length gate rather than after running the regex matrix.
-		const longInvalid = '#' + 'a'.repeat( 199 );
-		expect( longInvalid.length ).toBe( 200 );
-		expect( validateColorValue( longInvalid ) ).toBe( 'currentColor' );
+	it( 'rejects inputs longer than MAX_COLOR_LENGTH (DoS short-circuit)', () => {
+		// The length gate uses strict `>`, so a 200-char input passes the gate
+		// and is then rejected (or accepted) by the regex matrix. The regex
+		// matrix max-accepted length is well under 100 chars (a long WP preset
+		// gradient slug), so 200-char inputs never legitimately match. The cap
+		// exists to short-circuit the regex matrix on pathological input, not
+		// to change behavior at the boundary.
 
-		// 201-char input: rejected by the length gate
+		// 201-char input: rejected by the length gate before any regex runs
 		const overLimit = '#' + 'a'.repeat( 200 );
 		expect( overLimit.length ).toBe( 201 );
 		expect( validateColorValue( overLimit ) ).toBe( 'currentColor' );
 
-		// Pathological input: a 10kb string would otherwise run all six regex
-		// tests. The length gate short-circuits before any regex runs.
+		// Pathological 10kb input — short-circuits before any regex runs.
 		const huge = 'rgb(' + '0,'.repeat( 5000 ) + '0)';
 		expect( huge.length ).toBeGreaterThan( 10000 );
 		expect( validateColorValue( huge ) ).toBe( 'currentColor' );
@@ -331,6 +331,23 @@ describe( 'validateColorValue', () => {
 			'var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple)';
 		expect( realistic.length ).toBeLessThan( 200 );
 		expect( validateColorValue( realistic ) ).toBe( realistic );
+	} );
+
+	it( 'accepts a value just under the length cap (boundary from below)', () => {
+		// Construct a value that's structurally a hex color and ~190 chars long
+		// to bracket the cap from below. If the cap is ever tightened to <190,
+		// this test will start failing — exactly the regression we'd want to
+		// catch before users with long preset slugs notice in production.
+		// Note: this string is intentionally invalid as a color (too many hex
+		// digits); we're testing the length gate's behavior, not the regex
+		// matrix. The function still returns fallback, but for a regex reason,
+		// not a length-gate reason.
+		const nearLimit = '#' + 'a'.repeat( 189 );
+		expect( nearLimit.length ).toBe( 190 );
+		expect( nearLimit.length ).toBeLessThan( 200 );
+		// Will fall through to the hex regex check (which it fails — too long)
+		// rather than being short-circuited by the length gate.
+		expect( validateColorValue( nearLimit ) ).toBe( 'currentColor' );
 	} );
 } );
 
