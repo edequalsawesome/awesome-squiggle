@@ -326,6 +326,52 @@ describe( 'validateColorValue', () => {
 		expect( validateColorValue( '  #fff  ' ) ).toBe( '#fff' );
 		expect( validateColorValue( '\trgb(0,0,0)\n' ) ).toBe( 'rgb(0,0,0)' );
 	} );
+
+	it( 'rejects inputs longer than MAX_COLOR_LENGTH (pathology guard)', () => {
+		// 4097-char input — over the cap by one. Rejected at the length gate
+		// before any regex runs.
+		const overLimit = '#' + 'a'.repeat( 4096 );
+		expect( overLimit.length ).toBe( 4097 );
+		expect( validateColorValue( overLimit ) ).toBe( 'currentColor' );
+
+		// Pathological 10kb input — well over the cap, short-circuits.
+		const huge = 'rgb(' + '0,'.repeat( 5000 ) + '0)';
+		expect( huge.length ).toBeGreaterThan( 10000 );
+		expect( validateColorValue( huge ) ).toBe( 'currentColor' );
+	} );
+
+	it( 'still accepts realistic WP preset gradient values', () => {
+		// Realistic value: a WP preset gradient with a long slug. The cap is
+		// set to 4096 specifically so verbose design-token namespaces never
+		// silently regress to the fallback.
+		const realistic =
+			'var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple)';
+		expect( realistic.length ).toBeLessThan( 4096 );
+		expect( validateColorValue( realistic ) ).toBe( realistic );
+	} );
+
+	it( 'accepts a long var() value well within the cap', () => {
+		// Pathological-but-still-valid: a WP preset variable with a verbose
+		// slug (200 chars in the slug alone, ~225 chars total). Real themes
+		// rarely go this long but the schema allows it — the cap MUST NOT
+		// reject it.
+		const longSlug =
+			'var(--wp--preset--gradient--' + 'a'.repeat( 200 ) + ')';
+		expect( longSlug.length ).toBeGreaterThan( 200 );
+		expect( longSlug.length ).toBeLessThan( 4096 );
+		expect( validateColorValue( longSlug ) ).toBe( longSlug );
+	} );
+
+	it( 'accepts inputs exactly at MAX_COLOR_LENGTH (boundary)', () => {
+		// Locks in the strict-greater-than semantics of the cap. If a future
+		// edit changes the gate from `> MAX_COLOR_LENGTH` to `>= MAX_COLOR_LENGTH`
+		// (off-by-one), this test catches it before it ships.
+		const prefix = 'var(--wp--preset--gradient--';
+		const exactLimit =
+			prefix + 'a'.repeat( 4096 - prefix.length - 1 ) + ')';
+		expect( exactLimit.length ).toBe( 4096 );
+		expect( validateColorValue( exactLimit ) ).toBe( exactLimit );
+	} );
 } );
 
 describe( 'debugLog', () => {
