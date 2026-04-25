@@ -306,48 +306,39 @@ describe( 'validateColorValue', () => {
 		expect( validateColorValue( '\trgb(0,0,0)\n' ) ).toBe( 'rgb(0,0,0)' );
 	} );
 
-	it( 'rejects inputs longer than MAX_COLOR_LENGTH (DoS short-circuit)', () => {
-		// The length gate uses strict `>`, so a 200-char input passes the gate
-		// and is then rejected (or accepted) by the regex matrix. The regex
-		// matrix max-accepted length is well under 100 chars (a long WP preset
-		// gradient slug), so 200-char inputs never legitimately match. The cap
-		// exists to short-circuit the regex matrix on pathological input, not
-		// to change behavior at the boundary.
-
-		// 201-char input: rejected by the length gate before any regex runs
-		const overLimit = '#' + 'a'.repeat( 200 );
-		expect( overLimit.length ).toBe( 201 );
+	it( 'rejects inputs longer than MAX_COLOR_LENGTH (pathology guard)', () => {
+		// 4097-char input — over the cap by one. Rejected at the length gate
+		// before any regex runs.
+		const overLimit = '#' + 'a'.repeat( 4096 );
+		expect( overLimit.length ).toBe( 4097 );
 		expect( validateColorValue( overLimit ) ).toBe( 'currentColor' );
 
-		// Pathological 10kb input — short-circuits before any regex runs.
+		// Pathological 10kb input — well over the cap, short-circuits.
 		const huge = 'rgb(' + '0,'.repeat( 5000 ) + '0)';
 		expect( huge.length ).toBeGreaterThan( 10000 );
 		expect( validateColorValue( huge ) ).toBe( 'currentColor' );
 	} );
 
-	it( 'still accepts valid colors well under the length cap', () => {
-		// The longest realistic legit value: a WP preset gradient with a long slug
+	it( 'still accepts realistic WP preset gradient values', () => {
+		// Realistic value: a WP preset gradient with a long slug. The cap is
+		// set to 4096 specifically so verbose design-token namespaces never
+		// silently regress to the fallback.
 		const realistic =
 			'var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple)';
-		expect( realistic.length ).toBeLessThan( 200 );
+		expect( realistic.length ).toBeLessThan( 4096 );
 		expect( validateColorValue( realistic ) ).toBe( realistic );
 	} );
 
-	it( 'accepts a value just under the length cap (boundary from below)', () => {
-		// Construct a value that's structurally a hex color and ~190 chars long
-		// to bracket the cap from below. If the cap is ever tightened to <190,
-		// this test will start failing — exactly the regression we'd want to
-		// catch before users with long preset slugs notice in production.
-		// Note: this string is intentionally invalid as a color (too many hex
-		// digits); we're testing the length gate's behavior, not the regex
-		// matrix. The function still returns fallback, but for a regex reason,
-		// not a length-gate reason.
-		const nearLimit = '#' + 'a'.repeat( 189 );
-		expect( nearLimit.length ).toBe( 190 );
-		expect( nearLimit.length ).toBeLessThan( 200 );
-		// Will fall through to the hex regex check (which it fails — too long)
-		// rather than being short-circuited by the length gate.
-		expect( validateColorValue( nearLimit ) ).toBe( 'currentColor' );
+	it( 'accepts a long var() value well within the cap', () => {
+		// Pathological-but-still-valid: a WP preset variable with a verbose
+		// slug (200 chars in the slug alone, ~225 chars total). Real themes
+		// rarely go this long but the schema allows it — the cap MUST NOT
+		// reject it.
+		const longSlug =
+			'var(--wp--preset--gradient--' + 'a'.repeat( 200 ) + ')';
+		expect( longSlug.length ).toBeGreaterThan( 200 );
+		expect( longSlug.length ).toBeLessThan( 4096 );
+		expect( validateColorValue( longSlug ) ).toBe( longSlug );
 	} );
 } );
 

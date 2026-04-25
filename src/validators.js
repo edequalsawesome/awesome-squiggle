@@ -1,8 +1,12 @@
-// Defensive cap on validateColorValue input length. The longest legitimate
-// CSS color value (a WP preset gradient slug variant) is well under 100
-// chars; 200 is generous. Anything beyond is rejected outright as a DoS
-// guard and to keep the contract explicit ("short CSS color values").
-const MAX_COLOR_LENGTH = 200;
+// Defensive cap on validateColorValue input length. This is a pathology
+// guard, NOT a tightness check — the regex matrix already validates the
+// allowed grammar with anchored, linear-time patterns. WordPress theme.json
+// preset slugs have no defined max length, so a low cap (e.g. 200) would
+// silently regress legitimate var(--wp--preset--color--<long-slug>) values
+// from verbose design-token namespaces. 4096 chars is far beyond any
+// realistic preset value but well below "10kb of garbage" pathological
+// inputs that would still benefit from a short-circuit.
+const MAX_COLOR_LENGTH = 4096;
 
 // Development-only logging — only emits in development builds.
 export const debugLog = ( message, ...args ) => {
@@ -52,14 +56,13 @@ export const validateId = ( id ) => {
  * var(--wp--preset--{color|gradient}--{slug}), and url(#localId).
  * Returns fallback for anything else.
  *
- * Inputs longer than MAX_COLOR_LENGTH (200 chars) are rejected outright
- * without running the regex tests — defense-in-depth against pathological
- * inputs and an explicit "short CSS color values only" contract. Note: the
- * length check measures the RAW input, before trimming, so a value padded
- * with enough leading/trailing whitespace to exceed 200 chars is rejected
- * even if the trimmed form would have been valid. This is the conservative
- * DoS posture; legitimate WP block-editor color values never have that much
- * surrounding whitespace.
+ * Inputs longer than MAX_COLOR_LENGTH (4096 chars) are rejected outright
+ * without running the regex tests — pathology guard for genuinely huge
+ * payloads, NOT a tightness check on legitimate values. The cap is set
+ * far above any realistic CSS color value (WP preset slugs have no
+ * defined max length, so we leave generous headroom). Note: the length
+ * check measures the RAW input before trimming, so a 4097-char value
+ * with leading whitespace is rejected at the gate.
  *
  * Surrounding whitespace is trimmed before validation; the trimmed value is
  * what is returned on success. Callers comparing input vs output for equality
