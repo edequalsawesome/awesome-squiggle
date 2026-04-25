@@ -1,3 +1,13 @@
+// Defensive cap on validateColorValue input length. This is a pathology
+// guard, NOT a tightness check — the regex matrix already validates the
+// allowed grammar with anchored, linear-time patterns. WordPress theme.json
+// preset slugs have no defined max length, so a low cap (e.g. 200) would
+// silently regress legitimate var(--wp--preset--color--<long-slug>) values
+// from verbose design-token namespaces. 4096 chars is far beyond any
+// realistic preset value but well below "10kb of garbage" pathological
+// inputs that would still benefit from a short-circuit.
+const MAX_COLOR_LENGTH = 4096;
+
 // Development-only logging — only emits in development builds.
 export const debugLog = ( message, ...args ) => {
 	if ( process.env.NODE_ENV === 'development' ) {
@@ -61,6 +71,14 @@ export const validateId = ( id ) => {
  * var(--wp--preset--{color|gradient}--{slug}), and url(#localId).
  * Returns fallback for anything else.
  *
+ * Inputs longer than MAX_COLOR_LENGTH (4096 chars) are rejected outright
+ * without running the regex tests — pathology guard for genuinely huge
+ * payloads, NOT a tightness check on legitimate values. The cap is set
+ * far above any realistic CSS color value (WP preset slugs have no
+ * defined max length, so we leave generous headroom). Note: the length
+ * check measures the RAW input before trimming, so a 4097-char value
+ * with leading whitespace is rejected at the gate.
+ *
  * Surrounding whitespace is trimmed before validation; the trimmed value is
  * what is returned on success. Callers comparing input vs output for equality
  * should account for this.
@@ -74,7 +92,17 @@ export const validateId = ( id ) => {
  *                          a specific intent (e.g., a transparent default).
  */
 export const validateColorValue = ( color, fallback = 'currentColor' ) => {
-	if ( typeof color !== 'string' || ! color ) {
+	if (
+		typeof color !== 'string' ||
+		! color ||
+		color.length > MAX_COLOR_LENGTH
+	) {
+		if ( typeof color === 'string' && color.length > MAX_COLOR_LENGTH ) {
+			debugLog(
+				'⚠️ Rejected color value exceeding length cap:',
+				`${ color.length } chars (max ${ MAX_COLOR_LENGTH })`
+			);
+		}
 		return fallback;
 	}
 
