@@ -26,7 +26,7 @@
 		"lint:pkg-json": "wp-scripts lint-pkg-json",
 		"packages-update": "wp-scripts packages-update",
 		"plugin-zip": "wp-scripts plugin-zip",
-		"release:gh": "gh release create v$npm_package_version awesome-squiggle.zip -t 'Awesome Squiggle v$npm_package_version' -F RELEASE_NOTES_v$npm_package_version.md",
+		"release:gh": "gh release create v$npm_package_version awesome-squiggle.zip -t \"Awesome Squiggle v$npm_package_version\" -F RELEASE_NOTES_v$npm_package_version.md",
 		"test:e2e": "wp-scripts test-e2e",
 		"test:unit": "wp-scripts test-unit-js",
 		"test:php": "vendor/bin/phpunit"
