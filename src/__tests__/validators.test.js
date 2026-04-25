@@ -339,7 +339,13 @@ describe( 'debugLog', () => {
 
 	afterEach( () => {
 		logSpy.mockRestore();
-		process.env.NODE_ENV = originalNodeEnv;
+		// Assigning undefined to process.env.NODE_ENV coerces to the string
+		// "undefined" rather than deleting the variable, polluting other tests.
+		if ( originalNodeEnv === undefined ) {
+			delete process.env.NODE_ENV;
+		} else {
+			process.env.NODE_ENV = originalNodeEnv;
+		}
 	} );
 
 	it( 'logs when NODE_ENV is development', () => {

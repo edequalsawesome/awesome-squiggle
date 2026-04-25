@@ -69,7 +69,7 @@ const setSecureAttributes = ( setAttributes, updates ) => {
 			case 'gradientId':
 				secureUpdates[ key ] = validateId( value );
 				break;
-			case 'squiggleHeight':
+			case 'squiggleHeight': {
 				// Validate against allowed height values
 				const allowedHeights = [
 					'50px',
@@ -83,6 +83,7 @@ const setSecureAttributes = ( setAttributes, updates ) => {
 					? value
 					: '100px';
 				break;
+			}
 			case 'isReversed':
 				secureUpdates[ key ] = value === true;
 				break;
