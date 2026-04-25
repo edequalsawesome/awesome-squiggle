@@ -17,6 +17,11 @@ export const validateNumericInput = ( value, min, max, defaultValue ) => {
 
 // Truncate to maxLength and optionally validate against a regex pattern.
 // Returns '' for non-strings or pattern mismatch (after truncation).
+//
+// Stateful regexes (g / y flags) are normalized to a non-stateful copy before
+// .test() — RegExp.prototype.test advances lastIndex on global/sticky patterns,
+// which would make repeated validations alternate pass/fail. Current in-repo
+// callers all pass non-stateful patterns, but this is a public named export.
 export const validateStringInput = (
 	value,
 	allowedPattern,
@@ -26,13 +31,23 @@ export const validateStringInput = (
 		return '';
 	}
 
-	value = value.substring( 0, maxLength );
+	const truncated = value.substring( 0, maxLength );
 
-	if ( allowedPattern && ! allowedPattern.test( value ) ) {
-		return '';
+	if ( allowedPattern ) {
+		const safePattern =
+			allowedPattern.global || allowedPattern.sticky
+				? new RegExp(
+						allowedPattern.source,
+						allowedPattern.flags.replace( /[gy]/g, '' )
+				  )
+				: allowedPattern;
+
+		if ( ! safePattern.test( truncated ) ) {
+			return '';
+		}
 	}
 
-	return value;
+	return truncated;
 };
 
 // IDs (animation, gradient): alphanumeric, dash, underscore only. Max 50 chars.

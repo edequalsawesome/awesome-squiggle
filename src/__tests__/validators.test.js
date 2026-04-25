@@ -119,6 +119,27 @@ describe( 'validateStringInput', () => {
 	it( 'allows empty string when no pattern is set', () => {
 		expect( validateStringInput( '' ) ).toBe( '' );
 	} );
+
+	it( 'is deterministic when caller passes a global-flagged regex', () => {
+		// /g and /y advance lastIndex on .test() — without normalization,
+		// the same input would alternate pass/fail across repeated calls.
+		const globalPattern = /^[a-z]+$/g;
+		expect( validateStringInput( 'abc', globalPattern ) ).toBe( 'abc' );
+		expect( validateStringInput( 'abc', globalPattern ) ).toBe( 'abc' );
+		expect( validateStringInput( 'abc', globalPattern ) ).toBe( 'abc' );
+	} );
+
+	it( 'is deterministic when caller passes a sticky-flagged regex', () => {
+		const stickyPattern = /^[a-z]+$/y;
+		expect( validateStringInput( 'abc', stickyPattern ) ).toBe( 'abc' );
+		expect( validateStringInput( 'abc', stickyPattern ) ).toBe( 'abc' );
+	} );
+
+	it( 'preserves original allowedPattern flags when copying (no mutation)', () => {
+		const globalPattern = /^[a-z]+$/g;
+		validateStringInput( 'abc', globalPattern );
+		expect( globalPattern.flags ).toBe( 'g' );
+	} );
 } );
 
 describe( 'validateId', () => {
