@@ -361,6 +361,17 @@ describe( 'validateColorValue', () => {
 		expect( longSlug.length ).toBeLessThan( 4096 );
 		expect( validateColorValue( longSlug ) ).toBe( longSlug );
 	} );
+
+	it( 'accepts inputs exactly at MAX_COLOR_LENGTH (boundary)', () => {
+		// Locks in the strict-greater-than semantics of the cap. If a future
+		// edit changes the gate from `> MAX_COLOR_LENGTH` to `>= MAX_COLOR_LENGTH`
+		// (off-by-one), this test catches it before it ships.
+		const prefix = 'var(--wp--preset--gradient--';
+		const exactLimit =
+			prefix + 'a'.repeat( 4096 - prefix.length - 1 ) + ')';
+		expect( exactLimit.length ).toBe( 4096 );
+		expect( validateColorValue( exactLimit ) ).toBe( exactLimit );
+	} );
 } );
 
 describe( 'debugLog', () => {
