@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.3
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2026.03.30
+Stable tag: 2026.04.25
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -80,6 +80,14 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 4. Example of zigzag pattern with gradient colors
 
 == Changelog ==
+
+= 2026.04.25 =
+* Hardening: validateColorValue now short-circuits on inputs longer than 4096 chars (pathology guard against 10kb+ payloads; cap is far above any realistic CSS color value or WP preset slug, so legitimate `var(--wp--preset--gradient--<long-slug>)` values are unaffected)
+* Hardening: validateStringInput is now deterministic when callers pass a /g or /y regex — stateful regexes are normalized to a non-stateful copy before .test() (defense-in-depth on the public API contract)
+* Refactor: Input validators (validateNumericInput, validateStringInput, validateId, validateColorValue, debugLog) extracted to src/validators.js as named exports — zero call-site changes; bundle size unchanged
+* Tests: 53 new jest unit tests covering validator contracts (boundaries, type coercion, pattern-after-truncation ordering, security-relevant rejection cases including var()/url() smuggling, javascript:/expression()/<script> payloads, length-cap boundary at exactly 4096)
+* Quality: Wrapped squiggleHeight switch case body in a block to satisfy noSwitchDeclarations lint rule
+* Quality: NODE_ENV restoration in tests now uses delete instead of `= undefined` to avoid leaking the string "undefined" into other tests
 
 = 2026.03.30 =
 * Architecture: Frontend rendering moved to PHP dynamic render — SVG generated server-side from block attributes

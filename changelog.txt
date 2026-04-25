@@ -2,6 +2,14 @@
 
 This file contains the complete version history for the Awesome Squiggle WordPress plugin.
 
+= 2026.04.25 =
+* Hardening: validateColorValue now short-circuits on inputs longer than 4096 chars (pathology guard against 10kb+ payloads; cap is far above any realistic CSS color value or WP preset slug)
+* Hardening: validateStringInput is now deterministic when callers pass a /g or /y regex — stateful regexes are normalized to a non-stateful copy before .test() (defense-in-depth on the public API contract)
+* Refactor: Input validators (validateNumericInput, validateStringInput, validateId, validateColorValue, debugLog) extracted from src/index.js into src/validators.js as named exports — zero call-site changes; bundle size unchanged
+* Tests: 53 new jest unit tests covering validator contracts — boundaries, type coercion, pattern-after-truncation ordering, security-relevant rejection cases (var()/url() whitespace smuggling, javascript:/expression()/<script> payloads), and length-cap boundary at exactly 4096
+* Quality: Wrapped squiggleHeight switch case body in a block to satisfy Biome noSwitchDeclarations lint rule
+* Quality: NODE_ENV restoration in debugLog tests now uses delete instead of `= undefined` to avoid leaking the string "undefined" into other tests
+
 = 2026.03.30 =
 * Architecture: Moved frontend rendering to PHP dynamic render — SVG is now generated server-side from block attributes
 * Architecture: JS save function now outputs minimal markup; PHP is the single source of truth for frontend output
