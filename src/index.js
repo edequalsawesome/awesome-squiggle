@@ -13,101 +13,16 @@ import { useEffect, useMemo } from '@wordpress/element';
 import domReady from '@wordpress/dom-ready';
 import './style.css';
 
-// Input validation helpers
-const validateNumericInput = ( value, min, max, defaultValue ) => {
-	if ( typeof value !== 'number' || isNaN( value ) ) {
-		return defaultValue;
-	}
-	return Math.max( min, Math.min( max, value ) );
-};
-
-const validateStringInput = ( value, allowedPattern, maxLength = 100 ) => {
-	if ( typeof value !== 'string' ) {
-		return '';
-	}
-
-	// Limit length to prevent DoS
-	value = value.substring( 0, maxLength );
-
-	// Validate against pattern if provided
-	if ( allowedPattern && ! allowedPattern.test( value ) ) {
-		return '';
-	}
-
-	return value;
-};
-
-// Validate IDs (animation, gradient) — alphanumeric, dash, and underscore only
-const validateId = ( id ) => {
-	const allowedPattern = /^[a-zA-Z0-9_-]+$/;
-	return validateStringInput( id, allowedPattern, 50 );
-};
-
-// Development-only logging - only runs in development builds
-const debugLog = ( message, ...args ) => {
-	if ( process.env.NODE_ENV === 'development' ) {
-		console.log( '[Awesome Squiggle]', message, ...args );
-	}
-};
+import {
+	debugLog,
+	validateNumericInput,
+	validateStringInput,
+	validateId,
+	validateColorValue,
+} from './validators';
 
 // Cache for resolved CSS variable values — avoids repeated DOM element creation
 const resolvedCssVarCache = new Map();
-
-/**
- * Validate CSS color values — allows hex, rgb/rgba, hsl/hsla, WP CSS variables, and url(#id).
- * Returns fallback for anything else.
- * @param color
- * @param fallback
- */
-const validateColorValue = ( color, fallback = 'currentColor' ) => {
-	if ( typeof color !== 'string' || ! color ) {
-		return fallback;
-	}
-
-	// Trim and normalize
-	const trimmed = color.trim();
-
-	// Allow 'currentColor' keyword
-	if ( trimmed === 'currentColor' ) {
-		return trimmed;
-	}
-
-	// Allow hex colors: #RGB, #RRGGBB, #RGBA, #RRGGBBAA
-	if (
-		/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(
-			trimmed
-		)
-	) {
-		return trimmed;
-	}
-
-	// Allow rgb/rgba with only numbers, commas, spaces, dots, and percent signs
-	if ( /^rgba?\(\s*[\d.%,\s/]+\s*\)$/.test( trimmed ) ) {
-		return trimmed;
-	}
-
-	// Allow hsl/hsla with only numbers, commas, spaces, dots, deg, and percent signs
-	if ( /^hsla?\(\s*[\d.%,\s/deg]+\s*\)$/.test( trimmed ) ) {
-		return trimmed;
-	}
-
-	// Allow CSS custom properties (variables) - strict pattern to prevent injection
-	// Only allow --wp--preset--color--{slug} and --wp--preset--gradient--{slug} patterns
-	if (
-		/^var\(--wp--preset--(color|gradient)--[a-zA-Z0-9-]+\)$/.test( trimmed )
-	) {
-		return trimmed;
-	}
-
-	// Allow url() references ONLY to local gradient IDs (validated separately)
-	// Pattern: url(#validatedId) where ID contains only alphanumeric, dash, underscore
-	if ( /^url\(#[a-zA-Z0-9_-]+\)$/.test( trimmed ) ) {
-		return trimmed;
-	}
-
-	debugLog( '⚠️ Rejected invalid color value:', trimmed );
-	return fallback;
-};
 
 // Animation speed conversion: slider (1-10) ↔ CSS duration (0.5s-5s)
 // Higher slider value = faster animation = shorter duration
