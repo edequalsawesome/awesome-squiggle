@@ -1,3 +1,9 @@
+// Defensive cap on validateColorValue input length. The longest legitimate
+// CSS color value (a WP preset gradient slug variant) is well under 100
+// chars; 200 is generous. Anything beyond is rejected outright as a DoS
+// guard and to keep the contract explicit ("short CSS color values").
+const MAX_COLOR_LENGTH = 200;
+
 // Development-only logging — only emits in development builds.
 export const debugLog = ( message, ...args ) => {
 	if ( process.env.NODE_ENV === 'development' ) {
@@ -46,6 +52,10 @@ export const validateId = ( id ) => {
  * var(--wp--preset--{color|gradient}--{slug}), and url(#localId).
  * Returns fallback for anything else.
  *
+ * Inputs longer than MAX_COLOR_LENGTH (200 chars) are rejected outright
+ * without running the regex tests — defense-in-depth against pathological
+ * inputs and an explicit "short CSS color values only" contract.
+ *
  * Surrounding whitespace is trimmed before validation; the trimmed value is
  * what is returned on success. Callers comparing input vs output for equality
  * should account for this.
@@ -59,7 +69,11 @@ export const validateId = ( id ) => {
  *                          a specific intent (e.g., a transparent default).
  */
 export const validateColorValue = ( color, fallback = 'currentColor' ) => {
-	if ( typeof color !== 'string' || ! color ) {
+	if (
+		typeof color !== 'string' ||
+		! color ||
+		color.length > MAX_COLOR_LENGTH
+	) {
 		return fallback;
 	}
 
