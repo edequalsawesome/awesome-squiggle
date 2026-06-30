@@ -236,6 +236,34 @@ class RendererTest extends TestCase {
 		$this->assertStringContainsString( 'red', $result['line_color'] );
 	}
 
+	public function test_resolve_color_gradient_returns_gradient_id_matching_line_color() {
+		// Bug B regression: the id returned as gradient_id must be the same id used
+		// in the url(#...) stroke reference so build_wave_svg can emit matching <defs>.
+		$result = Awesome_Squiggle_Renderer::resolve_line_color( array(
+			'gradient' => 'vivid-cyan-blue-to-vivid-purple',
+		) );
+
+		$gradient_id = $result['gradient_id'];
+		$this->assertNotEmpty( $gradient_id, 'gradient_id should be non-empty when a gradient is set' );
+
+		// The returned gradient_id must appear literally inside line_color: url(#<id>)
+		$this->assertStringContainsString(
+			'url(#' . $gradient_id . ')',
+			$result['line_color'],
+			'gradient_id must match the id used inside line_color url() reference'
+		);
+	}
+
+	public function test_resolve_color_no_gradient_returns_empty_gradient_id() {
+		// When no gradient is set, gradient_id must be '' and line_color must not be a url(#...).
+		$result = Awesome_Squiggle_Renderer::resolve_line_color( array(
+			'backgroundColor' => 'vivid-red',
+		) );
+
+		$this->assertSame( '', $result['gradient_id'], 'gradient_id should be empty string when no gradient' );
+		$this->assertStringNotContainsString( 'url(#', $result['line_color'] );
+	}
+
 	// ───────────────────────────────────────────────
 	// generate_pixel_wave_path
 	// ───────────────────────────────────────────────

@@ -278,6 +278,16 @@
    wave-flow / wave-flow-reverse keyframes defined above
    (build_wave_svg() emits those animation-names).
    ======================================== */
+/* The wave is the only thing the chosen color/gradient should paint.
+   WordPress's color support paints the wrapper background from a named
+   gradient (has-*-gradient-background, defined by core with !important);
+   neutralise it at higher specificity so the gradient colours the wave
+   (via the SVG stroke), not the whole block box. Mirrors the separator. */
+.wp-block-awesome-squiggle-backdrop[class] {
+	background: transparent !important;
+	background-image: none !important;
+}
+
 .wp-block-awesome-squiggle-backdrop {
 	position: relative;
 }

@@ -581,6 +581,10 @@ class Awesome_Squiggle_Renderer {
 			'line_color'    => $line_color,
 			'gradient'      => $final_gradient,
 			'gradient_data' => $gradient_data,
+			// The effective gradient element id — same value used inside url(#...) in
+			// line_color. Empty string when no gradient. render.php passes this to
+			// build_wave_svg() so the <defs> id always matches the stroke reference.
+			'gradient_id'   => $final_gradient ? (string) $gradient_id : '',
 		);
 	}
 

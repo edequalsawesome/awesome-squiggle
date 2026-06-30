@@ -23,7 +23,7 @@ $svg = Awesome_Squiggle_Renderer::build_wave_svg( array(
 	'is_reversed'      => $attributes['isReversed'] ?? false,
 	'line_color'       => $color['line_color'],
 	'gradient_data'    => $color['gradient_data'],
-	'gradient_id'      => Awesome_Squiggle_Renderer::validate_id( $attributes['gradientId'] ?? '' ),
+	'gradient_id'      => $color['gradient_id'] !== '' ? $color['gradient_id'] : Awesome_Squiggle_Renderer::validate_id( $attributes['gradientId'] ?? '' ),
 	'animation_id'     => Awesome_Squiggle_Renderer::validate_id( $attributes['animationId'] ?? '' ),
 	'container_height' => (int) Awesome_Squiggle_Renderer::validate_numeric( $attributes['bandHeight'] ?? 100, 20, 400, 100 ),
 ) );
