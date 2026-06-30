@@ -66,6 +66,18 @@ describe( 'validateNumericInput', () => {
 	} );
 } );
 
+describe( 'backdrop numeric inputs', () => {
+	it( 'clamps band height to 20–400 and falls back on bad input', () => {
+		expect( validateNumericInput( 5, 20, 400, 100 ) ).toBe( 20 );
+		expect( validateNumericInput( 999, 20, 400, 100 ) ).toBe( 400 );
+		expect( validateNumericInput( 'nope', 20, 400, 100 ) ).toBe( 100 );
+	} );
+	it( 'clamps custom vertical position to 0–100', () => {
+		expect( validateNumericInput( -10, 0, 100, 50 ) ).toBe( 0 );
+		expect( validateNumericInput( 150, 0, 100, 50 ) ).toBe( 100 );
+	} );
+} );
+
 describe( 'validateStringInput', () => {
 	it( 'returns valid strings within length unchanged', () => {
 		expect( validateStringInput( 'hello' ) ).toBe( 'hello' );
