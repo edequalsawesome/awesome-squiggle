@@ -17,14 +17,24 @@ const transforms = {
 			type: 'block',
 			blocks: [ '*' ],
 			isMultiBlock: true,
-			__experimentalConvert: ( blocks ) =>
-				createBlock(
+			__experimentalConvert: ( blocks ) => {
+				// Don't wrap a backdrop inside another backdrop — returning a
+				// falsy value from __experimentalConvert cancels the transform.
+				if (
+					blocks.some(
+						( b ) => b.name === 'awesome-squiggle/backdrop'
+					)
+				) {
+					return null;
+				}
+				return createBlock(
 					'awesome-squiggle/backdrop',
 					{},
 					blocks.map( ( b ) =>
 						createBlock( b.name, b.attributes, b.innerBlocks )
 					)
-				),
+				);
+			},
 		},
 	],
 };

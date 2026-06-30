@@ -17,6 +17,9 @@ export const generateLongWavePath = (
 	amplitude = 10,
 	pointiness = 0,
 	angle = 0,
+	// strokeWidth is part of the shared positional signature (callers pass it),
+	// but the path geometry doesn't use it — the SVG stroke-width is applied separately.
+	// eslint-disable-next-line no-unused-vars
 	strokeWidth = 1,
 	repetitions = 80,
 	containerHeight = 100
@@ -25,7 +28,6 @@ export const generateLongWavePath = (
 	amplitude = validateNumericInput( amplitude, 5, 25, 10 );
 	pointiness = validateNumericInput( pointiness, 0, 100, 0 );
 	angle = validateNumericInput( angle, -60, 60, 0 );
-	strokeWidth = validateNumericInput( strokeWidth, 1, 8, 1 );
 
 	const wavelength = 40;
 	// Use the container height directly so viewBox matches container - no scaling issues
@@ -92,20 +94,12 @@ export const generateLongWavePath = (
 };
 
 /**
- * Generate a pixelated (8-bit / Scott Pilgrim) wave path.
- * Uses only horizontal and vertical line segments for a staircase pattern.
+ * Warp a linear phase (0-1) to shift where peaks occur — creates the lightning lean.
  *
- * @param {number} amplitude       - Wave height (5-25px)
- * @param {number} pointiness      - 0 = sine staircase, 100 = triangle staircase
- * @param {number} angle           - Peak angle in degrees (-60 to +60)
- * @param {number} strokeWidth     - Line thickness (unused in path math)
- * @param {number} repetitions     - Number of wavelengths (default 80)
- * @param {number} containerHeight - Container height (default 100)
- * @param          phase
- * @param          shift
- * @return {Object} { d, height, wavelength, totalWidth }
+ * @param {number} phase - Linear phase position, 0-1.
+ * @param {number} shift - Peak shift amount (negative leans one way, positive the other).
+ * @return {number} The warped phase, 0-1.
  */
-// Warp a linear phase (0-1) to shift where peaks occur — creates lightning lean
 const warpPhase = ( phase, shift ) => {
 	if ( Math.abs( shift ) < 0.001 ) {
 		return phase;
@@ -119,10 +113,23 @@ const warpPhase = ( phase, shift ) => {
 	return 0.5 + ( ( phase - mid ) / ( 1 - mid ) ) * 0.5;
 };
 
+/**
+ * Generate a pixelated (8-bit / Scott Pilgrim) wave path.
+ * Uses only horizontal and vertical line segments for a staircase pattern.
+ *
+ * @param {number} amplitude       - Wave height (5-25px)
+ * @param {number} pointiness      - 0 = sine staircase, 100 = triangle staircase
+ * @param {number} angle           - Peak angle in degrees (-60 to +60)
+ * @param {number} strokeWidth     - Line thickness (unused in path math)
+ * @param {number} repetitions     - Number of wavelengths (default 80)
+ * @param {number} containerHeight - Container height (default 100)
+ * @return {Object} { d, height, wavelength, totalWidth }
+ */
 export const generatePixelWavePath = (
 	amplitude = 10,
 	pointiness = 0,
 	angle = 0,
+	// eslint-disable-next-line no-unused-vars
 	strokeWidth = 1,
 	repetitions = 80,
 	containerHeight = 100

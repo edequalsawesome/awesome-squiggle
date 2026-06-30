@@ -45,5 +45,5 @@ printf(
 	$wrapper_attributes,        // get_block_wrapper_attributes() returns escaped output.
 	esc_attr( $wave_style ),
 	$svg,                       // build_wave_svg() output is internally escaped.
-	$content                    // InnerBlocks content already sanitized by WP.
+	$content                    // InnerBlocks output: WP renders each inner block through its own render/wp_kses_post on save (same convention as core/group render.php). Trusted; not re-sanitized here.
 );

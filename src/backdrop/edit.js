@@ -11,8 +11,10 @@ import {
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { useMemo } from '@wordpress/element';
+import { useSelect } from '@wordpress/data';
 import { generateLongWavePath, generatePixelWavePath } from '../wave-path';
 import { validateNumericInput } from '../validators';
+import { parseGradientStops } from '../gradient-utils';
 
 const SHAPES = [
 	{ label: __( 'Squiggle', 'awesome-squiggle' ), value: 'squiggle' },
@@ -27,7 +29,7 @@ const POSITION_VALUES = [ 'top', 'center', 'baseline', 'custom' ];
 const oneOf = ( value, allowed, fallback ) =>
 	allowed.includes( value ) ? value : fallback;
 
-export default function Edit( { attributes, setAttributes } ) {
+export default function Edit( { attributes, setAttributes, clientId } ) {
 	const {
 		shape,
 		squiggleAmplitude,
@@ -54,14 +56,43 @@ export default function Edit( { attributes, setAttributes } ) {
 			80,
 			bandHeight
 		);
-	}, [
-		shape,
-		squiggleAmplitude,
-		pointiness,
-		angle,
-		strokeWidth,
-		bandHeight,
-	] );
+		// strokeWidth is the SVG stroke-width attribute, not an input to the
+		// path geometry, so it is intentionally excluded from these deps.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ shape, squiggleAmplitude, pointiness, angle, bandHeight ] );
+
+	// Editor gradient preview: resolve the chosen gradient to real stops so the
+	// wave shows the gradient in-canvas (the frontend resolves it server-side).
+	// A local id derived from clientId scopes the <defs> to this block instance;
+	// no need to persist a gradientId — render.php generates its own runtime id.
+	const editorGradients = useSelect(
+		( select ) =>
+			select( 'core/block-editor' ).getSettings().gradients || [],
+		[]
+	);
+	const customGradient =
+		attributes.gradient || attributes.style?.color?.gradient;
+	const gradientStops = useMemo( () => {
+		if ( ! customGradient ) {
+			return [];
+		}
+		let css = customGradient;
+		if ( ! css.startsWith( 'linear-gradient(' ) ) {
+			// Bare slug or var(--wp--preset--gradient--slug) → look up the CSS
+			// value from the editor's registered gradient presets.
+			const slug = css.startsWith( 'var(' )
+				? css.match( /--wp--preset--gradient--([^)]+)\)/ )?.[ 1 ]
+				: css;
+			css = ( editorGradients.find( ( g ) => g.slug === slug ) || {} )
+				.gradient;
+		}
+		return css ? parseGradientStops( css ) : [];
+	}, [ customGradient, editorGradients ] );
+	const editorGradientId = `asquig-backdrop-grad-${ clientId }`;
+	const waveStroke =
+		gradientStops.length > 0
+			? `url(#${ editorGradientId })`
+			: 'currentColor';
 
 	const viewBoxWidth = wave.wavelength * 80;
 	const topMap = {
@@ -76,6 +107,9 @@ export default function Edit( { attributes, setAttributes } ) {
 		baseline: '-100%',
 		custom: '-50%',
 	};
+	// Fall back to center (the PHP default) for any unexpected position value.
+	const waveTop = topMap[ verticalPosition ] ?? '50%';
+	const waveTranslate = translateMap[ verticalPosition ] ?? '-50%';
 	let animationName = 'none';
 	if ( isAnimated ) {
 		animationName = isReversed ? 'wave-flow-reverse' : 'wave-flow';
@@ -248,28 +282,37 @@ export default function Edit( { attributes, setAttributes } ) {
 						checked={ isAnimated }
 						onChange={ ( v ) => set( { isAnimated: !! v } ) }
 					/>
-					<RangeControl
-						label={ __( 'Speed (s)', 'awesome-squiggle' ) }
-						min={ 0.5 }
-						max={ 5 }
-						step={ 0.5 }
-						value={ animationSpeed }
-						onChange={ ( v ) =>
-							set( {
-								animationSpeed: validateNumericInput(
-									v,
-									0.5,
-									5,
-									2.5
-								),
-							} )
-						}
-					/>
-					<ToggleControl
-						label={ __( 'Reverse direction', 'awesome-squiggle' ) }
-						checked={ isReversed }
-						onChange={ ( v ) => set( { isReversed: !! v } ) }
-					/>
+					{ isAnimated && (
+						<>
+							<RangeControl
+								label={ __( 'Speed (s)', 'awesome-squiggle' ) }
+								min={ 0.5 }
+								max={ 5 }
+								step={ 0.5 }
+								value={ animationSpeed }
+								onChange={ ( v ) =>
+									set( {
+										animationSpeed: validateNumericInput(
+											v,
+											0.5,
+											5,
+											2.5
+										),
+									} )
+								}
+							/>
+							<ToggleControl
+								label={ __(
+									'Reverse direction',
+									'awesome-squiggle'
+								) }
+								checked={ isReversed }
+								onChange={ ( v ) =>
+									set( { isReversed: !! v } )
+								}
+							/>
+						</>
+					) }
 				</PanelBody>
 			</InspectorControls>
 
@@ -281,9 +324,9 @@ export default function Edit( { attributes, setAttributes } ) {
 						position: 'absolute',
 						left: 0,
 						right: 0,
-						top: topMap[ verticalPosition ],
+						top: waveTop,
 						height: `${ bandHeight }px`,
-						transform: `translateY(${ translateMap[ verticalPosition ] })`,
+						transform: `translateY(${ waveTranslate })`,
 						zIndex: 0,
 						overflow: 'hidden',
 						pointerEvents: 'none',
@@ -300,10 +343,31 @@ export default function Edit( { attributes, setAttributes } ) {
 							display: 'block',
 						} }
 					>
+						{ gradientStops.length > 0 && (
+							<defs>
+								<linearGradient
+									id={ editorGradientId }
+									gradientUnits="userSpaceOnUse"
+									spreadMethod="reflect"
+									x1="0"
+									y1="0"
+									x2="40"
+									y2="0"
+								>
+									{ gradientStops.map( ( stop, i ) => (
+										<stop
+											key={ i }
+											offset={ stop.offset }
+											stopColor={ stop.color }
+										/>
+									) ) }
+								</linearGradient>
+							</defs>
+						) }
 						<path
 							d={ wave.d }
 							fill="none"
-							stroke="currentColor"
+							stroke={ waveStroke }
 							strokeWidth={ strokeWidth }
 							strokeLinecap="round"
 							strokeLinejoin="round"

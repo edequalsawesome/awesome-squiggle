@@ -76,3 +76,4 @@ wp-config.php
 .phpunit.result.cache
 
 CODEX-REVIEW.md
+.worktrees/

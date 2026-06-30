@@ -346,6 +346,55 @@ class Awesome_Squiggle_Renderer {
 	// ───────────────────────────────────────────────
 
 	/**
+	 * Look up a registered gradient preset's CSS value by slug.
+	 *
+	 * Consults the site's global settings (theme.json + core + user presets) so
+	 * THEME-defined gradients — not just core's hardcoded default palette — resolve
+	 * to real stops instead of the #667eea/#764ba2 fallback. Thin glue around
+	 * wp_get_global_settings(); returns null when unavailable or unmatched so
+	 * callers fall through to their existing behavior. Not unit-tested directly
+	 * (WP-runtime dependency); the CSS it returns is parsed by the pure
+	 * parse_gradient() which is.
+	 *
+	 * @param string $slug Gradient preset slug, e.g. 'brand-sunset'.
+	 * @return string|null The 'linear-gradient(...)' CSS value, or null.
+	 */
+	private static function lookup_preset_gradient_css( $slug ) {
+		if ( '' === (string) $slug || ! function_exists( 'wp_get_global_settings' ) ) {
+			return null;
+		}
+
+		$gradients = wp_get_global_settings( array( 'color', 'gradients' ) );
+		if ( empty( $gradients ) || ! is_array( $gradients ) ) {
+			return null;
+		}
+
+		// The return shape varies by WP version: either grouped
+		// ( array('theme'=>[...],'default'=>[...],'custom'=>[...]) ) or a flat
+		// list of array('slug'=>…, 'gradient'=>…). Flatten both defensively.
+		$presets = array();
+		foreach ( $gradients as $value ) {
+			if ( is_array( $value ) && isset( $value['slug'] ) ) {
+				$presets[] = $value; // flat-list entry
+			} elseif ( is_array( $value ) ) {
+				foreach ( $value as $preset ) { // grouped: theme/default/custom
+					if ( is_array( $preset ) && isset( $preset['slug'] ) ) {
+						$presets[] = $preset;
+					}
+				}
+			}
+		}
+
+		foreach ( $presets as $preset ) {
+			if ( isset( $preset['slug'], $preset['gradient'] ) && $preset['slug'] === $slug ) {
+				return (string) $preset['gradient'];
+			}
+		}
+
+		return null;
+	}
+
+	/**
 	 * Resolve a gradient slug/var/custom to a concrete CSS linear-gradient string.
 	 */
 	private static function resolve_gradient_to_css( $input ) {
@@ -361,6 +410,11 @@ class Awesome_Squiggle_Renderer {
 			if ( isset( self::$wp_default_gradients[ $value ] ) ) {
 				return self::$wp_default_gradients[ $value ];
 			}
+			// Theme-defined preset (not in the hardcoded default palette).
+			$preset_css = self::lookup_preset_gradient_css( $value );
+			if ( $preset_css ) {
+				return $preset_css;
+			}
 		}
 
 		// CSS var for a preset gradient — resolve from map or pass through for browser resolution
@@ -369,8 +423,13 @@ class Awesome_Squiggle_Renderer {
 				if ( isset( self::$wp_default_gradients[ $m[1] ] ) ) {
 					return self::$wp_default_gradients[ $m[1] ];
 				}
+				// Theme-defined preset — resolve real stops from global settings.
+				$preset_css = self::lookup_preset_gradient_css( $m[1] );
+				if ( $preset_css ) {
+					return $preset_css;
+				}
 			}
-			// Theme-defined preset not in our map — pass through for browser resolution
+			// Theme-defined preset not resolvable here — pass through for browser resolution
 			return $value;
 		}
 
@@ -539,8 +598,10 @@ class Awesome_Squiggle_Renderer {
 		$final_gradient = null;
 		$gradient_data  = null;
 
-		// Check for gradient (highest priority)
-		$custom_gradient = $gradient ?? ( $style['color']['gradient'] ?? null );
+		// Check for gradient (highest priority). An empty-string `gradient` (e.g. a
+		// cleared named gradient) must NOT win over a custom style gradient — `??`
+		// only falls through on null, so guard with ! empty().
+		$custom_gradient = ! empty( $gradient ) ? $gradient : ( $style['color']['gradient'] ?? null );
 
 		if ( $custom_gradient ) {
 			$validated_id = $gradient_id ? self::validate_id( $gradient_id ) : '';
@@ -631,7 +692,7 @@ class Awesome_Squiggle_Renderer {
 		$gradient_data    = $args['gradient_data'] ?? null;
 		$gradient_id      = self::validate_id( $args['gradient_id'] ?? '' );
 		$animation_id     = self::validate_id( $args['animation_id'] ?? '' );
-		$container_height = (int) ( $args['container_height'] ?? 100 );
+		$container_height = (int) self::validate_numeric( $args['container_height'] ?? 100, 20, 400, 100 );
 
 		$is_pixel       = ( $shape === 'pixel' );
 		$is_paused      = ! $is_animated;
@@ -838,7 +899,11 @@ class Awesome_Squiggle_Renderer {
 			'is_reversed'      => $is_reversed,
 			'line_color'       => $line_color,
 			'gradient_data'    => $gradient_data,
-			'gradient_id'      => $gradient_id,
+			// Prefer the effective id resolve_line_color() baked into the stroke's
+			// url(#…); fall back to the attribute only when there is none. This fixes
+			// legacy separators that have a gradient but no gradientId attribute —
+			// without it the <defs> id never matches the stroke and the gradient is invisible.
+			'gradient_id'      => '' !== $color_result['gradient_id'] ? $color_result['gradient_id'] : $gradient_id,
 			'animation_id'     => $animation_id,
 			'container_height' => $container_height,
 		) );

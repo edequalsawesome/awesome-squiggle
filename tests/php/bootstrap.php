@@ -52,5 +52,24 @@ if ( ! function_exists( 'plugin_dir_url' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_get_global_settings' ) ) {
+	function wp_get_global_settings( $path = array(), $context = array() ) {
+		// Fixture: one THEME-defined gradient preset (not in the renderer's hardcoded
+		// default palette) so theme-gradient resolution can be tested. Grouped shape.
+		if ( $path === array( 'color', 'gradients' ) ) {
+			return array(
+				'theme' => array(
+					array(
+						'slug'     => 'brand-sunset',
+						'name'     => 'Brand Sunset',
+						'gradient' => 'linear-gradient(135deg,#ff5e62 0%,#ff9966 100%)',
+					),
+				),
+			);
+		}
+		return array();
+	}
+}
+
 // Load the renderer
 require_once dirname( __DIR__, 2 ) . '/includes/class-awesome-squiggle-renderer.php';

@@ -290,6 +290,12 @@
 
 .wp-block-awesome-squiggle-backdrop {
 	position: relative;
+	/* Clip the wave band to the block box so a band taller than the content
+	   can't bleed over neighboring blocks (this also makes the padding-frame
+	   work). isolation scopes the internal z-index (wave 0 / content 1) so the
+	   wave never interacts with page or nested stacking contexts. */
+	overflow: hidden;
+	isolation: isolate;
 }
 
 .wp-block-awesome-squiggle-backdrop > .asquig-backdrop__wave {
