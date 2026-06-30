@@ -564,4 +564,53 @@ class RendererTest extends TestCase {
 		// Pixel paths use H/V staircase commands.
 		$this->assertMatchesRegularExpression( '/ H-?\d/', $svg );
 	}
+
+	public function test_build_wave_svg_emits_gradient_defs_when_gradient_data_provided() {
+		$gradient_data = array(
+			'type'  => 'linear',
+			'stops' => array(
+				array( 'color' => '#ff0000', 'offset' => '0%' ),
+				array( 'color' => '#0000ff', 'offset' => '100%' ),
+			),
+		);
+
+		$svg = Awesome_Squiggle_Renderer::build_wave_svg( array(
+			'shape'            => 'squiggle',
+			'amplitude'        => 10,
+			'pointiness'       => 0,
+			'angle'            => 0,
+			'stroke_width'     => 1,
+			'animation_speed'  => 2.5,
+			'is_animated'      => true,
+			'is_reversed'      => false,
+			'line_color'       => 'url(#gradient-abc12345)',
+			'gradient_data'    => $gradient_data,
+			'gradient_id'      => 'gradient-abc12345',
+			'animation_id'     => '',
+			'container_height' => 100,
+		) );
+
+		$this->assertStringContainsString( '<defs>', $svg );
+		$this->assertStringContainsString( '<linearGradient', $svg );
+		$this->assertStringContainsString( '#ff0000', $svg );
+		$this->assertStringContainsString( '#0000ff', $svg );
+
+		// Without gradient_data, no linearGradient should be emitted.
+		$svg_no_gradient = Awesome_Squiggle_Renderer::build_wave_svg( array(
+			'shape'            => 'squiggle',
+			'amplitude'        => 10,
+			'pointiness'       => 0,
+			'angle'            => 0,
+			'stroke_width'     => 1,
+			'animation_speed'  => 2.5,
+			'is_animated'      => true,
+			'is_reversed'      => false,
+			'line_color'       => 'currentColor',
+			'gradient_data'    => null,
+			'gradient_id'      => '',
+			'animation_id'     => '',
+			'container_height' => 100,
+		) );
+		$this->assertStringNotContainsString( '<linearGradient', $svg_no_gradient );
+	}
 }

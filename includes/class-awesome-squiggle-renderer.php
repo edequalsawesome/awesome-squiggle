@@ -609,6 +609,9 @@ class Awesome_Squiggle_Renderer {
 	 *     @type string     $animation_id     Validated animation element ID, or ''
 	 *     @type int        $container_height
 	 * }
+	 * Note: numeric args (amplitude, pointiness, angle, stroke_width, animation_speed,
+	 * container_height) are clamped to their valid ranges inside this method — direct
+	 * callers receive the clamped values in the generated SVG output.
 	 * @return string Complete <svg>…</svg> string (no outer wrapper div).
 	 */
 	public static function build_wave_svg( array $args ) {
@@ -638,6 +641,9 @@ class Awesome_Squiggle_Renderer {
 		$viewbox_w   = $wave_data['wavelength'] * 80;
 
 		// Gradient defs.
+		// $gradient_data is always a non-empty array when a gradient is present —
+		// parse_gradient() never returns falsy (falls back to $fallback_gradient),
+		// so this gate is semantically equivalent to the original `$final_gradient && $gradient_id`.
 		$defs_html = '';
 		if ( $gradient_data && $gradient_id ) {
 			$stops_html = '';
