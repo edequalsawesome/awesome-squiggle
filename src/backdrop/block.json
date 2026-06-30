@@ -12,7 +12,8 @@
 	"supports": {
 		"html": false,
 		"spacing": { "padding": true, "margin": true },
-		"align": [ "wide", "full" ]
+		"align": [ "wide", "full" ],
+		"color": { "text": true, "background": false, "gradients": true }
 	},
 	"attributes": {
 		"shape": { "type": "string", "default": "squiggle" },
