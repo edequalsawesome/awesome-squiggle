@@ -4,7 +4,7 @@
 
 **Goal:** Add a new additive block `awesome-squiggle/backdrop` that paints a single animated wave band behind nested content (a heading or a whole section), reusing the plugin's existing wave-path generator and SVG-assembly machinery.
 
-**Architecture:** An `InnerBlocks` container block. The wrapper + SVG layer render dynamically in PHP (`render.php`); the nested blocks save their own markup (`InnerBlocks.Content`) and arrive as `$content`. The wave SVG is positioned `absolute; inset:0; z-index:0` inside the block's own stacking context, with content at `z-index:1` on top. Pure SVG+CSS on the frontend, animated by default via CSS keyframes the block ships itself.
+**Architecture:** An `InnerBlocks` container block. The wrapper + SVG layer render dynamically in PHP (`render.php`); the nested blocks save their own markup (`InnerBlocks.Content`) and arrive as `$content`. The wave SVG is positioned `absolute; inset:0; z-index:0` inside the block's own stacking context, with content at `z-index:1` on top. Pure SVG+CSS on the frontend, animated by default via the plugin's existing CSS keyframes (shared `style-index.css`).
 
 **Tech Stack:** WordPress block API v3, `@wordpress/scripts` (webpack), PHP 7.4+, Jest (JS unit), PHPUnit (PHP unit).
 
@@ -561,9 +561,9 @@ git commit -m "feat(backdrop): render animated wave band behind content"
 
 ---
 
-### Task 5: Backdrop CSS — layering, self-shipped keyframes, reduced-motion
+### Task 5: Backdrop CSS — layering + reduced-motion
 
-Add scoped styles for the new block to `src/style.css` (compiles into the shared `build/style-index.css`). Ship the block's own keyframes + reduced-motion guard so it animates even if no separator is present on the page.
+Add scoped styles for the new block to `src/style.css` (compiles into the shared `build/style-index.css`). The wave animation reuses the existing `wave-flow`/`wave-flow-reverse` keyframes — they live in this same stylesheet (the separator section) and `build_wave_svg()` already names them, so the backdrop needs no keyframes of its own. (Both blocks load the one compiled `style-index.css`, so the keyframes can never be missing — adding a duplicate set would be dead, unreferenced code.)
 
 **Files:**
 - Modify: `src/style.css`
@@ -573,7 +573,9 @@ Add scoped styles for the new block to `src/style.css` (compiles into the shared
 ```css
 /* ========================================
    SQUIGGLE BACKDROP BLOCK
-   Wave band behind nested content.
+   Wave band behind nested content. Animation reuses the
+   wave-flow / wave-flow-reverse keyframes defined above
+   (build_wave_svg() emits those animation-names).
    ======================================== */
 .wp-block-awesome-squiggle-backdrop {
 	position: relative;
@@ -600,24 +602,6 @@ Add scoped styles for the new block to `src/style.css` (compiles into the shared
 	z-index: 1;
 }
 
-/* Self-sufficient animation: ship the keyframes so the block animates
-   even when no separator wave is on the page.
-   (Duplicate @keyframes names are harmless — same definition.) */
-/* rtl:begin:ignore */
-@keyframes asquig-backdrop-wave-flow {
-	0% { transform: translateX(0); }
-	100% { transform: translateX(-80px); }
-}
-@keyframes asquig-backdrop-wave-flow-reverse {
-	0% { transform: translateX(0); }
-	100% { transform: translateX(80px); }
-}
-/* rtl:end:ignore */
-
-/* Map the shared wave-path animation onto the backdrop's own keyframes.
-   build_wave_svg() emits animation-name "wave-flow"/"wave-flow-reverse";
-   the separator's keyframes cover those, but the backdrop also defines its
-   own so it never depends on the separator stylesheet being present. */
 .wp-block-awesome-squiggle-backdrop .wave-path {
 	vector-effect: non-scaling-stroke;
 }
@@ -634,8 +618,6 @@ Add scoped styles for the new block to `src/style.css` (compiles into the shared
 	}
 }
 ```
-
-Note: `build_wave_svg()` sets the path's `animation-name` to `wave-flow`/`wave-flow-reverse`. Those keyframes are defined in this same stylesheet (the separator section), so they are always present whenever `style-index.css` loads — which it does for the backdrop too (block.json `style` points at it). The `asquig-backdrop-*` keyframes above are an explicit redundancy guard; if you prefer, switch `build_wave_svg`'s animation-name to the `asquig-backdrop-*` names when called from the backdrop by threading an `animation_prefix` arg — optional, not required for correctness.
 
 - [ ] **Step 2: Build and visually verify**
 
