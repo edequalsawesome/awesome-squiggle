@@ -271,3 +271,50 @@
 	height: auto;
 	min-height: 0;
 }
+
+/* ========================================
+   SQUIGGLE BACKDROP BLOCK
+   Wave band behind nested content. Animation reuses the
+   wave-flow / wave-flow-reverse keyframes defined above
+   (build_wave_svg() emits those animation-names).
+   ======================================== */
+.wp-block-awesome-squiggle-backdrop {
+	position: relative;
+}
+
+.wp-block-awesome-squiggle-backdrop > .asquig-backdrop__wave {
+	position: absolute;
+	left: 0;
+	right: 0;
+	z-index: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.wp-block-awesome-squiggle-backdrop > .asquig-backdrop__wave svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+/* Content sits above the wave within the block's own stacking context. */
+.wp-block-awesome-squiggle-backdrop > .asquig-backdrop__content {
+	position: relative;
+	z-index: 1;
+}
+
+.wp-block-awesome-squiggle-backdrop .wave-path {
+	vector-effect: non-scaling-stroke;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.wp-block-awesome-squiggle-backdrop .wave-path {
+		animation: none !important;
+	}
+}
+
+@media (forced-colors: active) {
+	.wp-block-awesome-squiggle-backdrop .wave-path {
+		stroke: CanvasText;
+	}
+}
