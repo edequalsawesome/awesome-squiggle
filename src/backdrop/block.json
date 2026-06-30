@@ -1,0 +1,36 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "awesome-squiggle/backdrop",
+	"version": "2026.06.29",
+	"title": "Squiggle Backdrop",
+	"category": "design",
+	"icon": "art",
+	"description": "Wraps content with an animated squiggle wave band behind it.",
+	"keywords": [ "squiggle", "backdrop", "wave", "background", "behind" ],
+	"textdomain": "awesome-squiggle",
+	"supports": {
+		"html": false,
+		"spacing": { "padding": true, "margin": true },
+		"align": [ "wide", "full" ],
+		"color": { "text": true, "background": false, "gradients": true }
+	},
+	"attributes": {
+		"shape": { "type": "string", "default": "squiggle" },
+		"squiggleAmplitude": { "type": "number", "default": 10 },
+		"pointiness": { "type": "number", "default": 0 },
+		"angle": { "type": "number", "default": 0 },
+		"strokeWidth": { "type": "number", "default": 2 },
+		"animationSpeed": { "type": "number", "default": 2.5 },
+		"isAnimated": { "type": "boolean", "default": true },
+		"isReversed": { "type": "boolean", "default": false },
+		"bandHeight": { "type": "number", "default": 100 },
+		"verticalPosition": { "type": "string", "default": "center" },
+		"verticalPositionCustom": { "type": "number", "default": 50 },
+		"gradient": { "type": "string" },
+		"gradientId": { "type": "string" },
+		"animationId": { "type": "string" }
+	},
+	"style": "file:../style-index.css",
+	"render": "file:./render.php"
+}

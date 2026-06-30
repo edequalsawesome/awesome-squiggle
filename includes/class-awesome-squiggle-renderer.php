@@ -54,7 +54,7 @@ class Awesome_Squiggle_Renderer {
 	/**
 	 * Clamp a numeric value to a range, returning a default for non-numeric input.
 	 */
-	private static function validate_numeric( $value, $min, $max, $default ) {
+	public static function validate_numeric( $value, $min, $max, $default ) {
 		if ( ! is_numeric( $value ) ) {
 			return $default;
 		}
@@ -109,7 +109,7 @@ class Awesome_Squiggle_Renderer {
 	/**
 	 * Validate an ID string — alphanumeric, dash, underscore only, max 50 chars.
 	 */
-	private static function validate_id( $id ) {
+	public static function validate_id( $id ) {
 		if ( ! is_string( $id ) ) {
 			return '';
 		}
@@ -346,6 +346,55 @@ class Awesome_Squiggle_Renderer {
 	// ───────────────────────────────────────────────
 
 	/**
+	 * Look up a registered gradient preset's CSS value by slug.
+	 *
+	 * Consults the site's global settings (theme.json + core + user presets) so
+	 * THEME-defined gradients — not just core's hardcoded default palette — resolve
+	 * to real stops instead of the #667eea/#764ba2 fallback. Thin glue around
+	 * wp_get_global_settings(); returns null when unavailable or unmatched so
+	 * callers fall through to their existing behavior. Not unit-tested directly
+	 * (WP-runtime dependency); the CSS it returns is parsed by the pure
+	 * parse_gradient() which is.
+	 *
+	 * @param string $slug Gradient preset slug, e.g. 'brand-sunset'.
+	 * @return string|null The 'linear-gradient(...)' CSS value, or null.
+	 */
+	private static function lookup_preset_gradient_css( $slug ) {
+		if ( '' === (string) $slug || ! function_exists( 'wp_get_global_settings' ) ) {
+			return null;
+		}
+
+		$gradients = wp_get_global_settings( array( 'color', 'gradients' ) );
+		if ( empty( $gradients ) || ! is_array( $gradients ) ) {
+			return null;
+		}
+
+		// The return shape varies by WP version: either grouped
+		// ( array('theme'=>[...],'default'=>[...],'custom'=>[...]) ) or a flat
+		// list of array('slug'=>…, 'gradient'=>…). Flatten both defensively.
+		$presets = array();
+		foreach ( $gradients as $value ) {
+			if ( is_array( $value ) && isset( $value['slug'] ) ) {
+				$presets[] = $value; // flat-list entry
+			} elseif ( is_array( $value ) ) {
+				foreach ( $value as $preset ) { // grouped: theme/default/custom
+					if ( is_array( $preset ) && isset( $preset['slug'] ) ) {
+						$presets[] = $preset;
+					}
+				}
+			}
+		}
+
+		foreach ( $presets as $preset ) {
+			if ( isset( $preset['slug'], $preset['gradient'] ) && $preset['slug'] === $slug ) {
+				return (string) $preset['gradient'];
+			}
+		}
+
+		return null;
+	}
+
+	/**
 	 * Resolve a gradient slug/var/custom to a concrete CSS linear-gradient string.
 	 */
 	private static function resolve_gradient_to_css( $input ) {
@@ -361,6 +410,11 @@ class Awesome_Squiggle_Renderer {
 			if ( isset( self::$wp_default_gradients[ $value ] ) ) {
 				return self::$wp_default_gradients[ $value ];
 			}
+			// Theme-defined preset (not in the hardcoded default palette).
+			$preset_css = self::lookup_preset_gradient_css( $value );
+			if ( $preset_css ) {
+				return $preset_css;
+			}
 		}
 
 		// CSS var for a preset gradient — resolve from map or pass through for browser resolution
@@ -369,8 +423,13 @@ class Awesome_Squiggle_Renderer {
 				if ( isset( self::$wp_default_gradients[ $m[1] ] ) ) {
 					return self::$wp_default_gradients[ $m[1] ];
 				}
+				// Theme-defined preset — resolve real stops from global settings.
+				$preset_css = self::lookup_preset_gradient_css( $m[1] );
+				if ( $preset_css ) {
+					return $preset_css;
+				}
 			}
-			// Theme-defined preset not in our map — pass through for browser resolution
+			// Theme-defined preset not resolvable here — pass through for browser resolution
 			return $value;
 		}
 
@@ -539,8 +598,10 @@ class Awesome_Squiggle_Renderer {
 		$final_gradient = null;
 		$gradient_data  = null;
 
-		// Check for gradient (highest priority)
-		$custom_gradient = $gradient ?? ( $style['color']['gradient'] ?? null );
+		// Check for gradient (highest priority). An empty-string `gradient` (e.g. a
+		// cleared named gradient) must NOT win over a custom style gradient — `??`
+		// only falls through on null, so guard with ! empty().
+		$custom_gradient = ! empty( $gradient ) ? $gradient : ( $style['color']['gradient'] ?? null );
 
 		if ( $custom_gradient ) {
 			$validated_id = $gradient_id ? self::validate_id( $gradient_id ) : '';
@@ -581,6 +642,130 @@ class Awesome_Squiggle_Renderer {
 			'line_color'    => $line_color,
 			'gradient'      => $final_gradient,
 			'gradient_data' => $gradient_data,
+			// The effective gradient element id — same value used inside url(#...) in
+			// line_color. Empty string when no gradient. render.php passes this to
+			// build_wave_svg() so the <defs> id always matches the stroke reference.
+			'gradient_id'   => $final_gradient ? (string) $gradient_id : '',
+		);
+	}
+
+	// ───────────────────────────────────────────────
+	// Shared SVG builder
+	// ───────────────────────────────────────────────
+
+	/**
+	 * Build and return the <svg>…</svg> string for a wave separator.
+	 *
+	 * Accepts pre-resolved / pre-validated values from the caller so this method
+	 * can be used by both render_block() and the upcoming Squiggle Backdrop block.
+	 *
+	 * @param array $args {
+	 *     @type string     $shape            'squiggle'|'zigzag'|'lightning'|'pixel'
+	 *     @type float      $amplitude
+	 *     @type float      $pointiness
+	 *     @type float      $angle
+	 *     @type float      $stroke_width
+	 *     @type float      $animation_speed
+	 *     @type bool       $is_animated
+	 *     @type bool       $is_reversed
+	 *     @type string     $line_color       Pre-resolved CSS color or url(#…)
+	 *     @type array|null $gradient_data    Parsed gradient with 'stops', or null
+	 *     @type string     $gradient_id      Validated gradient element ID, or ''
+	 *     @type string     $animation_id     Validated animation element ID, or ''
+	 *     @type int        $container_height
+	 * }
+	 * Note: numeric args (amplitude, pointiness, angle, stroke_width, animation_speed,
+	 * container_height) are clamped to their valid ranges inside this method — direct
+	 * callers receive the clamped values in the generated SVG output.
+	 * @return string Complete <svg>…</svg> string (no outer wrapper div).
+	 */
+	public static function build_wave_svg( array $args ) {
+		$shape            = isset( $args['shape'] ) ? $args['shape'] : 'squiggle';
+		$amplitude        = self::validate_numeric( $args['amplitude'] ?? null, 5, 25, 10 );
+		$pointiness       = self::validate_numeric( $args['pointiness'] ?? null, 0, 100, 0 );
+		$angle            = self::validate_numeric( $args['angle'] ?? null, -60, 60, 0 );
+		$stroke_width     = self::validate_numeric( $args['stroke_width'] ?? null, 1, 8, 1 );
+		$animation_speed  = self::validate_numeric( $args['animation_speed'] ?? null, 0.5, 5, 2.5 );
+		$is_animated      = ! empty( $args['is_animated'] );
+		$is_reversed      = ! empty( $args['is_reversed'] );
+		$line_color       = self::validate_color( $args['line_color'] ?? 'currentColor' );
+		$gradient_data    = $args['gradient_data'] ?? null;
+		$gradient_id      = self::validate_id( $args['gradient_id'] ?? '' );
+		$animation_id     = self::validate_id( $args['animation_id'] ?? '' );
+		$container_height = (int) self::validate_numeric( $args['container_height'] ?? 100, 20, 400, 100 );
+
+		$is_pixel       = ( $shape === 'pixel' );
+		$is_paused      = ! $is_animated;
+		$animation_name = $is_paused ? 'none' : ( $is_reversed ? 'wave-flow-reverse' : 'wave-flow' );
+
+		$wave_data   = $is_pixel
+			? self::generate_pixel_wave_path( $amplitude, $pointiness, $angle, $stroke_width, 80, $container_height )
+			: self::generate_long_wave_path( $amplitude, $pointiness, $angle, $stroke_width, 80, $container_height );
+		$wave_path   = $wave_data['d'];
+		$wave_height = $wave_data['height'];
+		$viewbox_w   = $wave_data['wavelength'] * 80;
+
+		// Gradient defs.
+		// $gradient_data is always a non-empty array when a gradient is present —
+		// parse_gradient() never returns falsy (falls back to $fallback_gradient),
+		// so this gate is semantically equivalent to the original `$final_gradient && $gradient_id`.
+		$defs_html = '';
+		if ( $gradient_data && $gradient_id ) {
+			$stops_html = '';
+			if ( ! empty( $gradient_data['stops'] ) ) {
+				foreach ( $gradient_data['stops'] as $stop ) {
+					$validated_stop_color = self::validate_color( $stop['color'], '#000000' );
+					$stops_html .= sprintf( '<stop offset="%s" stop-color="%s"/>', esc_attr( $stop['offset'] ), esc_attr( $validated_stop_color ) );
+				}
+			} else {
+				$stops_html = '<stop offset="0%" stop-color="#ff6b35"/><stop offset="100%" stop-color="#f7931e"/>';
+			}
+			$defs_html = sprintf(
+				'<defs><linearGradient id="%s" gradientUnits="userSpaceOnUse" spreadMethod="reflect" x1="0" y1="0" x2="40" y2="0">%s</linearGradient></defs>',
+				esc_attr( $gradient_id ), $stops_html
+			);
+		}
+
+		$path_style = $is_paused ? 'animation:none;' : sprintf( 'animation:%s %ss linear infinite;', esc_attr( $animation_name ), esc_attr( $animation_speed ) );
+		$path_class = 'wave-path ' . ( $animation_id ? 'wave-path-' . esc_attr( $animation_id ) : 'wave-path-default' );
+
+		return sprintf(
+			'<svg viewBox="0 0 %d %d" preserveAspectRatio="xMinYMid slice" aria-hidden="true" focusable="false" style="width:100%%;height:100%%;display:block;">%s<path d="%s" fill="none" stroke="%s" stroke-width="%s" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" class="%s" style="%s"/></svg>',
+			$viewbox_w, $wave_height, $defs_html, esc_attr( $wave_path ), esc_attr( $line_color ), esc_attr( $stroke_width ), esc_attr( $path_class ), esc_attr( $path_style )
+		);
+	}
+
+	// ───────────────────────────────────────────────
+	// Backdrop helpers
+	// ───────────────────────────────────────────────
+
+	/**
+	 * Whitelist the backdrop shape attribute.
+	 */
+	public static function backdrop_resolve_shape( $shape ) {
+		return in_array( $shape, array( 'squiggle', 'zigzag', 'lightning', 'pixel' ), true ) ? $shape : 'squiggle';
+	}
+
+	/**
+	 * Build the inline style for the absolute wave layer from placement attrs.
+	 * Pure string builder — no WP deps, unit-testable.
+	 */
+	public static function backdrop_wave_layer_style( $position, $custom_pct, $band_height ) {
+		$band_height = (int) self::validate_numeric( $band_height, 20, 400, 100 );
+
+		switch ( $position ) {
+			case 'top':      $top = '0%';   $translate = '0';     break;
+			case 'baseline': $top = '100%'; $translate = '-100%'; break;
+			case 'custom':
+				$pct = self::validate_numeric( $custom_pct, 0, 100, 50 );
+				$top = $pct . '%'; $translate = '-50%'; break;
+			case 'center':
+			default:         $top = '50%';  $translate = '-50%'; break;
+		}
+
+		return sprintf(
+			'position:absolute;left:0;right:0;top:%s;height:%dpx;transform:translateY(%s);z-index:0;overflow:hidden;pointer-events:none;',
+			$top, $band_height, $translate
 		);
 	}
 
@@ -661,22 +846,11 @@ class Awesome_Squiggle_Renderer {
 		$is_paused      = ! $is_animated;
 		$animation_name = $is_paused ? 'none' : ( $is_reversed ? 'wave-flow-reverse' : 'wave-flow' );
 
-		// ── Generate wave path ──
-
-		$wave_data    = $is_pixel
-			? self::generate_pixel_wave_path( $amplitude, $pointiness, $angle, $stroke_width, 80, $container_height )
-			: self::generate_long_wave_path( $amplitude, $pointiness, $angle, $stroke_width, 80, $container_height );
-		$wave_path    = $wave_data['d'];
-		$wave_height  = $wave_data['height'];
-		$wavelength   = $wave_data['wavelength'];
-		$viewbox_w    = $wavelength * 80;
-
 		// ── Resolve color ──
 
 		$color_result  = self::resolve_line_color( $attrs );
 		$line_color    = $color_result['line_color'];
-		$final_gradient = $color_result['gradient'];
-		$gradient_data  = $color_result['gradient_data'];
+		$gradient_data = $color_result['gradient_data'];
 
 		// ── Build class names ──
 
@@ -711,71 +885,34 @@ class Awesome_Squiggle_Renderer {
 			esc_attr( $animation_name )
 		);
 
-		// ── Build gradient SVG defs ──
+		// ── Build and return final HTML ──
 
-		$defs_html = '';
-		if ( $final_gradient && $gradient_id ) {
-			$gradient_span = 40;
-			$stops_html    = '';
-
-			if ( ! empty( $gradient_data['stops'] ) ) {
-				foreach ( $gradient_data['stops'] as $stop ) {
-					$validated_stop_color = self::validate_color( $stop['color'], '#000000' );
-					$stops_html .= sprintf(
-						'<stop offset="%s" stop-color="%s"/>',
-						esc_attr( $stop['offset'] ),
-						esc_attr( $validated_stop_color )
-					);
-				}
-			} else {
-				$stops_html = '<stop offset="0%" stop-color="#ff6b35"/><stop offset="100%" stop-color="#f7931e"/>';
-			}
-
-			$defs_html = sprintf(
-				'<defs><linearGradient id="%s" gradientUnits="userSpaceOnUse" spreadMethod="reflect" x1="0" y1="0" x2="%d" y2="0">%s</linearGradient></defs>',
-				esc_attr( $gradient_id ),
-				$gradient_span,
-				$stops_html
-			);
-		}
-
-		// ── Build path animation style ──
-
-		$path_style = $is_paused
-			? 'animation:none;'
-			: sprintf(
-				'animation:%s %ss linear infinite;',
-				esc_attr( $animation_name ),
-				esc_attr( $animation_speed )
-			);
-
-		$path_class = 'wave-path';
-		if ( $animation_id ) {
-			$path_class .= ' wave-path-' . esc_attr( $animation_id );
-		} else {
-			$path_class .= ' wave-path-default';
-		}
-
-		// ── Assemble final HTML ──
-
+		$shape = $is_pixel ? 'pixel' : ( $is_lightning ? 'lightning' : ( $is_zigzag ? 'zigzag' : 'squiggle' ) );
+		$svg   = self::build_wave_svg( array(
+			'shape'            => $shape,
+			'amplitude'        => $amplitude,
+			'pointiness'       => $pointiness,
+			'angle'            => $angle,
+			'stroke_width'     => $stroke_width,
+			'animation_speed'  => $animation_speed,
+			'is_animated'      => $is_animated,
+			'is_reversed'      => $is_reversed,
+			'line_color'       => $line_color,
+			'gradient_data'    => $gradient_data,
+			// Prefer the effective id resolve_line_color() baked into the stroke's
+			// url(#…); fall back to the attribute only when there is none. This fixes
+			// legacy separators that have a gradient but no gradientId attribute —
+			// without it the <defs> id never matches the stroke and the gradient is invisible.
+			'gradient_id'      => '' !== $color_result['gradient_id'] ? $color_result['gradient_id'] : $gradient_id,
+			'animation_id'     => $animation_id,
+			'container_height' => $container_height,
+		) );
 		$html = sprintf(
-			'<div class="%s" style="%s" role="separator" aria-label="%s">'
-			. '<svg viewBox="0 0 %d %d" preserveAspectRatio="xMinYMid slice" aria-hidden="true" focusable="false" style="width:100%%;height:100%%;display:block;">'
-			. '%s'
-			. '<path d="%s" fill="none" stroke="%s" stroke-width="%s" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" class="%s" style="%s"/>'
-			. '</svg>'
-			. '</div>',
+			'<div class="%s" style="%s" role="separator" aria-label="%s">%s</div>',
 			esc_attr( $combined_class ),
 			esc_attr( $wrapper_style ),
 			esc_attr__( 'Decorative separator', 'awesome-squiggle' ),
-			$viewbox_w,
-			$wave_height,
-			$defs_html,
-			esc_attr( $wave_path ),
-			esc_attr( $line_color ),
-			esc_attr( $stroke_width ),
-			esc_attr( $path_class ),
-			esc_attr( $path_style )
+			$svg
 		);
 
 		return $html;

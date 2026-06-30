@@ -236,6 +236,105 @@ class RendererTest extends TestCase {
 		$this->assertStringContainsString( 'red', $result['line_color'] );
 	}
 
+	public function test_resolve_color_gradient_returns_gradient_id_matching_line_color() {
+		// Bug B regression: the id returned as gradient_id must be the same id used
+		// in the url(#...) stroke reference so build_wave_svg can emit matching <defs>.
+		$result = Awesome_Squiggle_Renderer::resolve_line_color( array(
+			'gradient' => 'vivid-cyan-blue-to-vivid-purple',
+		) );
+
+		$gradient_id = $result['gradient_id'];
+		$this->assertNotEmpty( $gradient_id, 'gradient_id should be non-empty when a gradient is set' );
+
+		// The returned gradient_id must appear literally inside line_color: url(#<id>)
+		$this->assertStringContainsString(
+			'url(#' . $gradient_id . ')',
+			$result['line_color'],
+			'gradient_id must match the id used inside line_color url() reference'
+		);
+	}
+
+	public function test_resolve_color_no_gradient_returns_empty_gradient_id() {
+		// When no gradient is set, gradient_id must be '' and line_color must not be a url(#...).
+		$result = Awesome_Squiggle_Renderer::resolve_line_color( array(
+			'backgroundColor' => 'vivid-red',
+		) );
+
+		$this->assertSame( '', $result['gradient_id'], 'gradient_id should be empty string when no gradient' );
+		$this->assertStringNotContainsString( 'url(#', $result['line_color'] );
+	}
+
+	public function test_resolve_color_empty_gradient_falls_back_to_custom_style_gradient() {
+		// Codex regression: gradient '' must not defeat the custom style.color.gradient.
+		// `??` only falls through on null, so an empty-string slug used to swallow the
+		// real custom gradient and drop to currentColor.
+		$result = Awesome_Squiggle_Renderer::resolve_line_color( array(
+			'gradient' => '',
+			'style'    => array( 'color' => array( 'gradient' => 'linear-gradient(135deg,#ff0000 0%,#0000ff 100%)' ) ),
+		) );
+
+		$this->assertNotEmpty( $result['gradient_id'], 'custom style gradient should be honored despite empty slug' );
+		$this->assertStringContainsString( 'url(#', $result['line_color'] );
+		$this->assertNotNull( $result['gradient'] );
+	}
+
+	public function test_resolve_color_theme_preset_gradient_resolves_real_stops() {
+		// Codex finding: theme-defined preset slugs (not in the hardcoded default
+		// palette) must resolve to their real stops via wp_get_global_settings, not
+		// the #667eea/#764ba2 fallback. 'brand-sunset' is the bootstrap fixture.
+		$result = Awesome_Squiggle_Renderer::resolve_line_color( array(
+			'gradient' => 'brand-sunset',
+		) );
+
+		$this->assertStringContainsString( 'url(#', $result['line_color'] );
+		$this->assertNotNull( $result['gradient_data'] );
+		// Real theme stops, not the fallback.
+		$this->assertSame( '#ff5e62', $result['gradient_data']['stops'][0]['color'] );
+		$this->assertNotEquals( '#667eea', $result['gradient_data']['stops'][0]['color'] );
+	}
+
+	public function test_parse_gradient_theme_preset_slug_resolves_real_stops() {
+		// The pure parser, fed a theme preset slug, resolves via global settings.
+		$result = Awesome_Squiggle_Renderer::parse_gradient( 'brand-sunset' );
+		$this->assertSame( '#ff5e62', $result['stops'][0]['color'] );
+		$this->assertSame( '#ff9966', $result['stops'][1]['color'] );
+	}
+
+	// ───────────────────────────────────────────────
+	// render_block (separator integration)
+	// ───────────────────────────────────────────────
+
+	public function test_render_block_legacy_gradient_separator_emits_matching_defs() {
+		// Reddy + Codex (convergent): a legacy squiggle separator with a gradient but
+		// NO gradientId attribute used to emit no <linearGradient> defs (stale id),
+		// rendering the gradient invisible. render_block must now use the resolved id.
+		$block = array(
+			'blockName' => 'core/separator',
+			'attrs'     => array(
+				'className' => 'is-style-squiggle',
+				'gradient'  => 'vivid-cyan-blue-to-vivid-purple',
+				// No gradientId — the legacy/native-gradient case.
+			),
+			'innerHTML' => '',
+		);
+
+		$html = Awesome_Squiggle_Renderer::render_block( '<hr class="wp-block-separator is-style-squiggle"/>', $block );
+
+		// A <linearGradient> def must be present.
+		$this->assertStringContainsString( '<linearGradient', $html, 'legacy gradient separator must emit <defs>' );
+
+		// The def id must match the stroke's url(#...) reference.
+		$this->assertTrue(
+			(bool) preg_match( '/url\(#(gradient-[0-9a-f]+)\)/', $html, $stroke_m ),
+			'stroke should reference a runtime gradient id'
+		);
+		$this->assertStringContainsString(
+			'id="' . $stroke_m[1] . '"',
+			$html,
+			'the <linearGradient> id must match the stroke url(#...) reference'
+		);
+	}
+
 	// ───────────────────────────────────────────────
 	// generate_pixel_wave_path
 	// ───────────────────────────────────────────────
@@ -522,7 +621,105 @@ class RendererTest extends TestCase {
 			)
 		);
 
-		// Invalid gradient ID means no gradient defs
-		$this->assertStringNotContainsString( '<linearGradient', $html );
+		// Security: the malicious gradientId must never reach the output (no injection).
+		$this->assertStringNotContainsString( 'bad<id>with"quotes', $html );
+		$this->assertStringNotContainsString( '<id>', $html );
+
+		// Improved behavior (fix #2): an invalid id is sanitized away and the gradient
+		// still renders via a safe generated runtime id (gradient-<hash>) — it no longer
+		// silently vanishes. The def id must match the stroke reference.
+		$this->assertTrue(
+			(bool) preg_match( '/url\(#(gradient-[0-9a-f]+)\)/', $html, $stroke_m ),
+			'gradient should render with a safe runtime id after rejecting the invalid one'
+		);
+		$this->assertStringContainsString( 'id="' . $stroke_m[1] . '"', $html );
+	}
+
+	// ───────────────────────────────────────────────
+	// build_wave_svg
+	// ───────────────────────────────────────────────
+
+	public function test_build_wave_svg_emits_svg_with_path_and_aria_hidden() {
+		$svg = Awesome_Squiggle_Renderer::build_wave_svg( array(
+			'shape'            => 'squiggle',
+			'amplitude'       => 10,
+			'pointiness'      => 0,
+			'angle'           => 0,
+			'stroke_width'    => 1,
+			'animation_speed' => 2.5,
+			'is_animated'     => true,
+			'is_reversed'     => false,
+			'line_color'      => 'currentColor',
+			'gradient_data'   => null,
+			'gradient_id'     => '',
+			'animation_id'    => '',
+			'container_height'=> 100,
+		) );
+
+		$this->assertStringContainsString( '<svg', $svg );
+		$this->assertStringContainsString( 'aria-hidden="true"', $svg );
+		$this->assertStringContainsString( '<path', $svg );
+		$this->assertStringContainsString( 'stroke="currentColor"', $svg );
+		$this->assertStringNotContainsString( '<div', $svg );
+	}
+
+	public function test_build_wave_svg_pixel_shape_uses_pixel_generator() {
+		$svg = Awesome_Squiggle_Renderer::build_wave_svg( array(
+			'shape' => 'pixel', 'amplitude' => 10, 'pointiness' => 0, 'angle' => 0,
+			'stroke_width' => 2, 'animation_speed' => 2.5, 'is_animated' => false,
+			'is_reversed' => false, 'line_color' => 'currentColor', 'gradient_data' => null,
+			'gradient_id' => '', 'animation_id' => '', 'container_height' => 100,
+		) );
+		// Pixel paths use H/V staircase commands.
+		$this->assertMatchesRegularExpression( '/ H-?\d/', $svg );
+	}
+
+	public function test_build_wave_svg_emits_gradient_defs_when_gradient_data_provided() {
+		$gradient_data = array(
+			'type'  => 'linear',
+			'stops' => array(
+				array( 'color' => '#ff0000', 'offset' => '0%' ),
+				array( 'color' => '#0000ff', 'offset' => '100%' ),
+			),
+		);
+
+		$svg = Awesome_Squiggle_Renderer::build_wave_svg( array(
+			'shape'            => 'squiggle',
+			'amplitude'        => 10,
+			'pointiness'       => 0,
+			'angle'            => 0,
+			'stroke_width'     => 1,
+			'animation_speed'  => 2.5,
+			'is_animated'      => true,
+			'is_reversed'      => false,
+			'line_color'       => 'url(#gradient-abc12345)',
+			'gradient_data'    => $gradient_data,
+			'gradient_id'      => 'gradient-abc12345',
+			'animation_id'     => '',
+			'container_height' => 100,
+		) );
+
+		$this->assertStringContainsString( '<defs>', $svg );
+		$this->assertStringContainsString( '<linearGradient', $svg );
+		$this->assertStringContainsString( '#ff0000', $svg );
+		$this->assertStringContainsString( '#0000ff', $svg );
+
+		// Without gradient_data, no linearGradient should be emitted.
+		$svg_no_gradient = Awesome_Squiggle_Renderer::build_wave_svg( array(
+			'shape'            => 'squiggle',
+			'amplitude'        => 10,
+			'pointiness'       => 0,
+			'angle'            => 0,
+			'stroke_width'     => 1,
+			'animation_speed'  => 2.5,
+			'is_animated'      => true,
+			'is_reversed'      => false,
+			'line_color'       => 'currentColor',
+			'gradient_data'    => null,
+			'gradient_id'      => '',
+			'animation_id'     => '',
+			'container_height' => 100,
+		) );
+		$this->assertStringNotContainsString( '<linearGradient', $svg_no_gradient );
 	}
 }

@@ -271,3 +271,66 @@
 	height: auto;
 	min-height: 0;
 }
+
+/* ========================================
+   SQUIGGLE BACKDROP BLOCK
+   Wave band behind nested content. Animation reuses the
+   wave-flow / wave-flow-reverse keyframes defined above
+   (build_wave_svg() emits those animation-names).
+   ======================================== */
+/* The wave is the only thing the chosen color/gradient should paint.
+   WordPress's color support paints the wrapper background from a named
+   gradient (has-*-gradient-background, defined by core with !important);
+   neutralise it at higher specificity so the gradient colours the wave
+   (via the SVG stroke), not the whole block box. Mirrors the separator. */
+.wp-block-awesome-squiggle-backdrop[class] {
+	background: transparent !important;
+	background-image: none !important;
+}
+
+.wp-block-awesome-squiggle-backdrop {
+	position: relative;
+	/* Clip the wave band to the block box so a band taller than the content
+	   can't bleed over neighboring blocks (this also makes the padding-frame
+	   work). isolation scopes the internal z-index (wave 0 / content 1) so the
+	   wave never interacts with page or nested stacking contexts. */
+	overflow: hidden;
+	isolation: isolate;
+}
+
+.wp-block-awesome-squiggle-backdrop > .asquig-backdrop__wave {
+	position: absolute;
+	left: 0;
+	right: 0;
+	z-index: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.wp-block-awesome-squiggle-backdrop > .asquig-backdrop__wave svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+/* Content sits above the wave within the block's own stacking context. */
+.wp-block-awesome-squiggle-backdrop > .asquig-backdrop__content {
+	position: relative;
+	z-index: 1;
+}
+
+.wp-block-awesome-squiggle-backdrop .wave-path {
+	vector-effect: non-scaling-stroke;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.wp-block-awesome-squiggle-backdrop .wave-path {
+		animation: none !important;
+	}
+}
+
+@media (forced-colors: active) {
+	.wp-block-awesome-squiggle-backdrop .wave-path {
+		stroke: CanvasText;
+	}
+}

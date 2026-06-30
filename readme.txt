@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.3
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2026.04.25
+Stable tag: 2026.06.29
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -45,6 +45,17 @@ Transform boring horizontal separators into beautiful, flowing wave dividers! Aw
   * No external dependencies
   * Works inside Group, Row, Stack, and other layout blocks
 
+**Squiggle Backdrop block (new):**
+
+A standalone `awesome-squiggle/backdrop` block places an animated wave band *behind* nested content. Drop a heading or a Group block inside — the wave lives behind your content, not beside it.
+
+* Insert "Squiggle Backdrop" from the block inserter and nest content inside, or select any existing block and use the "Wrap in Squiggle Backdrop" transform
+* Same shape and animation controls as the Separator styles (shape, amplitude, pointiness, angle, stroke width, animate, speed, reverse)
+* **Placement controls:** vertical position (top / center / baseline / custom %) and band height to position the wave exactly where you want it
+* **Opaque inner background:** add padding to the Backdrop so the wave frames the content around the edges (padding-frame); or use a transparent/semi-transparent nested background to let the wave show through (show-through)
+* Wave is `aria-hidden="true"` (decorative) and respects `prefers-reduced-motion`
+* The existing Separator styles are unchanged
+
 == Installation ==
 
 1. Upload the `awesome-squiggle` folder to the `/wp-content/plugins/` directory
@@ -72,6 +83,14 @@ Absolutely! The plugin has full gradient support. Simply select a gradient from 
 
 No, the plugin uses pure CSS/SVG animations and is highly optimized for performance. It's lightweight with no external dependencies.
 
+= What is the Squiggle Backdrop block and how is it different from the Separator styles? =
+
+The Squiggle Backdrop block is a separate, additive block that places an animated wave band *behind* nested content (headings, Groups, or any blocks you put inside). The wave runs behind your content rather than acting as a horizontal divider. The existing Separator styles are unchanged — the Backdrop block is new and lives alongside them.
+
+= How do I make the wave visible when I nest a Group with a background color? =
+
+An opaque nested Group background will cover the wave. Two options: (1) add padding to the Backdrop block so the wave shows in the padded area around the content edges (padding frame); or (2) use a transparent or semi-transparent background on the nested Group so the wave shows through.
+
 == Screenshots ==
 
 1. Four available squiggle and zigzag styles in the block toolbar
@@ -80,6 +99,11 @@ No, the plugin uses pure CSS/SVG animations and is highly optimized for performa
 4. Example of zigzag pattern with gradient colors
 
 == Changelog ==
+
+= 2026.06.29 =
+* New: Squiggle Backdrop block (awesome-squiggle/backdrop) — additive InnerBlocks container placing an animated wave band behind nested content; existing Separator styles unchanged
+* New: "Wrap in Squiggle Backdrop" block transform for one-click nesting of any existing block
+* Architecture: Extracted shared build_wave_svg() PHP builder and src/wave-path.js JS module as single sources of truth for both Separator and Backdrop
 
 = 2026.04.25 =
 * Hardening: validateColorValue now short-circuits on inputs longer than 4096 chars (pathology guard against 10kb+ payloads; cap is far above any realistic CSS color value or WP preset slug, so legitimate `var(--wp--preset--gradient--<long-slug>)` values are unaffected)
@@ -237,6 +261,9 @@ The complete source code is maintained in this plugin package. All compressed fi
 The plugin source code is also available at: https://github.com/edequalsawesome/awesome-squiggle
 
 == Upgrade Notice ==
+
+= 2026.06.29 =
+New Squiggle Backdrop block — place an animated wave band behind headings or sections. Existing Separator styles are unchanged and fully backwards compatible.
 
 = 2026.03.30 =
 Major architecture upgrade: frontend SVG now rendered server-side via PHP for reliability and consistency. New Pixel block style (8-bit staircase wave). Fixed mobile stroke-width issues. Existing blocks upgrade seamlessly via block deprecation.

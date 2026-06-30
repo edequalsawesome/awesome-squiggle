@@ -3,7 +3,7 @@
  * Plugin Name: Awesome Squiggle
  * Plugin URI: https://github.com/edequalsawesome/awesome-squiggle
  * Description: Adds animated squiggle variations to the core WordPress separator block
- * Version: 2026.04.25
+ * Version: 2026.06.29
  * Author: eD! Thomas
  * Author URI: https://edequalsaweso.me
  * License: GPL-3.0-or-later
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'AWESOME_SQUIGGLE_VERSION', '2026.03.30' );
+define( 'AWESOME_SQUIGGLE_VERSION', '2026.06.29' );
 
 // Load the PHP dynamic renderer
 require_once __DIR__ . '/includes/class-awesome-squiggle-renderer.php';
@@ -38,6 +38,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
  */
 function awesome_squiggle_init() {
     register_block_type( __DIR__ . '/build' );
+    register_block_type( __DIR__ . '/build/backdrop' );
 }
 add_action( 'init', 'awesome_squiggle_init' );
 
