@@ -2,6 +2,14 @@
 
 This file contains the complete version history for the Awesome Squiggle WordPress plugin.
 
+= 2026.06.29 =
+* New: Squiggle Backdrop block (awesome-squiggle/backdrop) — an additive InnerBlocks container that places an animated wave band behind nested content (a heading or a section); existing Separator styles unchanged
+* New: "Wrap in Squiggle Backdrop" block transform — select any block and nest it in a Backdrop in one click
+* Architecture: Extracted shared build_wave_svg() PHP builder as single source of truth — reused by both the Separator renderer and the new Backdrop renderer
+* Architecture: Extracted shared src/wave-path.js JS module as single source of truth for wave path generation in both Separator and Backdrop editor previews
+* Backdrop: Supports shape (squiggle/zig-zag/lightning/pixel), amplitude, pointiness, angle, stroke width, color/gradient, vertical position (top/center/baseline/custom), band height, padding, animate toggle, speed, and reverse direction
+* Backdrop: Wave is aria-hidden (decorative), respects prefers-reduced-motion
+
 = 2026.04.25 =
 * Hardening: validateColorValue now short-circuits on inputs longer than 4096 chars (pathology guard against 10kb+ payloads; cap is far above any realistic CSS color value or WP preset slug)
 * Hardening: validateStringInput is now deterministic when callers pass a /g or /y regex — stateful regexes are normalized to a non-stateful copy before .test() (defense-in-depth on the public API contract)

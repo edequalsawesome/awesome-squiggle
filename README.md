@@ -72,6 +72,57 @@ Uses WordPress's standard color controls:
 - Background color, text color, or custom color picker for the line
 - Gradient picker (theme presets or custom) for gradient strokes
 
+## Squiggle Backdrop Block
+
+In addition to the Separator styles, Awesome Squiggle includes a standalone **Squiggle Backdrop** block (`awesome-squiggle/backdrop`) that places an animated wave band *behind* nested content — a heading, a Group, or any blocks you nest inside.
+
+Unlike the Separator styles (which are horizontal dividers), the Backdrop block is an InnerBlocks container. The wave layer sits behind your content inside the block's own stacking context — decorative, non-interactive, and invisible to assistive technology.
+
+### Getting Started
+
+Two ways to add it:
+
+- **Insert directly:** Add a "Squiggle Backdrop" block from the block inserter, then nest a Heading or Group block inside. The block includes a starter heading template so you have something to work from immediately.
+- **Wrap an existing block:** Select any block (e.g., a Heading), open the block toolbar, and choose **"Wrap in Squiggle Backdrop"** to nest it in one click.
+
+### Controls
+
+The block sidebar has three panels:
+
+**Wave**
+- **Shape** — Squiggle / Zig-Zag / Lightning / Pixel
+- **Amplitude** (5–25px) — height of wave peaks
+- **Pointiness** (0–100%) — smooth curves to sharp angles
+- **Angle** (-60 to +60) — lean wave peaks left or right
+- **Stroke width** (1–8px) — line thickness
+- Color / gradient — standard WordPress color and gradient controls
+
+**Placement**
+- **Vertical position** — Top / Center / Baseline / Custom % — where the wave band sits within the block's height (default: Center)
+- **Band height** (20–400px) — how tall the wave's drawing area is
+- **Padding** — standard WordPress spacing controls; this drives the padding-frame use case described below
+
+**Animation**
+- **Animate** (toggle, on by default)
+- **Speed** (0.5–5s) — animation cycle duration
+- **Reverse direction** (toggle)
+
+### Opaque vs. Transparent Inner Background
+
+What you see depends on the background of the block nested inside:
+
+- **Plain heading (no background):** The wave is visible directly behind the text — like an animated highlighter. This is the default starter case and requires no extra setup.
+- **Padding frame (opaque inner background):** Add padding to the Backdrop block. The nested Group's opaque background covers the wave in the center, but the wave slides out around the edges of the content into the Backdrop's padded area — the wave frames the content.
+- **Show-through (semi-transparent inner background):** Use a transparent or semi-transparent background on the nested Group. The wave shows through the background, creating a tinted-wash-over-wave effect.
+
+### Accessibility
+
+The wave layer is `aria-hidden="true"` and purely decorative. Animations respect `prefers-reduced-motion` — the wave stays visible but stops moving.
+
+The existing four Separator styles are **unchanged** by this addition.
+
+---
+
 ## Development
 
 ```bash
@@ -110,6 +161,12 @@ npm run build:production
 ```
 
 ## Changelog
+
+### Version 2026.06.29
+- **New: Squiggle Backdrop block** (`awesome-squiggle/backdrop`) — a new additive InnerBlocks container that places an animated wave band behind nested content (heading or section). Existing Separator styles unchanged.
+- **New: "Wrap in Squiggle Backdrop" block transform** — select any block and nest it inside a Backdrop in one click
+- **Architecture: Shared PHP builder** — `build_wave_svg()` extracted as a single source of truth reused by both Separator and Backdrop renderers
+- **Architecture: Shared JS wave module** — `src/wave-path.js` extracted as a single source of truth for wave path generation in both Separator and Backdrop editor previews
 
 ### Version 2026.03.30
 - **Architecture: PHP Dynamic Render**: Frontend SVG is now generated server-side from block attributes, eliminating the three-way source-of-truth problem between editor JS, save JS, and PHP
