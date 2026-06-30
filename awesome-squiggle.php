@@ -28,8 +28,10 @@ define( 'AWESOME_SQUIGGLE_VERSION', '2026.06.29' );
 // Load the PHP dynamic renderer
 require_once __DIR__ . '/includes/class-awesome-squiggle-renderer.php';
 
-// Register WP-CLI migration command
-if ( defined( 'WP_CLI' ) && WP_CLI ) {
+// Register WP-CLI migration command.
+// file_exists guard: the migration script is optional at runtime, so a partial
+// deploy (e.g. plugin-zip excluding scripts/) must never fatal WP-CLI bootstrap.
+if ( defined( 'WP_CLI' ) && WP_CLI && file_exists( __DIR__ . '/scripts/migrate-legacy-blocks.php' ) ) {
     require_once __DIR__ . '/scripts/migrate-legacy-blocks.php';
 }
 

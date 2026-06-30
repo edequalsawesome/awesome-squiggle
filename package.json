@@ -6,6 +6,7 @@
 		"build",
 		"includes",
 		"src",
+		"scripts/migrate-legacy-blocks.php",
 		"awesome-squiggle.php",
 		"readme.txt",
 		"README.md",
