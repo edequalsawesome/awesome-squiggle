@@ -585,6 +585,86 @@ class Awesome_Squiggle_Renderer {
 	}
 
 	// ───────────────────────────────────────────────
+	// Shared SVG builder
+	// ───────────────────────────────────────────────
+
+	/**
+	 * Build and return the <svg>…</svg> string for a wave separator.
+	 *
+	 * Accepts pre-resolved / pre-validated values from the caller so this method
+	 * can be used by both render_block() and the upcoming Squiggle Backdrop block.
+	 *
+	 * @param array $args {
+	 *     @type string     $shape            'squiggle'|'zigzag'|'lightning'|'pixel'
+	 *     @type float      $amplitude
+	 *     @type float      $pointiness
+	 *     @type float      $angle
+	 *     @type float      $stroke_width
+	 *     @type float      $animation_speed
+	 *     @type bool       $is_animated
+	 *     @type bool       $is_reversed
+	 *     @type string     $line_color       Pre-resolved CSS color or url(#…)
+	 *     @type array|null $gradient_data    Parsed gradient with 'stops', or null
+	 *     @type string     $gradient_id      Validated gradient element ID, or ''
+	 *     @type string     $animation_id     Validated animation element ID, or ''
+	 *     @type int        $container_height
+	 * }
+	 * @return string Complete <svg>…</svg> string (no outer wrapper div).
+	 */
+	public static function build_wave_svg( array $args ) {
+		$shape            = isset( $args['shape'] ) ? $args['shape'] : 'squiggle';
+		$amplitude        = self::validate_numeric( $args['amplitude'] ?? null, 5, 25, 10 );
+		$pointiness       = self::validate_numeric( $args['pointiness'] ?? null, 0, 100, 0 );
+		$angle            = self::validate_numeric( $args['angle'] ?? null, -60, 60, 0 );
+		$stroke_width     = self::validate_numeric( $args['stroke_width'] ?? null, 1, 8, 1 );
+		$animation_speed  = self::validate_numeric( $args['animation_speed'] ?? null, 0.5, 5, 2.5 );
+		$is_animated      = ! empty( $args['is_animated'] );
+		$is_reversed      = ! empty( $args['is_reversed'] );
+		$line_color       = self::validate_color( $args['line_color'] ?? 'currentColor' );
+		$gradient_data    = $args['gradient_data'] ?? null;
+		$gradient_id      = self::validate_id( $args['gradient_id'] ?? '' );
+		$animation_id     = self::validate_id( $args['animation_id'] ?? '' );
+		$container_height = (int) ( $args['container_height'] ?? 100 );
+
+		$is_pixel       = ( $shape === 'pixel' );
+		$is_paused      = ! $is_animated;
+		$animation_name = $is_paused ? 'none' : ( $is_reversed ? 'wave-flow-reverse' : 'wave-flow' );
+
+		$wave_data   = $is_pixel
+			? self::generate_pixel_wave_path( $amplitude, $pointiness, $angle, $stroke_width, 80, $container_height )
+			: self::generate_long_wave_path( $amplitude, $pointiness, $angle, $stroke_width, 80, $container_height );
+		$wave_path   = $wave_data['d'];
+		$wave_height = $wave_data['height'];
+		$viewbox_w   = $wave_data['wavelength'] * 80;
+
+		// Gradient defs.
+		$defs_html = '';
+		if ( $gradient_data && $gradient_id ) {
+			$stops_html = '';
+			if ( ! empty( $gradient_data['stops'] ) ) {
+				foreach ( $gradient_data['stops'] as $stop ) {
+					$validated_stop_color = self::validate_color( $stop['color'], '#000000' );
+					$stops_html .= sprintf( '<stop offset="%s" stop-color="%s"/>', esc_attr( $stop['offset'] ), esc_attr( $validated_stop_color ) );
+				}
+			} else {
+				$stops_html = '<stop offset="0%" stop-color="#ff6b35"/><stop offset="100%" stop-color="#f7931e"/>';
+			}
+			$defs_html = sprintf(
+				'<defs><linearGradient id="%s" gradientUnits="userSpaceOnUse" spreadMethod="reflect" x1="0" y1="0" x2="40" y2="0">%s</linearGradient></defs>',
+				esc_attr( $gradient_id ), $stops_html
+			);
+		}
+
+		$path_style = $is_paused ? 'animation:none;' : sprintf( 'animation:%s %ss linear infinite;', esc_attr( $animation_name ), esc_attr( $animation_speed ) );
+		$path_class = 'wave-path ' . ( $animation_id ? 'wave-path-' . esc_attr( $animation_id ) : 'wave-path-default' );
+
+		return sprintf(
+			'<svg viewBox="0 0 %d %d" preserveAspectRatio="xMinYMid slice" aria-hidden="true" focusable="false" style="width:100%%;height:100%%;display:block;">%s<path d="%s" fill="none" stroke="%s" stroke-width="%s" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" class="%s" style="%s"/></svg>',
+			$viewbox_w, $wave_height, $defs_html, esc_attr( $wave_path ), esc_attr( $line_color ), esc_attr( $stroke_width ), esc_attr( $path_class ), esc_attr( $path_style )
+		);
+	}
+
+	// ───────────────────────────────────────────────
 	// Main render method
 	// ───────────────────────────────────────────────
 
@@ -661,22 +741,11 @@ class Awesome_Squiggle_Renderer {
 		$is_paused      = ! $is_animated;
 		$animation_name = $is_paused ? 'none' : ( $is_reversed ? 'wave-flow-reverse' : 'wave-flow' );
 
-		// ── Generate wave path ──
-
-		$wave_data    = $is_pixel
-			? self::generate_pixel_wave_path( $amplitude, $pointiness, $angle, $stroke_width, 80, $container_height )
-			: self::generate_long_wave_path( $amplitude, $pointiness, $angle, $stroke_width, 80, $container_height );
-		$wave_path    = $wave_data['d'];
-		$wave_height  = $wave_data['height'];
-		$wavelength   = $wave_data['wavelength'];
-		$viewbox_w    = $wavelength * 80;
-
 		// ── Resolve color ──
 
 		$color_result  = self::resolve_line_color( $attrs );
 		$line_color    = $color_result['line_color'];
-		$final_gradient = $color_result['gradient'];
-		$gradient_data  = $color_result['gradient_data'];
+		$gradient_data = $color_result['gradient_data'];
 
 		// ── Build class names ──
 
@@ -711,71 +780,30 @@ class Awesome_Squiggle_Renderer {
 			esc_attr( $animation_name )
 		);
 
-		// ── Build gradient SVG defs ──
+		// ── Build and return final HTML ──
 
-		$defs_html = '';
-		if ( $final_gradient && $gradient_id ) {
-			$gradient_span = 40;
-			$stops_html    = '';
-
-			if ( ! empty( $gradient_data['stops'] ) ) {
-				foreach ( $gradient_data['stops'] as $stop ) {
-					$validated_stop_color = self::validate_color( $stop['color'], '#000000' );
-					$stops_html .= sprintf(
-						'<stop offset="%s" stop-color="%s"/>',
-						esc_attr( $stop['offset'] ),
-						esc_attr( $validated_stop_color )
-					);
-				}
-			} else {
-				$stops_html = '<stop offset="0%" stop-color="#ff6b35"/><stop offset="100%" stop-color="#f7931e"/>';
-			}
-
-			$defs_html = sprintf(
-				'<defs><linearGradient id="%s" gradientUnits="userSpaceOnUse" spreadMethod="reflect" x1="0" y1="0" x2="%d" y2="0">%s</linearGradient></defs>',
-				esc_attr( $gradient_id ),
-				$gradient_span,
-				$stops_html
-			);
-		}
-
-		// ── Build path animation style ──
-
-		$path_style = $is_paused
-			? 'animation:none;'
-			: sprintf(
-				'animation:%s %ss linear infinite;',
-				esc_attr( $animation_name ),
-				esc_attr( $animation_speed )
-			);
-
-		$path_class = 'wave-path';
-		if ( $animation_id ) {
-			$path_class .= ' wave-path-' . esc_attr( $animation_id );
-		} else {
-			$path_class .= ' wave-path-default';
-		}
-
-		// ── Assemble final HTML ──
-
+		$shape = $is_pixel ? 'pixel' : ( $is_lightning ? 'lightning' : ( $is_zigzag ? 'zigzag' : 'squiggle' ) );
+		$svg   = self::build_wave_svg( array(
+			'shape'            => $shape,
+			'amplitude'        => $amplitude,
+			'pointiness'       => $pointiness,
+			'angle'            => $angle,
+			'stroke_width'     => $stroke_width,
+			'animation_speed'  => $animation_speed,
+			'is_animated'      => $is_animated,
+			'is_reversed'      => $is_reversed,
+			'line_color'       => $line_color,
+			'gradient_data'    => $gradient_data,
+			'gradient_id'      => $gradient_id,
+			'animation_id'     => $animation_id,
+			'container_height' => $container_height,
+		) );
 		$html = sprintf(
-			'<div class="%s" style="%s" role="separator" aria-label="%s">'
-			. '<svg viewBox="0 0 %d %d" preserveAspectRatio="xMinYMid slice" aria-hidden="true" focusable="false" style="width:100%%;height:100%%;display:block;">'
-			. '%s'
-			. '<path d="%s" fill="none" stroke="%s" stroke-width="%s" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" class="%s" style="%s"/>'
-			. '</svg>'
-			. '</div>',
+			'<div class="%s" style="%s" role="separator" aria-label="%s">%s</div>',
 			esc_attr( $combined_class ),
 			esc_attr( $wrapper_style ),
 			esc_attr__( 'Decorative separator', 'awesome-squiggle' ),
-			$viewbox_w,
-			$wave_height,
-			$defs_html,
-			esc_attr( $wave_path ),
-			esc_attr( $line_color ),
-			esc_attr( $stroke_width ),
-			esc_attr( $path_class ),
-			esc_attr( $path_style )
+			$svg
 		);
 
 		return $html;
