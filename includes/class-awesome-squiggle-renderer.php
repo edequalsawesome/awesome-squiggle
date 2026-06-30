@@ -54,7 +54,7 @@ class Awesome_Squiggle_Renderer {
 	/**
 	 * Clamp a numeric value to a range, returning a default for non-numeric input.
 	 */
-	private static function validate_numeric( $value, $min, $max, $default ) {
+	public static function validate_numeric( $value, $min, $max, $default ) {
 		if ( ! is_numeric( $value ) ) {
 			return $default;
 		}
@@ -109,7 +109,7 @@ class Awesome_Squiggle_Renderer {
 	/**
 	 * Validate an ID string — alphanumeric, dash, underscore only, max 50 chars.
 	 */
-	private static function validate_id( $id ) {
+	public static function validate_id( $id ) {
 		if ( ! is_string( $id ) ) {
 			return '';
 		}
@@ -667,6 +667,40 @@ class Awesome_Squiggle_Renderer {
 		return sprintf(
 			'<svg viewBox="0 0 %d %d" preserveAspectRatio="xMinYMid slice" aria-hidden="true" focusable="false" style="width:100%%;height:100%%;display:block;">%s<path d="%s" fill="none" stroke="%s" stroke-width="%s" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" class="%s" style="%s"/></svg>',
 			$viewbox_w, $wave_height, $defs_html, esc_attr( $wave_path ), esc_attr( $line_color ), esc_attr( $stroke_width ), esc_attr( $path_class ), esc_attr( $path_style )
+		);
+	}
+
+	// ───────────────────────────────────────────────
+	// Backdrop helpers
+	// ───────────────────────────────────────────────
+
+	/**
+	 * Whitelist the backdrop shape attribute.
+	 */
+	public static function backdrop_resolve_shape( $shape ) {
+		return in_array( $shape, array( 'squiggle', 'zigzag', 'lightning', 'pixel' ), true ) ? $shape : 'squiggle';
+	}
+
+	/**
+	 * Build the inline style for the absolute wave layer from placement attrs.
+	 * Pure string builder — no WP deps, unit-testable.
+	 */
+	public static function backdrop_wave_layer_style( $position, $custom_pct, $band_height ) {
+		$band_height = (int) self::validate_numeric( $band_height, 20, 400, 100 );
+
+		switch ( $position ) {
+			case 'top':      $top = '0%';   $translate = '0';     break;
+			case 'baseline': $top = '100%'; $translate = '-100%'; break;
+			case 'custom':
+				$pct = self::validate_numeric( $custom_pct, 0, 100, 50 );
+				$top = $pct . '%'; $translate = '-50%'; break;
+			case 'center':
+			default:         $top = '50%';  $translate = '-50%'; break;
+		}
+
+		return sprintf(
+			'position:absolute;left:0;right:0;top:%s;height:%dpx;transform:translateY(%s);z-index:0;overflow:hidden;pointer-events:none;',
+			$top, $band_height, $translate
 		);
 	}
 
