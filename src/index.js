@@ -12,6 +12,7 @@ import { createHigherOrderComponent } from '@wordpress/compose';
 import { useEffect, useMemo } from '@wordpress/element';
 import domReady from '@wordpress/dom-ready';
 import './style.css';
+import './backdrop';
 
 import {
 	debugLog,

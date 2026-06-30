@@ -1,0 +1,19 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "awesome-squiggle/backdrop",
+	"version": "2026.06.29",
+	"title": "Squiggle Backdrop",
+	"category": "design",
+	"icon": "art",
+	"description": "Wraps content with an animated squiggle wave band behind it.",
+	"keywords": [ "squiggle", "backdrop", "wave", "background", "behind" ],
+	"textdomain": "awesome-squiggle",
+	"supports": {
+		"html": false,
+		"spacing": { "padding": true, "margin": true },
+		"align": [ "wide", "full" ]
+	},
+	"style": "file:../style-index.css",
+	"render": "file:./render.php"
+}

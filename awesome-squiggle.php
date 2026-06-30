@@ -38,6 +38,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
  */
 function awesome_squiggle_init() {
     register_block_type( __DIR__ . '/build' );
+    register_block_type( __DIR__ . '/build/backdrop' );
 }
 add_action( 'init', 'awesome_squiggle_init' );
 
