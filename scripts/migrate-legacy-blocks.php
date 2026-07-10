@@ -211,8 +211,12 @@ class Awesome_Squiggle_CLI_Command {
 			$class_name = $block['attrs']['className'] ?? '';
 			$matched    = null;
 
+			// Exact class-token match — a substring check would also hit (and later
+			// corrupt) unrelated custom classes that merely CONTAIN a legacy name,
+			// e.g. "promo-is-style-animated-squiggle-alt".
+			$class_tokens = is_string( $class_name ) ? explode( ' ', $class_name ) : array();
 			foreach ( $this->migration_map as $legacy_class => $new_format ) {
-				if ( strpos( $class_name, $legacy_class ) !== false ) {
+				if ( in_array( $legacy_class, $class_tokens, true ) ) {
 					$matched = $legacy_class;
 					break;
 				}
@@ -224,8 +228,13 @@ class Awesome_Squiggle_CLI_Command {
 
 			$new_format = $this->migration_map[ $matched ];
 
+			// Bounded replacement: only rewrite the legacy name when it is a whole
+			// class token (not embedded in a longer word/class), in both the attrs
+			// and the serialized HTML strings.
+			$token_pattern = '/(?<![\w-])' . preg_quote( $matched, '/' ) . '(?![\w-])/';
+
 			// Update attrs className: replace legacy class with new class.
-			$block['attrs']['className'] = str_replace( $matched, $new_format['className'], $block['attrs']['className'] );
+			$block['attrs']['className'] = preg_replace( $token_pattern, $new_format['className'], $block['attrs']['className'] );
 
 			// Set new attributes.
 			$block['attrs']['isAnimated'] = $new_format['isAnimated'];
@@ -233,14 +242,14 @@ class Awesome_Squiggle_CLI_Command {
 			$block['attrs']['angle']      = $new_format['angle'];
 
 			// Update innerHTML and innerContent: replace legacy class in the HTML strings.
-			if ( isset( $block['innerHTML'] ) ) {
-				$block['innerHTML'] = str_replace( $matched, $new_format['className'], $block['innerHTML'] );
+			if ( isset( $block['innerHTML'] ) && is_string( $block['innerHTML'] ) ) {
+				$block['innerHTML'] = preg_replace( $token_pattern, $new_format['className'], $block['innerHTML'] );
 			}
 
 			if ( ! empty( $block['innerContent'] ) ) {
 				foreach ( $block['innerContent'] as $i => $content ) {
 					if ( is_string( $content ) ) {
-						$block['innerContent'][ $i ] = str_replace( $matched, $new_format['className'], $content );
+						$block['innerContent'][ $i ] = preg_replace( $token_pattern, $new_format['className'], $content );
 					}
 				}
 			}

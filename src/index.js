@@ -278,7 +278,10 @@ const resolveCssVarBackgroundImage = ( css ) => {
 };
 
 // Simple gradient parser for basic linear gradients
-const parseGradient = ( gradientInput ) => {
+// legacyStopParsing: used ONLY by deprecatedFullSvgSave() — reproduces the
+// historical (buggy) stop extraction so old saved markup still byte-matches
+// during block validation. New rendering paths always use the fixed parsing.
+const parseGradient = ( gradientInput, legacyStopParsing = false ) => {
 	if ( ! gradientInput ) {
 		return {
 			type: 'linear',
@@ -350,21 +353,37 @@ const parseGradient = ( gradientInput ) => {
 
 		const stops = [];
 
-		// Process each part to extract color and percentage
+		// Process each part to extract color and percentage.
+		// Parts without a color token (direction tokens like "135deg" /
+		// "to bottom") are skipped. Checking for the color FIRST — instead of
+		// substring-matching "deg" — keeps valid stops like
+		// hsl(30deg 100% 50%) from being dropped.
 		for ( const part of parts ) {
-			// Skip direction part (like "135deg")
-			if ( part.includes( 'deg' ) || part.includes( 'to ' ) ) {
+			if (
+				legacyStopParsing &&
+				( part.includes( 'deg' ) || part.includes( 'to ' ) )
+			) {
+				// Historical behavior: any part containing "deg"/"to " was
+				// treated as a direction token and dropped.
 				continue;
 			}
 
-			// Improved color matching - handle rgb(), rgba(), hsl(), hsla(), and hex colors
 			const colorMatch = part.match(
 				/(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/
 			);
-			const percentMatch = part.match( /(\d+%)/ );
 
 			if ( colorMatch ) {
 				const color = colorMatch[ 1 ];
+				// Match the stop position in the part WITH THE COLOR REMOVED,
+				// so percentages inside the color function (rgb(100% 0% 0%))
+				// are not mistaken for the offset. Supports decimal offsets.
+				// (Legacy mode keeps the historical whole-part integer match.)
+				const remainder = legacyStopParsing
+					? part
+					: part.replace( color, '' );
+				const percentMatch = legacyStopParsing
+					? part.match( /(\d+%)/ )
+					: remainder.match( /(\d+(?:\.\d+)?%)/ );
 				const offset = percentMatch
 					? percentMatch[ 1 ]
 					: stops.length === 0
@@ -739,7 +758,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			} else {
 				// Ensure IDs exist for existing blocks
 				if ( ! animationId ) {
-					const defaultAmplitude = isZigzag ? 15 : 10;
+					const defaultAmplitude = isZigzag || isLightning ? 15 : 10;
 					batchUpdates.animationId = generateAnimationId(
 						patternType,
 						clientId,
@@ -751,7 +770,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					const currentGradientForId =
 						gradient || style?.color?.gradient || '';
 					batchUpdates.gradientId = generateGradientId(
-						isZigzag ? 'zigzag' : 'squiggle',
+						patternType,
 						currentGradientForId,
 						clientId
 					);
@@ -765,7 +784,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					const currentGradientForId =
 						gradient || style?.color?.gradient || '';
 					batchUpdates.gradientId = generateGradientId(
-						isZigzag ? 'zigzag' : 'squiggle',
+						patternType,
 						currentGradientForId,
 						clientId
 					);
@@ -1487,7 +1506,7 @@ const deprecatedFullSvgSave = ( element, blockType, attributes ) => {
 			usedGradientId = gradientId;
 			finalGradient = customGradient;
 			lineColor = `url(#${ usedGradientId })`;
-			parsedGradientData = parseGradient( customGradient );
+			parsedGradientData = parseGradient( customGradient, true );
 		} else {
 			lineColor = 'currentColor';
 		}

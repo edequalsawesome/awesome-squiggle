@@ -1,6 +1,6 @@
 {
 	"name": "awesome-squiggle",
-	"version": "2026.06.29",
+	"version": "2026.07.001",
 	"description": "WordPress plugin that adds animated squiggle styles to the core Separator block",
 	"files": [
 		"build",

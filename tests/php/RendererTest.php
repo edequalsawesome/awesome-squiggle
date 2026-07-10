@@ -161,6 +161,65 @@ class RendererTest extends TestCase {
 		$this->assertEquals( '#667eea', $result['stops'][0]['color'] );
 	}
 
+	public function test_parse_gradient_keeps_hsl_deg_stops() {
+		// Regression: substring-matching "deg" used to drop these stops entirely,
+		// collapsing the gradient to the fallback.
+		$result = Awesome_Squiggle_Renderer::parse_gradient(
+			'linear-gradient(90deg, hsl(30deg 100% 50%) 0%, hsl(210deg 100% 40%) 100%)'
+		);
+		$this->assertCount( 2, $result['stops'] );
+		$this->assertEquals( 'hsl(30deg 100% 50%)', $result['stops'][0]['color'] );
+		$this->assertEquals( '0%', $result['stops'][0]['offset'] );
+		$this->assertEquals( 'hsl(210deg 100% 40%)', $result['stops'][1]['color'] );
+	}
+
+	public function test_parse_gradient_offset_read_outside_percentage_color() {
+		// Regression: rgb(100% 0% 0%) 25% used to yield offset "100%".
+		$result = Awesome_Squiggle_Renderer::parse_gradient(
+			'linear-gradient(135deg, rgb(100% 0% 0%) 25%, rgb(0% 0% 100%) 75%)'
+		);
+		$this->assertCount( 2, $result['stops'] );
+		$this->assertEquals( '25%', $result['stops'][0]['offset'] );
+		$this->assertEquals( '75%', $result['stops'][1]['offset'] );
+	}
+
+	public function test_parse_gradient_supports_decimal_offsets() {
+		// Regression: /(\d+%)/ used to truncate "12.5%" to "5%".
+		$result = Awesome_Squiggle_Renderer::parse_gradient(
+			'linear-gradient(135deg, #ff0000 12.5%, #0000ff 87.5%)'
+		);
+		$this->assertEquals( '12.5%', $result['stops'][0]['offset'] );
+		$this->assertEquals( '87.5%', $result['stops'][1]['offset'] );
+	}
+
+	// ───────────────────────────────────────────────
+	// Type-confusion guards (raw comment-delimiter attrs)
+	// ───────────────────────────────────────────────
+
+	public function test_render_block_array_classname_does_not_fatal() {
+		// render_block_{name} filters receive RAW attrs; an array className
+		// used to hit explode() and fatal on PHP 8+.
+		$block = array(
+			'blockName' => 'core/separator',
+			'attrs'     => array( 'className' => array( 'is-style-squiggle', 'x' ) ),
+		);
+		$result = Awesome_Squiggle_Renderer::render_block( '<hr/>', $block );
+		// Array className coerces to '' → not a squiggle style → passthrough.
+		$this->assertEquals( '<hr/>', $result );
+	}
+
+	public function test_resolve_line_color_array_attrs_do_not_fatal() {
+		$result = Awesome_Squiggle_Renderer::resolve_line_color( array(
+			'gradient'        => array( 'not', 'a', 'string' ),
+			'backgroundColor' => array( 'x' ),
+			'textColor'       => array( 'y' ),
+			'className'       => array( 'z' ),
+			'style'           => 'not-an-array',
+		) );
+		$this->assertEquals( 'currentColor', $result['line_color'] );
+		$this->assertNull( $result['gradient'] );
+	}
+
 	// ───────────────────────────────────────────────
 	// resolve_line_color
 	// ───────────────────────────────────────────────

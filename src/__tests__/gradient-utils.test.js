@@ -52,4 +52,37 @@ describe( 'parseGradientStops', () => {
 		expect( stops ).toHaveLength( 3 );
 		expect( stops[ 1 ] ).toEqual( { color: '#00ff00', offset: '50%' } );
 	} );
+
+	it( 'keeps hsl() stops whose hue uses deg units', () => {
+		// Regression: substring-matching "deg" used to drop these stops entirely.
+		const stops = parseGradientStops(
+			'linear-gradient(90deg, hsl(30deg 100% 50%) 0%, hsl(210deg 100% 40%) 100%)'
+		);
+		expect( stops ).toEqual( [
+			{ color: 'hsl(30deg 100% 50%)', offset: '0%' },
+			{ color: 'hsl(210deg 100% 40%)', offset: '100%' },
+		] );
+	} );
+
+	it( 'reads the stop offset outside the color, not percentages inside it', () => {
+		// Regression: rgb(100% 0% 0%) 25% used to yield offset "100%".
+		const stops = parseGradientStops(
+			'linear-gradient(135deg, rgb(100% 0% 0%) 25%, rgb(0% 0% 100%) 75%)'
+		);
+		expect( stops ).toEqual( [
+			{ color: 'rgb(100% 0% 0%)', offset: '25%' },
+			{ color: 'rgb(0% 0% 100%)', offset: '75%' },
+		] );
+	} );
+
+	it( 'supports decimal stop offsets', () => {
+		// Regression: /(\d+)%/ used to truncate "12.5%" to "5%".
+		const stops = parseGradientStops(
+			'linear-gradient(135deg, #ff0000 12.5%, #0000ff 87.5%)'
+		);
+		expect( stops ).toEqual( [
+			{ color: '#ff0000', offset: '12.5%' },
+			{ color: '#0000ff', offset: '87.5%' },
+		] );
+	} );
 } );

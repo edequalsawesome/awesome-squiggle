@@ -3,7 +3,7 @@
  * Plugin Name: Awesome Squiggle
  * Plugin URI: https://github.com/edequalsawesome/awesome-squiggle
  * Description: Adds animated squiggle variations to the core WordPress separator block
- * Version: 2026.06.29
+ * Version: 2026.07.001
  * Author: eD! Thomas
  * Author URI: https://edequalsaweso.me
  * License: GPL-3.0-or-later
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'AWESOME_SQUIGGLE_VERSION', '2026.06.29' );
+define( 'AWESOME_SQUIGGLE_VERSION', '2026.07.001' );
 
 // Load the PHP dynamic renderer
 require_once __DIR__ . '/includes/class-awesome-squiggle-renderer.php';
@@ -40,6 +40,12 @@ if ( defined( 'WP_CLI' ) && WP_CLI && file_exists( __DIR__ . '/scripts/migrate-l
  */
 function awesome_squiggle_init() {
     register_block_type( __DIR__ . '/build' );
+    // NOTE: the backdrop block deliberately has NO editorScript of its own —
+    // its editor code is bundled into build/index.js (src/index.js imports
+    // ./backdrop). A second editorScript handle would double-register the
+    // block and double-apply the separator HOC/filters. If the separator-styles
+    // block is ever excluded (e.g. allowed_block_types_all), the backdrop's
+    // editor UI goes with it.
     register_block_type( __DIR__ . '/build/backdrop' );
 }
 add_action( 'init', 'awesome_squiggle_init' );

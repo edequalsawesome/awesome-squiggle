@@ -5,7 +5,7 @@ Tags: separator, block, blocks, gutenberg, gutenberg blocks
 Requires at least: 6.3
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2026.06.29
+Stable tag: 2026.07.001
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -99,6 +99,20 @@ An opaque nested Group background will cover the wave. Two options: (1) add padd
 4. Example of zigzag pattern with gradient colors
 
 == Changelog ==
+
+= 2026.07.001 =
+* Security: Block attributes are now type-guarded in the PHP renderer — a hand-edited block comment delivering an array where a string is expected (className, colors, gradient) could fatal the whole page on PHP 8+ (render_block filters receive raw, un-coerced attributes)
+* Security: PHP validate_color() now short-circuits on inputs longer than 4096 chars, matching the JS validators' pathology guard
+* Fix: Gradient stop parsing no longer drops valid hsl(30deg …) color stops (substring "deg" was mistaken for a direction token) — applies to frontend PHP, editor preview, and backdrop preview parsers
+* Fix: Gradient stop offsets are now read outside the color function — rgb(100% 0% 0%) 25% used to parse as offset 100%
+* Fix: Gradient stop offsets support decimal percentages (12.5% no longer truncates to 5%)
+* Fix: Backdrop Shape dropdown now applies the shape's pointiness/angle so Zig-Zag and Lightning are visibly different from Squiggle without manual slider work
+* Fix: WP-CLI migrate-legacy matches legacy class names as exact class tokens — custom classes merely containing a legacy name are no longer rewritten
+* Fix: Lightning/Pixel blocks now get the correct amplitude fallback and gradient ID prefix in the editor init path
+* Quality: Removed dead .wave-fill and data-motion-preference CSS selectors (never emitted by any renderer)
+* Accessibility: Backdrop wave now thickens under prefers-contrast: high, matching the Separator's rule
+* Quality: Escape-once discipline in build_wave_svg() (removed double esc_attr), corrected misleading wrapper-class comment in backdrop render, documented the backdrop editor-script coupling
+* Compatibility: Deprecated full-SVG save keeps the historical gradient parsing (legacy mode) so existing saved markup still validates
 
 = 2026.06.29 =
 * New: Squiggle Backdrop block (awesome-squiggle/backdrop) — additive InnerBlocks container placing an animated wave band behind nested content; existing Separator styles unchanged

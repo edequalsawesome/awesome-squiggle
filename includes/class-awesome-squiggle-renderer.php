@@ -63,11 +63,29 @@ class Awesome_Squiggle_Renderer {
 	}
 
 	/**
+	 * Coerce a block attribute to a string.
+	 *
+	 * render_block_{name} filters receive RAW comment-delimiter attributes —
+	 * WordPress does NOT run prepare_attributes_for_render() on that path, so a
+	 * hand-edited block comment can deliver an array where a string is expected.
+	 * On PHP 8+ explode()/preg_match()/md5() throw a fatal TypeError on arrays,
+	 * turning one malformed block into a whole-page crash. Guard at extraction.
+	 */
+	private static function as_string( $value ) {
+		return is_string( $value ) ? $value : '';
+	}
+
+	/**
 	 * Validate a CSS color value against a whitelist of safe patterns.
 	 * Returns $fallback for anything that doesn't match.
 	 */
 	private static function validate_color( $color, $fallback = 'currentColor' ) {
 		if ( ! is_string( $color ) || $color === '' ) {
+			return $fallback;
+		}
+
+		// Pathology guard — mirrors MAX_COLOR_LENGTH in src/validators.js.
+		if ( strlen( $color ) > 4096 ) {
 			return $fallback;
 		}
 
@@ -502,18 +520,19 @@ class Awesome_Squiggle_Renderer {
 			$stops = array();
 
 			foreach ( $parts as $part ) {
-				// Skip direction (e.g., "135deg", "to bottom")
-				if ( strpos( $part, 'deg' ) !== false || strpos( $part, 'to ' ) !== false ) {
-					continue;
-				}
-
-				// Match color: rgb(), rgba(), hsl(), hsla(), or hex
+				// Match color: rgb(), rgba(), hsl(), hsla(), or hex. Parts without a
+				// color token (direction tokens like "135deg" / "to bottom") are skipped.
+				// Checking for the color FIRST — instead of substring-matching "deg" —
+				// keeps valid stops like hsl(30deg 100% 50%) from being dropped.
 				if ( preg_match( '/(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/', $part, $color_match ) ) {
 					$color = $color_match[1];
 
-					// Match percentage
-					$offset = null;
-					if ( preg_match( '/(\d+%)/', $part, $pct_match ) ) {
+					// Match the stop position in the part WITH THE COLOR REMOVED, so
+					// percentages inside the color function (rgb(100% 0% 0%)) are not
+					// mistaken for the offset. Supports decimal offsets (12.5%).
+					$remainder = str_replace( $color, '', $part );
+					$offset    = null;
+					if ( preg_match( '/(\d+(?:\.\d+)?%)/', $remainder, $pct_match ) ) {
 						$offset = $pct_match[1];
 					} else {
 						$offset = empty( $stops ) ? '0%' : '100%';
@@ -585,14 +604,15 @@ class Awesome_Squiggle_Renderer {
 	 * Returns an array: [ 'line_color' => string, 'gradient' => string|null, 'gradient_data' => array|null ]
 	 */
 	public static function resolve_line_color( $attrs ) {
-		$gradient              = $attrs['gradient'] ?? null;
-		$style                 = $attrs['style'] ?? array();
-		$gradient_id           = $attrs['gradientId'] ?? null;
-		$background_color      = $attrs['backgroundColor'] ?? null;
-		$custom_bg_color       = $attrs['customBackgroundColor'] ?? null;
-		$text_color            = $attrs['textColor'] ?? null;
-		$custom_text_color     = $attrs['customTextColor'] ?? null;
-		$class_name            = $attrs['className'] ?? '';
+		// as_string(): raw comment-delimiter attrs may be arrays — see helper docblock.
+		$gradient              = self::as_string( $attrs['gradient'] ?? '' );
+		$style                 = is_array( $attrs['style'] ?? null ) ? $attrs['style'] : array();
+		$gradient_id           = self::as_string( $attrs['gradientId'] ?? '' );
+		$background_color      = self::as_string( $attrs['backgroundColor'] ?? '' );
+		$custom_bg_color       = self::as_string( $attrs['customBackgroundColor'] ?? '' );
+		$text_color            = self::as_string( $attrs['textColor'] ?? '' );
+		$custom_text_color     = self::as_string( $attrs['customTextColor'] ?? '' );
+		$class_name            = self::as_string( $attrs['className'] ?? '' );
 
 		$line_color    = 'currentColor';
 		$final_gradient = null;
@@ -601,7 +621,7 @@ class Awesome_Squiggle_Renderer {
 		// Check for gradient (highest priority). An empty-string `gradient` (e.g. a
 		// cleared named gradient) must NOT win over a custom style gradient — `??`
 		// only falls through on null, so guard with ! empty().
-		$custom_gradient = ! empty( $gradient ) ? $gradient : ( $style['color']['gradient'] ?? null );
+		$custom_gradient = ! empty( $gradient ) ? $gradient : self::as_string( $style['color']['gradient'] ?? '' );
 
 		if ( $custom_gradient ) {
 			$validated_id = $gradient_id ? self::validate_id( $gradient_id ) : '';
@@ -726,8 +746,10 @@ class Awesome_Squiggle_Renderer {
 			);
 		}
 
-		$path_style = $is_paused ? 'animation:none;' : sprintf( 'animation:%s %ss linear infinite;', esc_attr( $animation_name ), esc_attr( $animation_speed ) );
-		$path_class = 'wave-path ' . ( $animation_id ? 'wave-path-' . esc_attr( $animation_id ) : 'wave-path-default' );
+		// No inner esc_attr() here — the final sprintf below escapes these once.
+		// ($animation_name is a fixed keyword, $animation_speed/$animation_id are validated.)
+		$path_style = $is_paused ? 'animation:none;' : sprintf( 'animation:%s %ss linear infinite;', $animation_name, $animation_speed );
+		$path_class = 'wave-path ' . ( $animation_id ? 'wave-path-' . $animation_id : 'wave-path-default' );
 
 		return sprintf(
 			'<svg viewBox="0 0 %d %d" preserveAspectRatio="xMinYMid slice" aria-hidden="true" focusable="false" style="width:100%%;height:100%%;display:block;">%s<path d="%s" fill="none" stroke="%s" stroke-width="%s" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" class="%s" style="%s"/></svg>',
@@ -785,8 +807,9 @@ class Awesome_Squiggle_Renderer {
 			return $block_content;
 		}
 
-		$attrs      = $block['attrs'] ?? array();
-		$class_name = $attrs['className'] ?? '';
+		$attrs      = is_array( $block['attrs'] ?? null ) ? $block['attrs'] : array();
+		// as_string(): raw comment-delimiter attrs may be arrays — see helper docblock.
+		$class_name = self::as_string( $attrs['className'] ?? '' );
 		$class_name = implode( ' ', array_map( 'sanitize_html_class', explode( ' ', $class_name ) ) );
 
 		// Only handle our custom styles
@@ -856,7 +879,7 @@ class Awesome_Squiggle_Renderer {
 
 		$classes = array( 'wp-block-separator', 'awesome-squiggle-wave' );
 
-		if ( ! empty( $attrs['align'] ) ) {
+		if ( ! empty( $attrs['align'] ) && is_string( $attrs['align'] ) ) {
 			$classes[] = 'align' . sanitize_html_class( $attrs['align'] );
 		}
 
