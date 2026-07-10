@@ -24,11 +24,10 @@ export function parseGradientStops( css ) {
 	for ( const rawPart of splitTopLevel( match[ 1 ] ) ) {
 		const part = rawPart.trim();
 
-		// Skip the direction token (e.g. "135deg", "to bottom").
-		if ( part.includes( 'deg' ) || part.includes( 'to ' ) ) {
-			continue;
-		}
-
+		// Parts without a color token (direction tokens like "135deg" /
+		// "to bottom") are skipped. Checking for the color FIRST — instead of
+		// substring-matching "deg" — keeps valid stops like
+		// hsl(30deg 100% 50%) from being dropped.
 		const colorMatch = part.match(
 			/(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/
 		);
@@ -36,7 +35,11 @@ export function parseGradientStops( css ) {
 			continue;
 		}
 
-		const pctMatch = part.match( /(\d+)%/ );
+		// Match the stop position in the part WITH THE COLOR REMOVED, so
+		// percentages inside the color function (rgb(100% 0% 0%)) are not
+		// mistaken for the offset. Supports decimal offsets (12.5%).
+		const remainder = part.replace( colorMatch[ 1 ], '' );
+		const pctMatch = remainder.match( /(\d+(?:\.\d+)?)%/ );
 		let offset;
 		if ( pctMatch ) {
 			offset = `${ pctMatch[ 1 ] }%`;

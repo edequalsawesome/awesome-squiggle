@@ -22,16 +22,8 @@
 	vector-effect: non-scaling-stroke;
 }
 
-/* Pattern-based wave fill animation */
-.awesome-squiggle-wave .wave-fill {
-	transform-origin: left center;
-	animation: var(--animation-name, wave-flow)
-		var(--animation-duration, 1.6s) linear infinite;
-}
-
 /* Paused state for all wave types */
-.awesome-squiggle-wave.is-paused .wave-path,
-.awesome-squiggle-wave.is-paused .wave-fill {
+.awesome-squiggle-wave.is-paused .wave-path {
 	animation-play-state: paused;
 }
 
@@ -39,11 +31,7 @@
 .wp-block-separator.is-style-squiggle.is-paused .wave-path,
 .wp-block-separator.is-style-zigzag.is-paused .wave-path,
 .wp-block-separator.is-style-lightning.is-paused .wave-path,
-.wp-block-separator.is-style-pixel.is-paused .wave-path,
-.wp-block-separator.is-style-squiggle.is-paused .wave-fill,
-.wp-block-separator.is-style-zigzag.is-paused .wave-fill,
-.wp-block-separator.is-style-lightning.is-paused .wave-fill,
-.wp-block-separator.is-style-pixel.is-paused .wave-fill {
+.wp-block-separator.is-style-pixel.is-paused .wave-path {
 	animation: none;
 }
 
@@ -126,12 +114,6 @@
 .is-layout-grid .awesome-squiggle-wave svg {
 	width: 100%;
 	height: inherit;
-}
-
-/* Ensure the wave fill animation works in constrained containers */
-.is-layout-flex .awesome-squiggle-wave .wave-fill,
-.is-layout-grid .awesome-squiggle-wave .wave-fill {
-	vector-effect: non-scaling-stroke;
 }
 
 /* UNIFIED WAVE ANIMATIONS - 80px = 1 full wave cycle (up + down) for seamless loop */
@@ -236,8 +218,7 @@
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-	.awesome-squiggle-wave .wave-path,
-	.awesome-squiggle-wave .wave-fill {
+	.awesome-squiggle-wave .wave-path {
 		animation: none !important;
 	}
 }
@@ -249,11 +230,6 @@
 	}
 }
 
-/* Add user preference override */
-.awesome-squiggle-wave[data-motion-preference="reduce"] .wave-path,
-.awesome-squiggle-wave[data-motion-preference="reduce"] .wave-fill {
-	animation: none !important;
-}
 
 /* Pixel style: crisp edges for 8-bit aesthetic */
 .wp-block-separator.is-style-pixel .wave-path {
@@ -332,5 +308,12 @@
 @media (forced-colors: active) {
 	.wp-block-awesome-squiggle-backdrop .wave-path {
 		stroke: CanvasText;
+	}
+}
+
+/* High contrast mode — parity with the separator's rule above. */
+@media (prefers-contrast: high) {
+	.wp-block-awesome-squiggle-backdrop .wave-path {
+		stroke-width: 3px;
 	}
 }

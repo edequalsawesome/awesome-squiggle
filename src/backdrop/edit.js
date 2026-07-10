@@ -115,9 +115,9 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 		animationName = isReversed ? 'wave-flow-reverse' : 'wave-flow';
 	}
 
-	const blockProps = useBlockProps( {
-		className: 'wp-block-awesome-squiggle-backdrop',
-	} );
+	// useBlockProps() already injects wp-block-awesome-squiggle-backdrop for
+	// apiVersion 3 blocks; passing it again duplicated the class token.
+	const blockProps = useBlockProps();
 	const innerProps = useInnerBlocksProps(
 		{ className: 'asquig-backdrop__content' },
 		{
@@ -143,11 +143,27 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 						label={ __( 'Shape', 'awesome-squiggle' ) }
 						value={ shape }
 						options={ SHAPES }
-						onChange={ ( v ) =>
+						onChange={ ( v ) => {
+							const nextShape = oneOf(
+								v,
+								SHAPE_VALUES,
+								'squiggle'
+							);
+							// Apply the shape's defining geometry so the
+							// preset visibly changes the wave (mirrors the
+							// Separator styles' pointiness/angle mapping).
+							// Deliberate preset semantics: switching shape
+							// resets manually-tuned pointiness/angle.
 							set( {
-								shape: oneOf( v, SHAPE_VALUES, 'squiggle' ),
-							} )
-						}
+								shape: nextShape,
+								pointiness:
+									nextShape === 'zigzag' ||
+									nextShape === 'lightning'
+										? 100
+										: 0,
+								angle: nextShape === 'lightning' ? 40 : 0,
+							} );
+						} }
 					/>
 					<RangeControl
 						label={ __( 'Amplitude', 'awesome-squiggle' ) }

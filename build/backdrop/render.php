@@ -34,8 +34,11 @@ $wave_style = Awesome_Squiggle_Renderer::backdrop_wave_layer_style(
 	$attributes['bandHeight'] ?? 100
 );
 
-// get_block_wrapper_attributes() already includes the wp-block-awesome-squiggle-backdrop
-// class (auto-generated from the block name) plus any alignment/spacing support classes.
+// The explicit class below is REQUIRED: get_block_wrapper_attributes() only
+// merges classes from block-support callbacks (align/spacing/color) — it does
+// NOT auto-add the wp-block-{name} class on the PHP side (unlike useBlockProps
+// in the editor). Removing it would break every frontend CSS rule scoped to
+// .wp-block-awesome-squiggle-backdrop. Same pattern as core dynamic blocks.
 $wrapper_attributes = get_block_wrapper_attributes( array(
 	'class' => 'wp-block-awesome-squiggle-backdrop',
 ) );
