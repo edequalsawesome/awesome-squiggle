@@ -75,25 +75,80 @@ export function isParserSafeGradientCss( css ) {
 		return false;
 	}
 
-	const colors = css.match(
-		/rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8}/g
-	);
-	if ( ! colors || colors.length < 2 ) {
+	const inner = css.match( /linear-gradient\((.*)\)$/s );
+	if ( ! inner ) {
 		return false;
 	}
 
-	// Count offsets only AFTER removing the color tokens. A percentage-channel
-	// color like rgb(100% 0% 0%) contributes percentages of its own, so counting
-	// them across the whole string lets an offset-less multi-stop gradient — the
-	// exact shape this guard exists to reject — pass.
-	let withoutColors = css;
-	colors.forEach( ( color ) => {
-		withoutColors = withoutColors.replace( color, '' );
-	} );
-	const offsets = withoutColors.match( /\d+(?:\.\d+)?%/g ) || [];
+	// Walk the stops exactly the way parseGradientStops does, and accept only
+	// what it can represent faithfully. Counting offsets across the whole
+	// string is not enough: a percentage-channel color like rgb(100% 0% 0%)
+	// contributes percentages of its own, and an aggregate count cannot tell
+	// `#f00 0% 25%, #0f0, #00f 100%` (one stop with two offsets, one with
+	// none) from three evenly-offset stops.
+	const COLOR = /(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/;
+	const stops = [];
+	let seenColor = false;
+	for ( const rawPart of splitTopLevel( inner[ 1 ] ) ) {
+		const part = rawPart.trim();
+		const colorMatch = part.match( COLOR );
+		if ( ! colorMatch ) {
+			// Before any color this is a direction token ("135deg",
+			// "to bottom"), which the parser skips harmlessly. After one it is
+			// a color interpolation hint — a bare position that shifts the
+			// midpoint between its neighbours. The parser skips that too, and
+			// dropping it changes the gradient.
+			if ( seenColor ) {
+				return false;
+			}
+			continue;
+		}
+		seenColor = true;
+		// Whatever is left after the color IS the stop position. Accept only
+		// an empty position or a single percentage, because those are the only
+		// forms parseGradientStops reads. linear-gradient() also takes lengths
+		// (`10px`, unitless `0`) and double positions (`0% 25%`); the parser's
+		// percentage-only regex finds nothing in a length and falls back to its
+		// 0%/100% default, which silently disagrees with the browser.
+		const position = part.replace( colorMatch[ 1 ], '' ).trim();
+		if ( position !== '' && ! /^\d+(?:\.\d+)?%$/.test( position ) ) {
+			return false;
+		}
+		stops.push( position );
+	}
 
-	if ( colors.length > 2 && offsets.length < colors.length ) {
+	if ( stops.length < 2 ) {
 		return false;
+	}
+
+	// Fill the ends the parser defaults, then judge the sequence as a whole.
+	const resolved = stops.slice();
+	if ( resolved[ 0 ] === '' ) {
+		resolved[ 0 ] = '0%';
+	}
+	if ( resolved[ resolved.length - 1 ] === '' ) {
+		resolved[ resolved.length - 1 ] = '100%';
+	}
+
+	// A missing position is only safe at those ends. In the middle the browser
+	// distributes evenly while the parser guesses 100%.
+	for ( let i = 1; i < resolved.length - 1; i++ ) {
+		if ( resolved[ i ] === '' ) {
+			return false;
+		}
+	}
+
+	// CSS runs a fix-up pass that advances any stop which would sit before its
+	// predecessor, so `#f00 0%, #0f0 120%, #00f` paints its last stop at 120%,
+	// not the 100% the parser assumes. The parser has no fix-up, so only an
+	// already-nondecreasing sequence is reproduced faithfully.
+	let previous = -Infinity;
+	for ( const position of resolved ) {
+		const value = parseFloat( position );
+		if ( value < previous ) {
+			return false;
+		}
+		previous = value;
 	}
 
 	return true;

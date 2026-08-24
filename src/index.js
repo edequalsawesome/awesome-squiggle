@@ -5,7 +5,7 @@ import {
 	store as blockEditorStore,
 	getGradientValueBySlug,
 } from '@wordpress/block-editor';
-import { select } from '@wordpress/data';
+import { useSelect } from '@wordpress/data';
 import {
 	PanelBody,
 	RangeControl,
@@ -206,13 +206,15 @@ const wpDefaultGradients = {
 // byte-identical markup so block validation recognises existing posts. Authored
 // CSS and computed CSS differ in spacing and color format, so routing the legacy
 // path through this would invalidate saved blocks on open.
-const resolvePresetGradientForPreview = ( value ) => {
+// The palette is passed in rather than read from the store here, so the caller
+// can subscribe to it. Reading it imperatively inside a useMemo would leave the
+// preview stale when the palette changes but the gradient value does not.
+const resolvePresetGradientForPreview = ( value, gradients ) => {
 	const slug = presetSlugFromGradientValue( value );
 	if ( ! slug ) {
 		return null;
 	}
 
-	const gradients = select( blockEditorStore )?.getSettings?.()?.gradients;
 	if ( ! Array.isArray( gradients ) ) {
 		return null;
 	}
@@ -992,17 +994,28 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 		] );
 
 		// Memoize gradient parsing to avoid re-parsing on every render
+		// Subscribed, not read imperatively: switching theme or editing global
+		// styles changes the palette while the block's own gradient value stays
+		// the same, and the preview has to follow.
+		const editorGradients = useSelect(
+			( s ) => s( blockEditorStore ).getSettings()?.gradients,
+			[]
+		);
+
 		const parsedGradientData = useMemo( () => {
 			if ( ! finalGradient ) {
 				return null;
 			}
 
-			// Preset presets resolve from settings; everything else (and any
-			// authored form our parser handles differently from the computed
-			// one) falls through to the original resolution path.
-			const preset = resolvePresetGradientForPreview( finalGradient );
+			// Presets resolve from settings; everything else (and any authored
+			// form our parser handles differently from the computed one) falls
+			// through to the original resolution path.
+			const preset = resolvePresetGradientForPreview(
+				finalGradient,
+				editorGradients
+			);
 			return parseGradient( preset || finalGradient );
-		}, [ finalGradient ] );
+		}, [ finalGradient, editorGradients ] );
 
 		// If not a custom style, just return the normal block edit but still use our gradient wrapper
 		if ( ! isCustom ) {

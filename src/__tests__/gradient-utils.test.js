@@ -199,6 +199,109 @@ describe( 'isParserSafeGradientCss', () => {
 		).toBe( false );
 	} );
 
+	it( 'rejects a stop carrying two offsets (double-position hard stop)', () => {
+		// parseGradientStops keeps only the first offset, so the 25% hard stop
+		// would be silently dropped and the preview would not match the render.
+		expect(
+			isParserSafeGradientCss(
+				'linear-gradient(90deg,#f00 0% 25%,#0f0 50%,#00f 100%)'
+			)
+		).toBe( false );
+	} );
+
+	it( 'rejects a middle stop with no offset', () => {
+		// The browser distributes the middle stop evenly (50%); the parser
+		// defaults any non-first stop to 100%. Deliberately NOT using a
+		// double-position first stop here — that would be rejected by the
+		// position check first and leave this rule untested.
+		expect(
+			isParserSafeGradientCss(
+				'linear-gradient(90deg,#f00 0%,#0f0,#00f 100%)'
+			)
+		).toBe( false );
+	} );
+
+	it( 'rejects color interpolation hints', () => {
+		// A bare position between two colors shifts the midpoint. Both this
+		// guard and parseGradientStops skip colorless parts, so honouring the
+		// gradient means refusing it rather than silently dropping the hint.
+		expect(
+			isParserSafeGradientCss( 'linear-gradient(#f00,30%,#0f0 50%,#00f)' )
+		).toBe( false );
+		expect(
+			isParserSafeGradientCss( 'linear-gradient(#f00,30%,#00f)' )
+		).toBe( false );
+		// A leading direction token is not a hint and must still pass.
+		expect(
+			isParserSafeGradientCss( 'linear-gradient(135deg,#f00,#00f)' )
+		).toBe( true );
+		expect(
+			isParserSafeGradientCss( 'linear-gradient(to bottom,#f00,#00f)' )
+		).toBe( true );
+	} );
+
+	it( 'rejects stop positions CSS fix-up would move', () => {
+		// CSS advances any stop that would precede its predecessor. The parser
+		// has no fix-up pass, so these render differently.
+		expect(
+			isParserSafeGradientCss( 'linear-gradient(#f00 0%,#0f0 120%,#00f)' )
+		).toBe( false );
+		expect(
+			isParserSafeGradientCss( 'linear-gradient(#f00,#0f0 80%,#00f 20%)' )
+		).toBe( false );
+		// Nondecreasing beyond 100% needs no fix-up, so it stays faithful.
+		expect(
+			isParserSafeGradientCss(
+				'linear-gradient(#f00 0%,#0f0 120%,#00f 150%)'
+			)
+		).toBe( true );
+	} );
+
+	it( 'rejects three offset-less stops with percentage color channels', () => {
+		// Nine percent tokens live inside the colors; none is an offset.
+		expect(
+			isParserSafeGradientCss(
+				'linear-gradient(rgb(100% 0% 0%),rgb(0% 100% 0%),rgb(0% 0% 100%))'
+			)
+		).toBe( false );
+	} );
+
+	it( 'rejects length positions the percentage-only parser cannot read', () => {
+		// parseGradientStops looks for a percentage, finds none in `10px`, and
+		// falls back to its 100% default — the browser puts the stop at 10px.
+		expect(
+			isParserSafeGradientCss( 'linear-gradient(#f00,#0f0 10px)' )
+		).toBe( false );
+		expect(
+			isParserSafeGradientCss(
+				'linear-gradient(90deg,#f00 0,#0f0 10px,#00f 100%)'
+			)
+		).toBe( false );
+		// Unitless zero is a valid length position, and equally unreadable.
+		expect(
+			isParserSafeGradientCss( 'linear-gradient(#f00 0,#00f 100%)' )
+		).toBe( false );
+	} );
+
+	it( 'still accepts offset-less two-stop gradients', () => {
+		// Both stops are at an end, where the parser's 0%/100% default is
+		// exactly what the browser computes.
+		expect( isParserSafeGradientCss( 'linear-gradient(#f00,#00f)' ) ).toBe(
+			true
+		);
+		expect(
+			isParserSafeGradientCss( 'linear-gradient(135deg,#f00,#00f)' )
+		).toBe( true );
+	} );
+
+	it( 'still accepts fully-offset multi-stop gradients', () => {
+		expect(
+			isParserSafeGradientCss(
+				'linear-gradient(90deg,#f00 0%,#0f0 50%,#00f 100%)'
+			)
+		).toBe( true );
+	} );
+
 	it( 'rejects non-string and empty values', () => {
 		expect( isParserSafeGradientCss( '' ) ).toBe( false );
 		expect( isParserSafeGradientCss( null ) ).toBe( false );
