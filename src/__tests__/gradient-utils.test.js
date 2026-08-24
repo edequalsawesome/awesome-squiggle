@@ -167,6 +167,16 @@ describe( 'isParserSafeGradientCss', () => {
 		).toBe( false );
 	} );
 
+	// Percentage color channels contribute their own % tokens; counting them
+	// across the whole string would let this offset-less gradient through.
+	it( 'rejects 3+ stops whose only percentages are color channels', () => {
+		expect(
+			isParserSafeGradientCss(
+				'linear-gradient(rgb(100% 0% 0%),rgb(0% 100% 0%),rgb(0% 0% 100%))'
+			)
+		).toBe( false );
+	} );
+
 	it( 'accepts 3+ stops when every position is explicit', () => {
 		expect(
 			isParserSafeGradientCss(

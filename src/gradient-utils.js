@@ -82,8 +82,17 @@ export function isParserSafeGradientCss( css ) {
 		return false;
 	}
 
-	const percentages = css.match( /\d+(?:\.\d+)?%/g );
-	if ( colors.length > 2 && ( percentages || [] ).length < colors.length ) {
+	// Count offsets only AFTER removing the color tokens. A percentage-channel
+	// color like rgb(100% 0% 0%) contributes percentages of its own, so counting
+	// them across the whole string lets an offset-less multi-stop gradient — the
+	// exact shape this guard exists to reject — pass.
+	let withoutColors = css;
+	colors.forEach( ( color ) => {
+		withoutColors = withoutColors.replace( color, '' );
+	} );
+	const offsets = withoutColors.match( /\d+(?:\.\d+)?%/g ) || [];
+
+	if ( colors.length > 2 && offsets.length < colors.length ) {
 		return false;
 	}
 
