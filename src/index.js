@@ -1,5 +1,11 @@
 import { registerBlockStyle } from '@wordpress/blocks';
-import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
+import {
+	useBlockProps,
+	InspectorControls,
+	store as blockEditorStore,
+	getGradientValueBySlug,
+} from '@wordpress/block-editor';
+import { select } from '@wordpress/data';
 import {
 	PanelBody,
 	RangeControl,
@@ -23,6 +29,10 @@ import {
 } from './validators';
 
 import { generateLongWavePath, generatePixelWavePath } from './wave-path';
+import {
+	presetSlugFromGradientValue,
+	isParserSafeGradientCss,
+} from './gradient-utils';
 
 // Cache for resolved CSS variable values — avoids repeated DOM element creation
 const resolvedCssVarCache = new Map();
@@ -186,6 +196,29 @@ const wpDefaultGradients = {
 	'electric-grass':
 		'linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%)',
 	midnight: 'linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%)',
+};
+
+// Editor-preview-only fast path: answer a preset gradient from the editor's own
+// settings instead of creating a throwaway element and forcing a style recalc.
+//
+// This deliberately does NOT live inside resolveGradientToCss(). That resolver is
+// also reached by deprecatedFullSvgSave(), whose whole job is regenerating
+// byte-identical markup so block validation recognises existing posts. Authored
+// CSS and computed CSS differ in spacing and color format, so routing the legacy
+// path through this would invalidate saved blocks on open.
+const resolvePresetGradientForPreview = ( value ) => {
+	const slug = presetSlugFromGradientValue( value );
+	if ( ! slug ) {
+		return null;
+	}
+
+	const gradients = select( blockEditorStore )?.getSettings?.()?.gradients;
+	if ( ! Array.isArray( gradients ) ) {
+		return null;
+	}
+
+	const css = getGradientValueBySlug( gradients, slug );
+	return isParserSafeGradientCss( css ) ? css : null;
 };
 
 // Resolve a gradient slug/var/custom to a concrete CSS linear-gradient string when possible
@@ -959,10 +992,17 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 		] );
 
 		// Memoize gradient parsing to avoid re-parsing on every render
-		const parsedGradientData = useMemo(
-			() => ( finalGradient ? parseGradient( finalGradient ) : null ),
-			[ finalGradient ]
-		);
+		const parsedGradientData = useMemo( () => {
+			if ( ! finalGradient ) {
+				return null;
+			}
+
+			// Preset presets resolve from settings; everything else (and any
+			// authored form our parser handles differently from the computed
+			// one) falls through to the original resolution path.
+			const preset = resolvePresetGradientForPreview( finalGradient );
+			return parseGradient( preset || finalGradient );
+		}, [ finalGradient ] );
 
 		// If not a custom style, just return the normal block edit but still use our gradient wrapper
 		if ( ! isCustom ) {

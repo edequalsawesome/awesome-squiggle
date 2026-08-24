@@ -119,6 +119,11 @@ An opaque nested Group background will cover the wave. Two options: (1) add padd
 * New: "Wrap in Squiggle Backdrop" block transform for one-click nesting of any existing block
 * Architecture: Extracted shared build_wave_svg() PHP builder and src/wave-path.js JS module as single sources of truth for both Separator and Backdrop
 
+= Unreleased =
+* Performance: Editor gradient previews resolve WordPress preset gradients from the block editor's own settings instead of injecting a throwaway element and forcing a synchronous style recalculation. Only the editor preview path changed; the legacy full-SVG save path still resolves via computed style so existing saved blocks keep validating byte-for-byte
+* Hardening: The settings-derived gradient string is only used when it parses identically to the computed form — authored CSS containing a nested var(), a url(), a newline, or three-plus stops without explicit positions falls back to computed-style resolution, because the stop parser handles those shapes differently than the browser does
+* Tests: 12 new jest unit tests covering preset-slug extraction and the parser-safety guard (nested color tokens, multiline gradients, implicit multi-stop offsets, url() smuggling, non-string values)
+
 = 2026.04.25 =
 * Hardening: validateColorValue now short-circuits on inputs longer than 4096 chars (pathology guard against 10kb+ payloads; cap is far above any realistic CSS color value or WP preset slug, so legitimate `var(--wp--preset--gradient--<long-slug>)` values are unaffected)
 * Hardening: validateStringInput is now deterministic when callers pass a /g or /y regex — stateful regexes are normalized to a non-stateful copy before .test() (defense-in-depth on the public API contract)
