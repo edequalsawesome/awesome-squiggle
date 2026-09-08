@@ -1,6 +1,30 @@
 import { parseGradientStops } from '../gradient-utils';
 
 describe( 'parseGradientStops', () => {
+	it( 'rejects non-finite positions and interpolates large finite positions', () => {
+		expect(
+			parseGradientStops(
+				`linear-gradient(#f00 0%, #0f0, #00f ${ '9'.repeat( 350 ) }%)`
+			)
+		).toEqual( [
+			{ color: '#667eea', offset: '0%' },
+			{ color: '#764ba2', offset: '100%' },
+		] );
+		const stops = parseGradientStops(
+			`linear-gradient(#f00 0%, #0f0, #00f, #fff ${
+				'1' + '0'.repeat( 308 )
+			}%)`
+		);
+		expect( stops ).toHaveLength( 4 );
+		for ( const stop of stops ) {
+			expect( Number.isFinite( Number.parseFloat( stop.offset ) ) ).toBe(
+				true
+			);
+		}
+		expect( Number.parseFloat( stops[ 2 ].offset ) / 1e308 ).toBeCloseTo(
+			2 / 3
+		);
+	} );
 	it( 'returns [] for empty / non-string input', () => {
 		expect( parseGradientStops( '' ) ).toEqual( [] );
 		expect( parseGradientStops( null ) ).toEqual( [] );
@@ -42,6 +66,56 @@ describe( 'parseGradientStops', () => {
 		expect( stops ).toEqual( [
 			{ color: '#ff0000', offset: '0%' },
 			{ color: '#0000ff', offset: '100%' },
+		] );
+	} );
+
+	it( 'evenly distributes fully implicit positions', () => {
+		const stops = parseGradientStops(
+			'linear-gradient(90deg, #ff0000, #00ff00, #0000ff, #ffff00)'
+		);
+
+		const offsets = stops.map( ( stop ) =>
+			Number.parseFloat( stop.offset )
+		);
+		expect( offsets[ 0 ] ).toBe( 0 );
+		expect( offsets[ 1 ] ).toBeCloseTo( 33.333, 3 );
+		expect( offsets[ 2 ] ).toBeCloseTo( 66.667, 3 );
+		expect( offsets[ 3 ] ).toBe( 100 );
+	} );
+
+	it( 'fills implicit runs between their surrounding explicit positions', () => {
+		const mixed = parseGradientStops(
+			'linear-gradient(90deg, #ff0000 10%, #00ff00, #0000ff 70%, #ffff00)'
+		);
+		const run = parseGradientStops(
+			'linear-gradient(90deg, #ff0000 0%, #00ff00, #0000ff, #ffff00, #ff00ff 100%)'
+		);
+
+		expect( mixed.map( ( stop ) => stop.offset ) ).toEqual( [
+			'10%',
+			'40%',
+			'70%',
+			'100%',
+		] );
+		expect( run.map( ( stop ) => stop.offset ) ).toEqual( [
+			'0%',
+			'25%',
+			'50%',
+			'75%',
+			'100%',
+		] );
+	} );
+
+	it( 'clamps descending explicit positions before filling gaps', () => {
+		const stops = parseGradientStops(
+			'linear-gradient(90deg, #ff0000 60%, #00ff00 40%, #0000ff 80%, #ffff00)'
+		);
+
+		expect( stops.map( ( stop ) => stop.offset ) ).toEqual( [
+			'60%',
+			'60%',
+			'80%',
+			'100%',
 		] );
 	} );
 

@@ -533,9 +533,10 @@ class Awesome_Squiggle_Renderer {
 					$remainder = str_replace( $color, '', $part );
 					$offset    = null;
 					if ( preg_match( '/(\d+(?:\.\d+)?%)/', $remainder, $pct_match ) ) {
+						if ( ! is_finite( (float) $pct_match[1] ) ) {
+							return self::$fallback_gradient;
+						}
 						$offset = $pct_match[1];
-					} else {
-						$offset = empty( $stops ) ? '0%' : '100%';
 					}
 
 					$stops[] = array(
@@ -545,20 +546,9 @@ class Awesome_Squiggle_Renderer {
 				}
 			}
 
+			$stops = self::fixup_gradient_stop_positions( $stops );
+
 			if ( count( $stops ) >= 2 ) {
-				// Simplify >3 stops to 3 (first, middle, last) for performance
-				if ( count( $stops ) > 3 ) {
-					$first  = $stops[0];
-					$middle = $stops[ (int) floor( count( $stops ) / 2 ) ];
-					$last   = $stops[ count( $stops ) - 1 ];
-
-					$stops = array(
-						$first,
-						array( 'color' => $middle['color'], 'offset' => '50%' ),
-						$last,
-					);
-				}
-
 				return array(
 					'type'  => 'linear',
 					'stops' => $stops,
@@ -567,6 +557,71 @@ class Awesome_Squiggle_Renderer {
 		}
 
 		return self::$fallback_gradient;
+	}
+
+	/**
+	 * Apply CSS Images color-stop position fixup to recognized percentages.
+	 *
+	 * @param array $stops Parsed color stops with string or null offsets.
+	 * @return array Color stops with usable percentage offsets.
+	 */
+	private static function fixup_gradient_stop_positions( $stops ) {
+		if ( empty( $stops ) ) {
+			return $stops;
+		}
+
+		$last_index = count( $stops ) - 1;
+		if ( null === $stops[0]['offset'] ) {
+			$stops[0]['offset'] = '0%';
+		}
+		if ( null === $stops[ $last_index ]['offset'] ) {
+			$stops[ $last_index ]['offset'] = '100%';
+		}
+
+		$previous = 0.0;
+		foreach ( $stops as $index => $stop ) {
+			if ( null === $stop['offset'] ) {
+				continue;
+			}
+
+			$position = (float) $stop['offset'];
+			if ( $position < $previous ) {
+				$stops[ $index ]['offset'] = self::format_gradient_offset( $previous );
+			} else {
+				$previous = $position;
+			}
+		}
+
+		$previous_index = 0;
+		for ( $index = 1; $index <= $last_index; $index++ ) {
+			if ( null === $stops[ $index ]['offset'] ) {
+				continue;
+			}
+
+			$run_length = $index - $previous_index - 1;
+			if ( $run_length > 0 ) {
+				$start = (float) $stops[ $previous_index ]['offset'];
+				$end   = (float) $stops[ $index ]['offset'];
+				for ( $run_index = 1; $run_index <= $run_length; $run_index++ ) {
+					$stops[ $previous_index + $run_index ]['offset'] = self::format_gradient_offset(
+						$start + ( $end - $start ) * ( $run_index / ( $run_length + 1 ) )
+					);
+				}
+			}
+			$previous_index = $index;
+		}
+
+		return $stops;
+	}
+
+	/**
+	 * Format a finite position without integer narrowing or locale separators.
+	 *
+	 * @param float $position Percentage position.
+	 * @return string Stable percentage string.
+	 */
+	private static function format_gradient_offset( $position ) {
+		return rtrim( rtrim( number_format( $position, 3, '.', '' ), '0' ), '.' ) . '%';
 	}
 
 	// ───────────────────────────────────────────────

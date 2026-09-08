@@ -145,20 +145,83 @@ class RendererTest extends TestCase {
 		$this->assertEquals( 'rgba(6,147,227,1)', $result['stops'][0]['color'] );
 	}
 
-	public function test_parse_gradient_simplifies_many_stops() {
+	public function test_parse_gradient_preserves_many_stops_and_offsets() {
 		$result = Awesome_Squiggle_Renderer::parse_gradient(
-			'linear-gradient(135deg, #ff0000 0%, #00ff00 25%, #0000ff 50%, #ffff00 75%, #ff00ff 100%)'
+			'linear-gradient(135deg, #ff0000 0%, #00ff00 20%, #0000ff 70%, #ffff00 100%)'
 		);
-		// >3 stops should be simplified to 3 (first, middle, last)
-		$this->assertCount( 3, $result['stops'] );
-		$this->assertEquals( '#ff0000', $result['stops'][0]['color'] );
-		$this->assertEquals( '50%', $result['stops'][1]['offset'] ); // Middle normalized to 50%
-		$this->assertEquals( '#ff00ff', $result['stops'][2]['color'] );
+		$this->assertSame(
+			array(
+				array( 'color' => '#ff0000', 'offset' => '0%' ),
+				array( 'color' => '#00ff00', 'offset' => '20%' ),
+				array( 'color' => '#0000ff', 'offset' => '70%' ),
+				array( 'color' => '#ffff00', 'offset' => '100%' ),
+			),
+			$result['stops']
+		);
+
+		$html = Awesome_Squiggle_Renderer::render_block(
+			'',
+			array(
+				'blockName' => 'core/separator',
+				'attrs'     => array(
+					'className'  => 'is-style-squiggle',
+					'gradient'   => 'linear-gradient(135deg, #ff0000 0%, #00ff00 20%, #0000ff 70%, #ffff00 100%)',
+					'gradientId' => 'squiggle-gradient-four-stops',
+				),
+			)
+		);
+		$this->assertSame( 4, substr_count( $html, '<stop ' ) );
+		foreach ( $result['stops'] as $stop ) {
+			$this->assertStringContainsString(
+				'<stop offset="' . $stop['offset'] . '" stop-color="' . $stop['color'] . '"',
+				$html
+			);
+		}
+	}
+
+	public function test_parse_gradient_fixes_implicit_stop_positions() {
+		$fixtures = array(
+			array(
+				'linear-gradient(90deg, #ff0000, #00ff00, #0000ff, #ffff00)',
+				array( 0, 33.333, 66.667, 100 ),
+			),
+			array(
+				'linear-gradient(90deg, #ff0000 10%, #00ff00, #0000ff 70%, #ffff00)',
+				array( 10, 40, 70, 100 ),
+			),
+			array(
+				'linear-gradient(90deg, #ff0000 0%, #00ff00, #0000ff, #ffff00, #ff00ff 100%)',
+				array( 0, 25, 50, 75, 100 ),
+			),
+			array(
+				'linear-gradient(90deg, #ff0000 60%, #00ff00 40%, #0000ff 80%, #ffff00)',
+				array( 60, 60, 80, 100 ),
+			),
+		);
+
+		foreach ( $fixtures as $fixture ) {
+			$result = Awesome_Squiggle_Renderer::parse_gradient( $fixture[0] );
+			$this->assertCount( count( $fixture[1] ), $result['stops'] );
+			foreach ( $fixture[1] as $index => $offset ) {
+				$this->assertEqualsWithDelta( $offset, (float) $result['stops'][ $index ]['offset'], 0.001 );
+			}
+		}
 	}
 
 	public function test_parse_gradient_unknown_slug_returns_fallback() {
 		$result = Awesome_Squiggle_Renderer::parse_gradient( 'var(--wp--preset--gradient--totally-fake)' );
 		$this->assertEquals( '#667eea', $result['stops'][0]['color'] );
+	}
+
+	public function test_gradient_positions_remain_finite() {
+		$invalid = Awesome_Squiggle_Renderer::parse_gradient( 'linear-gradient(#f00 0%, #0f0, #00f ' . str_repeat( '9', 350 ) . '%)' );
+		$this->assertSame( '#667eea', $invalid['stops'][0]['color'] );
+		$finite = Awesome_Squiggle_Renderer::parse_gradient( 'linear-gradient(#f00 0%, #0f0, #00f, #fff 1' . str_repeat( '0', 308 ) . '%)' );
+		$this->assertCount( 4, $finite['stops'] );
+		foreach ( $finite['stops'] as $stop ) {
+			$this->assertTrue( is_finite( (float) $stop['offset'] ) );
+		}
+		$this->assertEqualsWithDelta( 2 / 3, (float) $finite['stops'][2]['offset'] / 1e308, 0.00001 );
 	}
 
 	public function test_parse_gradient_keeps_hsl_deg_stops() {

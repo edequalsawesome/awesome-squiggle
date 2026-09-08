@@ -23,6 +23,7 @@ import {
 } from './validators';
 
 import { generateLongWavePath, generatePixelWavePath } from './wave-path';
+import { parseGradientStops } from './gradient-utils';
 
 // Cache for resolved CSS variable values — avoids repeated DOM element creation
 const resolvedCssVarCache = new Map();
@@ -279,8 +280,8 @@ const resolveCssVarBackgroundImage = ( css ) => {
 
 // Simple gradient parser for basic linear gradients
 // legacyStopParsing: used ONLY by deprecatedFullSvgSave() — reproduces the
-// historical (buggy) stop extraction so old saved markup still byte-matches
-// during block validation. New rendering paths always use the fixed parsing.
+// historical (buggy) stop extraction so old direct deprecated-save output
+// stays byte-identical. New rendering paths use the shared current parser.
 const parseGradient = ( gradientInput, legacyStopParsing = false ) => {
 	if ( ! gradientInput ) {
 		return {
@@ -316,6 +317,14 @@ const parseGradient = ( gradientInput, legacyStopParsing = false ) => {
 				],
 			};
 		}
+	}
+
+	if ( ! legacyStopParsing ) {
+		const stops = parseGradientStops( gradientString );
+		if ( stops.length >= 2 ) {
+			return { type: 'linear', stops };
+		}
+		return parseGradient( null );
 	}
 
 	// Handle CSS linear-gradient syntax - improved regex to handle nested parentheses
@@ -395,9 +404,10 @@ const parseGradient = ( gradientInput, legacyStopParsing = false ) => {
 		}
 
 		if ( stops.length >= 2 ) {
-			// Simplify gradients with more than 3 stops to improve performance
+			// The direct deprecated-save function retains its historical lossy
+			// parsing so its old output stays byte-identical.
 			let finalStops = stops;
-			if ( stops.length > 3 ) {
+			if ( legacyStopParsing && stops.length > 3 ) {
 				// Keep first, middle, and last stops for smooth performance
 				const firstStop = stops[ 0 ];
 				const middleIndex = Math.floor( stops.length / 2 );
@@ -576,10 +586,11 @@ addFilter(
 
 // Enhanced separator edit component
 const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
-	return ( props ) => {
-		const { attributes, setAttributes, name, clientId } = props;
+	const SquiggleEdit = ( props ) => {
+		const { attributes, setAttributes, clientId } = props;
 
-		// ALL hooks must be declared at the top level, before ANY conditional logic
+		// This component is rendered only for core/separator. Keeping its hooks
+		// here lets the HOC wrapper pass ordinary blocks through without hooks.
 
 		// Pre-calculate values needed for useBlockProps
 		const {
@@ -681,11 +692,6 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			// Route through validation before setting
 			setSecureAttributes( setAttributes, newUpdates );
 		};
-
-		// Return early for non-separator blocks AFTER all hooks are declared
-		if ( name !== 'core/separator' ) {
-			return <BlockEdit { ...props } />;
-		}
 
 		const {
 			strokeWidth,
@@ -987,7 +993,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 				 * replacing the visual output while keeping the inspector controls.
 				 * If a better API becomes available, this should be replaced.
 				 */ }
-				<div style={ { display: 'none' } } aria-hidden="true" inert>
+				<div style={ { display: 'none' } } aria-hidden="true">
 					<BlockEdit
 						{ ...props }
 						setAttributes={ setAttributesWithGradientCheck }
@@ -1435,6 +1441,14 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 				</InspectorControls>
 			</>
 		);
+	};
+
+	return ( props ) => {
+		if ( props.name !== 'core/separator' ) {
+			return <BlockEdit { ...props } />;
+		}
+
+		return <SquiggleEdit { ...props } />;
 	};
 }, 'withSquiggleControls' );
 
