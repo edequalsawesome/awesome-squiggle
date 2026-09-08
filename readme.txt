@@ -100,6 +100,16 @@ An opaque nested Group background will cover the wave. Two options: (1) add padd
 
 == Changelog ==
 
+= Unreleased =
+* Fix: preserve double-position color stops and leading-dot percentage positions; keep very close gradient offsets ordered without rounding away authored boundaries.
+* Compatibility: unsupported position syntax (lengths, unitless values, calc, signed/exponent offsets, extra positions, stray text or non-CSS whitespace) uses the fallback gradient instead of guessed offsets. Colorless items after a recognized stop, including midpoint hints and unsupported colors such as red or transparent, also fall back; leading direction tokens remain accepted. Unsupported leading colors remain outside the supported subset.
+* Fix: Separator and Backdrop gradients preserve all recognized color stops, including existing gradients with more than three stops. Omitted percentage positions are distributed and decreasing positions clamped consistently in the editor and frontend.
+* Fix: Core block and viewport visibility apply after separator SVG replacement, so hidden separators remain hidden.
+* Fix: Separator editor hooks retain stable component ownership across parent renders and skip unrelated blocks.
+* Performance: Editor gradient previews resolve supported WordPress preset gradients from reactive editor settings before using computed-style resolution. Other CSS variables and conservatively excluded preset shapes keep the existing fallback.
+* Compatibility: The direct deprecated full-SVG save output retains its historical parser and snapshot; current rendering uses the shared parser.
+* Tests: Cover gradient stop fixup, finite offsets, editor hook ownership, preset lookup, and core visibility.
+
 = 2026.07.001 =
 * Security: Block attributes are now type-guarded in the PHP renderer — a hand-edited block comment delivering an array where a string is expected (className, colors, gradient) could fatal the whole page on PHP 8+ (render_block filters receive raw, un-coerced attributes)
 * Security: PHP validate_color() now short-circuits on inputs longer than 4096 chars, matching the JS validators' pathology guard
@@ -118,11 +128,6 @@ An opaque nested Group background will cover the wave. Two options: (1) add padd
 * New: Squiggle Backdrop block (awesome-squiggle/backdrop) — additive InnerBlocks container placing an animated wave band behind nested content; existing Separator styles unchanged
 * New: "Wrap in Squiggle Backdrop" block transform for one-click nesting of any existing block
 * Architecture: Extracted shared build_wave_svg() PHP builder and src/wave-path.js JS module as single sources of truth for both Separator and Backdrop
-
-= Unreleased =
-* Performance: Editor gradient previews resolve WordPress preset gradients from the block editor's own settings instead of injecting a throwaway element and forcing a synchronous style recalculation. Only the editor preview path changed; the legacy full-SVG save path still resolves via computed style so existing saved blocks keep validating byte-for-byte
-* Hardening: The settings-derived gradient string is only used when it parses identically to the computed form — authored CSS containing a nested var(), a url(), a newline, or three-plus stops without explicit positions falls back to computed-style resolution, because the stop parser handles those shapes differently than the browser does
-* Tests: 12 new jest unit tests covering preset-slug extraction and the parser-safety guard (nested color tokens, multiline gradients, implicit multi-stop offsets, url() smuggling, non-string values)
 
 = 2026.04.25 =
 * Hardening: validateColorValue now short-circuits on inputs longer than 4096 chars (pathology guard against 10kb+ payloads; cap is far above any realistic CSS color value or WP preset slug, so legitimate `var(--wp--preset--gradient--<long-slug>)` values are unaffected)

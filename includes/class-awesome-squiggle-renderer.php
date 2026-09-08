@@ -65,7 +65,7 @@ class Awesome_Squiggle_Renderer {
 	/**
 	 * Coerce a block attribute to a string.
 	 *
-	 * render_block_{name} filters receive RAW comment-delimiter attributes —
+	 * Block rendering filters receive raw comment-delimiter attributes —
 	 * WordPress does NOT run prepare_attributes_for_render() on that path, so a
 	 * hand-edited block comment can deliver an array where a string is expected.
 	 * On PHP 8+ explode()/preg_match()/md5() throw a fatal TypeError on arrays,
@@ -507,58 +507,47 @@ class Awesome_Squiggle_Renderer {
 					$paren_depth--;
 				}
 				if ( $char === ',' && $paren_depth === 0 ) {
-					$parts[] = trim( $current );
+					$parts[] = trim( $current, " \t\n\r\f" );
 					$current = '';
 				} else {
 					$current .= $char;
 				}
 			}
-			if ( trim( $current ) !== '' ) {
-				$parts[] = trim( $current );
+			if ( trim( $current, " \t\n\r\f" ) !== '' ) {
+				$parts[] = trim( $current, " \t\n\r\f" );
 			}
 
 			$stops = array();
 
 			foreach ( $parts as $part ) {
-				// Match color: rgb(), rgba(), hsl(), hsla(), or hex. Parts without a
-				// color token (direction tokens like "135deg" / "to bottom") are skipped.
+				// Match color: rgb(), rgba(), hsl(), hsla(), or hex. Leading direction
+				// tokens like "135deg" / "to bottom" are skipped; later colorless parts reject.
 				// Checking for the color FIRST — instead of substring-matching "deg" —
 				// keeps valid stops like hsl(30deg 100% 50%) from being dropped.
-				if ( preg_match( '/(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/', $part, $color_match ) ) {
-					$color = $color_match[1];
-
-					// Match the stop position in the part WITH THE COLOR REMOVED, so
-					// percentages inside the color function (rgb(100% 0% 0%)) are not
-					// mistaken for the offset. Supports decimal offsets (12.5%).
-					$remainder = str_replace( $color, '', $part );
-					$offset    = null;
-					if ( preg_match( '/(\d+(?:\.\d+)?%)/', $remainder, $pct_match ) ) {
-						$offset = $pct_match[1];
-					} else {
-						$offset = empty( $stops ) ? '0%' : '100%';
+				if ( preg_match( '/(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/', $part, $color_match, PREG_OFFSET_CAPTURE ) ) {
+					$color = $color_match[1][0];
+					$color_start = $color_match[1][1];
+					// Consume this color token once; channel percentages are not positions.
+					// Unsupported positions reject the gradient.
+					$remainder = trim( substr( $part, $color_start + strlen( $color ) ), " \t\n\r\f" );
+					$positions = '' === $remainder ? array( null ) : preg_split( '/[ \t\n\r\f]+/', $remainder );
+					if ( '' !== trim( substr( $part, 0, $color_start ), " \t\n\r\f" ) || count( $positions ) > 2 ) {
+						return self::$fallback_gradient;
 					}
-
-					$stops[] = array(
-						'color'  => $color,
-						'offset' => $offset,
-					);
+					foreach ( $positions as $offset ) {
+						if ( null !== $offset && ( ! preg_match( '/^(?:\d+(?:\.\d+)?|\.\d+)%$/D', $offset ) || ! is_finite( (float) $offset ) ) ) {
+							return self::$fallback_gradient;
+						}
+						$stops[] = array( 'color' => $color, 'offset' => $offset );
+					}
+				} elseif ( ! empty( $stops ) ) {
+					return self::$fallback_gradient;
 				}
 			}
 
+			$stops = self::fixup_gradient_stop_positions( $stops );
+
 			if ( count( $stops ) >= 2 ) {
-				// Simplify >3 stops to 3 (first, middle, last) for performance
-				if ( count( $stops ) > 3 ) {
-					$first  = $stops[0];
-					$middle = $stops[ (int) floor( count( $stops ) / 2 ) ];
-					$last   = $stops[ count( $stops ) - 1 ];
-
-					$stops = array(
-						$first,
-						array( 'color' => $middle['color'], 'offset' => '50%' ),
-						$last,
-					);
-				}
-
 				return array(
 					'type'  => 'linear',
 					'stops' => $stops,
@@ -567,6 +556,80 @@ class Awesome_Squiggle_Renderer {
 		}
 
 		return self::$fallback_gradient;
+	}
+
+	/**
+	 * Apply CSS Images color-stop position fixup to recognized percentages.
+	 *
+	 * @param array $stops Parsed color stops with string or null offsets.
+	 * @return array Color stops with usable percentage offsets.
+	 */
+	private static function fixup_gradient_stop_positions( $stops ) {
+		if ( empty( $stops ) ) {
+			return $stops;
+		}
+
+		$last_index = count( $stops ) - 1;
+		if ( null === $stops[0]['offset'] ) {
+			$stops[0]['offset'] = '0%';
+		}
+		if ( null === $stops[ $last_index ]['offset'] ) {
+			$stops[ $last_index ]['offset'] = '100%';
+		}
+
+		$previous = 0.0;
+		$previous_offset = '0%';
+		foreach ( $stops as $index => $stop ) {
+			if ( null === $stop['offset'] ) {
+				continue;
+			}
+
+			$position = (float) $stop['offset'];
+			if ( $position < $previous ) {
+				$stops[ $index ]['offset'] = $previous_offset;
+			} else {
+				$previous = $position;
+				$previous_offset = $stop['offset'];
+			}
+		}
+
+		$previous_index = 0;
+		for ( $index = 1; $index <= $last_index; $index++ ) {
+			if ( null === $stops[ $index ]['offset'] ) {
+				continue;
+			}
+
+			$run_length = $index - $previous_index - 1;
+			if ( $run_length > 0 ) {
+				$start = (float) $stops[ $previous_index ]['offset'];
+				$end   = (float) $stops[ $index ]['offset'];
+				for ( $run_index = 1; $run_index <= $run_length; $run_index++ ) {
+					$candidate = self::format_gradient_offset(
+						$start + ( $end - $start ) * ( $run_index / ( $run_length + 1 ) )
+					);
+					$rounded = (float) $candidate;
+					if ( $start === $end || $rounded < $start ) {
+						$candidate = $stops[ $previous_index ]['offset'];
+					} elseif ( $rounded > $end ) {
+						$candidate = $stops[ $index ]['offset'];
+					}
+					$stops[ $previous_index + $run_index ]['offset'] = $candidate;
+				}
+			}
+			$previous_index = $index;
+		}
+
+		return $stops;
+	}
+
+	/**
+	 * Format a finite position without integer narrowing or locale separators.
+	 *
+	 * @param float $position Percentage position.
+	 * @return string Stable percentage string.
+	 */
+	private static function format_gradient_offset( $position ) {
+		return rtrim( rtrim( number_format( $position, 3, '.', '' ), '0' ), '.' ) . '%';
 	}
 
 	// ───────────────────────────────────────────────
@@ -803,7 +866,7 @@ class Awesome_Squiggle_Renderer {
 	 * @return string
 	 */
 	public static function render_block( $block_content, $block ) {
-		if ( $block['blockName'] !== 'core/separator' ) {
+		if ( ( $block['blockName'] ?? '' ) !== 'core/separator' ) {
 			return $block_content;
 		}
 

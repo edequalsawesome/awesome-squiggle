@@ -1,16 +1,4 @@
 /**
- * Minimal linear-gradient → stops parser for editor previews.
- *
- * Mirrors the stop-extraction half of the PHP renderer's parse_gradient()
- * (includes/class-awesome-squiggle-renderer.php) so the editor SVG can render
- * the same gradient the frontend paints. Kept tiny and dependency-free so it
- * can be shared by block editors without dragging in a block's registration
- * side effects.
- *
- * @param {string} css A concrete `linear-gradient(...)` CSS string.
- * @return {Array<{color: string, offset: string}>} Ordered color stops (possibly empty).
- */
-/**
  * Extract a preset gradient slug from a block's stored gradient value.
  *
  * Accepts either a bare slug ("vivid-cyan-blue-to-vivid-purple") or a preset
@@ -44,20 +32,11 @@ export function presetSlugFromGradientValue( value ) {
 /**
  * Is this authored gradient CSS safe to use instead of a computed-style read?
  *
- * theme.json hands back the string the theme AUTHORED. getComputedStyle hands
- * back a browser-NORMALIZED string. They are not interchangeable, and the
- * places they differ are exactly where this codebase's parser breaks:
- *
- * - a nested var() (a preset referencing a color token) is resolved by the
- *   browser but not by our stop regex, which would silently drop every stop
- * - a newline survives authoring but our stop regex has no dot-all flag
- * - three or more stops without explicit percentages get positions filled in
- *   by the browser; our offset inference assigns 100% to every stop past the
- *   first, collapsing them
- * - url() has no business here at all
- *
- * Rejecting these is not a loss: the caller falls through to the computed-style
- * path, which is exactly what it did before the fast path existed.
+ * Keep the existing conservative fast path: explicit percentage stops without
+ * nested variables, interpolation hints, or alternate position syntax. Other
+ * authored forms use the computed-style fallback. Current stop parsing also
+ * supports implicit positions and CSS fixup, but widening this fast path is a
+ * separate change from preserving gradient output.
  *
  * @param {string} css Authored gradient CSS from editor settings.
  * @return {boolean} True when the authored form parses like the computed one.
@@ -94,10 +73,9 @@ export function isParserSafeGradientCss( css ) {
 		const colorMatch = part.match( COLOR );
 		if ( ! colorMatch ) {
 			// Before any color this is a direction token ("135deg",
-			// "to bottom"), which the parser skips harmlessly. After one it is
-			// a color interpolation hint — a bare position that shifts the
-			// midpoint between its neighbours. The parser skips that too, and
-			// dropping it changes the gradient.
+			// "to bottom"), which the parser skips harmlessly. Later colorless
+			// parts are unsupported colors or interpolation hints. A hint shifts
+			// the midpoint; both paths reject it rather than changing the gradient.
 			if ( seenColor ) {
 				return false;
 			}
@@ -105,11 +83,9 @@ export function isParserSafeGradientCss( css ) {
 		}
 		seenColor = true;
 		// Whatever is left after the color IS the stop position. Accept only
-		// an empty position or a single percentage, because those are the only
-		// forms parseGradientStops reads. linear-gradient() also takes lengths
-		// (`10px`, unitless `0`) and double positions (`0% 25%`); the parser's
-		// percentage-only regex finds nothing in a length and falls back to its
-		// 0%/100% default, which silently disagrees with the browser.
+		// an empty position or a single percentage. Keep this preset fast path
+		// conservative even though the shared parser also reads double positions.
+		// Lengths (`10px`, unitless `0`) still need browser resolution.
 		const position = part.replace( colorMatch[ 1 ], '' ).trim();
 		if ( position !== '' && ! /^\d+(?:\.\d+)?%$/.test( position ) ) {
 			return false;
@@ -131,7 +107,7 @@ export function isParserSafeGradientCss( css ) {
 	}
 
 	// A missing position is only safe at those ends. In the middle the browser
-	// distributes evenly while the parser guesses 100%.
+	// distributes evenly; retain the conservative explicit-position contract.
 	for ( let i = 1; i < resolved.length - 1; i++ ) {
 		if ( resolved[ i ] === '' ) {
 			return false;
@@ -140,8 +116,8 @@ export function isParserSafeGradientCss( css ) {
 
 	// CSS runs a fix-up pass that advances any stop which would sit before its
 	// predecessor, so `#f00 0%, #0f0 120%, #00f` paints its last stop at 120%,
-	// not the 100% the parser assumes. The parser has no fix-up, so only an
-	// already-nondecreasing sequence is reproduced faithfully.
+	// not 100%. Although current parsing applies fixup, this fast
+	// path remains limited to an already-nondecreasing sequence.
 	let previous = -Infinity;
 	for ( const position of resolved ) {
 		const value = parseFloat( position );
@@ -154,6 +130,22 @@ export function isParserSafeGradientCss( css ) {
 	return true;
 }
 
+/**
+ * Minimal linear-gradient → stops parser for editor previews.
+ *
+ * Mirrors the stop-extraction half of the PHP renderer's parse_gradient()
+ * (includes/class-awesome-squiggle-renderer.php) so the editor SVG can render
+ * the same gradient the frontend paints. Kept tiny and dependency-free so it
+ * can be shared by block editors without dragging in a block's registration
+ * side effects.
+ * Unsupported/non-finite positions use the PHP renderer’s fallback gradient.
+ * Returns [] for unrecognized gradients or no recognized colors, fallback stops
+ * for rejected stops or hints, and parsed stops otherwise. Leading direction
+ * tokens are skipped; colorless parts after a recognized stop are rejected.
+ *
+ * @param {string} css A concrete `linear-gradient(...)` CSS string.
+ * @return {Array<{color: string, offset: string}>} Ordered color stops (possibly empty).
+ */
 export function parseGradientStops( css ) {
 	if ( ! css || typeof css !== 'string' ) {
 		return [];
@@ -166,34 +158,147 @@ export function parseGradientStops( css ) {
 
 	const stops = [];
 	for ( const rawPart of splitTopLevel( match[ 1 ] ) ) {
-		const part = rawPart.trim();
+		const part = trimCssWhitespace( rawPart );
 
-		// Parts without a color token (direction tokens like "135deg" /
-		// "to bottom") are skipped. Checking for the color FIRST — instead of
+		// Leading direction tokens like "135deg" / "to bottom" are skipped.
+		// Checking for the color FIRST — instead of
 		// substring-matching "deg" — keeps valid stops like
 		// hsl(30deg 100% 50%) from being dropped.
 		const colorMatch = part.match(
 			/(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/
 		);
 		if ( ! colorMatch ) {
+			if ( stops.length ) {
+				return [
+					{ color: '#667eea', offset: '0%' },
+					{ color: '#764ba2', offset: '100%' },
+				];
+			}
 			continue;
 		}
 
-		// Match the stop position in the part WITH THE COLOR REMOVED, so
-		// percentages inside the color function (rgb(100% 0% 0%)) are not
-		// mistaken for the offset. Supports decimal offsets (12.5%).
-		const remainder = part.replace( colorMatch[ 1 ], '' );
-		const pctMatch = remainder.match( /(\d+(?:\.\d+)?)%/ );
-		let offset;
-		if ( pctMatch ) {
-			offset = `${ pctMatch[ 1 ] }%`;
-		} else {
-			offset = stops.length === 0 ? '0%' : '100%';
+		// Only positions outside the matched color belong to the stop. Unsupported
+		// positions reject the gradient.
+		const remainder = trimCssWhitespace(
+			part.slice( colorMatch.index + colorMatch[ 1 ].length )
+		);
+		const positions =
+			remainder === '' ? [ null ] : remainder.split( /[ \t\n\r\f]+/ );
+		if (
+			trimCssWhitespace( part.slice( 0, colorMatch.index ) ) !== '' ||
+			positions.length > 2 ||
+			positions.some(
+				( position ) =>
+					position !== null &&
+					( ! /^(?:\d+(?:\.\d+)?|\.\d+)%$/.test( position ) ||
+						! Number.isFinite( Number.parseFloat( position ) ) )
+			)
+		) {
+			return [
+				{ color: '#667eea', offset: '0%' },
+				{ color: '#764ba2', offset: '100%' },
+			];
 		}
-		stops.push( { color: colorMatch[ 1 ], offset } );
+		for ( const offset of positions ) {
+			stops.push( { color: colorMatch[ 1 ], offset } );
+		}
 	}
 
-	return stops;
+	return fixupStopPositions( stops );
+}
+
+/**
+ * Match the PHP parser's CSS whitespace set, preserving non-ASCII characters.
+ *
+ * @param {string} value Part of a color stop.
+ * @return {string} Value with CSS whitespace trimmed.
+ */
+function trimCssWhitespace( value ) {
+	let start = 0;
+	let end = value.length;
+	while ( start < end && ' \t\n\r\f'.includes( value[ start ] ) ) {
+		start++;
+	}
+	while ( end > start && ' \t\n\r\f'.includes( value[ end - 1 ] ) ) {
+		end--;
+	}
+	return value.slice( start, end );
+}
+
+/**
+ * Apply the CSS Images color-stop position fixup rules to parsed percentages.
+ *
+ * @param {Array<{color: string, offset: string|null}>} stops Parsed stops.
+ * @return {Array<{color: string, offset: string}>} Stops with usable positions.
+ */
+function fixupStopPositions( stops ) {
+	if ( stops.length === 0 ) {
+		return stops;
+	}
+
+	const fixedStops = stops.map( ( stop ) => ( { ...stop } ) );
+	const lastIndex = fixedStops.length - 1;
+	if ( fixedStops[ 0 ].offset === null ) {
+		fixedStops[ 0 ].offset = '0%';
+	}
+	if ( fixedStops[ lastIndex ].offset === null ) {
+		fixedStops[ lastIndex ].offset = '100%';
+	}
+
+	let previous = 0;
+	let previousOffset = '0%';
+	for ( const stop of fixedStops ) {
+		if ( stop.offset === null ) {
+			continue;
+		}
+
+		const position = Number.parseFloat( stop.offset );
+		if ( position < previous ) {
+			stop.offset = previousOffset;
+		} else {
+			previous = position;
+			previousOffset = stop.offset;
+		}
+	}
+
+	let previousIndex = 0;
+	for ( let index = 1; index <= lastIndex; index++ ) {
+		if ( fixedStops[ index ].offset === null ) {
+			continue;
+		}
+
+		const runLength = index - previousIndex - 1;
+		if ( runLength > 0 ) {
+			const start = Number.parseFloat(
+				fixedStops[ previousIndex ].offset
+			);
+			const end = Number.parseFloat( fixedStops[ index ].offset );
+			for ( let runIndex = 1; runIndex <= runLength; runIndex++ ) {
+				const candidate = formatOffset(
+					start + ( end - start ) * ( runIndex / ( runLength + 1 ) )
+				);
+				const rounded = Number.parseFloat( candidate );
+				let offset = candidate;
+				if ( start === end || rounded < start ) {
+					offset = fixedStops[ previousIndex ].offset;
+				} else if ( rounded > end ) {
+					offset = fixedStops[ index ].offset;
+				}
+				fixedStops[ previousIndex + runIndex ].offset = offset;
+			}
+		}
+		previousIndex = index;
+	}
+
+	return fixedStops;
+}
+
+/**
+ * @param {number} position A percentage value.
+ * @return {string} A stable percentage string.
+ */
+function formatOffset( position ) {
+	return `${ Number( position.toFixed( 3 ) ) }%`;
 }
 
 /**
@@ -223,7 +328,7 @@ function splitTopLevel( content ) {
 		}
 	}
 
-	if ( current.trim() !== '' ) {
+	if ( trimCssWhitespace( current ) !== '' ) {
 		parts.push( current );
 	}
 

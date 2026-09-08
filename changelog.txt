@@ -2,6 +2,16 @@
 
 This file contains the complete version history for the Awesome Squiggle WordPress plugin.
 
+= Unreleased =
+* Fix: preserve double-position color stops and leading-dot percentage positions; keep very close gradient offsets ordered without rounding away authored boundaries.
+* Compatibility: unsupported position syntax (lengths, unitless values, calc, signed/exponent offsets, extra positions, stray text or non-CSS whitespace) uses the fallback gradient instead of guessed offsets. Colorless items after a recognized stop, including midpoint hints and unsupported colors such as red or transparent, also fall back; leading direction tokens remain accepted. Unsupported leading colors remain outside the supported subset.
+* Fix: Separator and Backdrop gradients preserve all recognized color stops, including existing gradients with more than three stops. Omitted percentage positions are distributed and decreasing positions clamped consistently in the editor and frontend.
+* Fix: Core block and viewport visibility apply after separator SVG replacement, so hidden separators remain hidden.
+* Fix: Separator editor hooks retain stable component ownership across parent renders and skip unrelated blocks.
+* Performance: Editor gradient previews resolve supported WordPress preset gradients from reactive editor settings before using computed-style resolution. Other CSS variables and conservatively excluded preset shapes keep the existing fallback.
+* Compatibility: The direct deprecated full-SVG save output retains its historical parser and snapshot; current rendering uses the shared parser.
+* Tests: Cover gradient stop fixup, finite offsets, editor hook ownership, preset lookup, and core visibility.
+
 = 2026.07.001 =
 * Security: Block attributes are now type-guarded in the PHP renderer — a hand-edited block comment delivering an array where a string is expected (className, colors, gradient) could fatal the whole page on PHP 8+ (render_block filters receive raw, un-coerced attributes)
 * Security: PHP validate_color() now short-circuits on inputs longer than 4096 chars, matching the JS validators' pathology guard
