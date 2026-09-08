@@ -2,6 +2,19 @@ jest.mock( '@wordpress/blocks', () => ( { registerBlockStyle: jest.fn() } ) );
 jest.mock( '@wordpress/block-editor', () => ( {
 	useBlockProps: jest.fn( ( props ) => props ),
 	InspectorControls: () => null,
+	store: 'mock-block-editor',
+	getGradientValueBySlug: ( gradients, slug ) =>
+		gradients.find( ( item ) => item.slug === slug )?.gradient,
+} ) );
+jest.mock( '@wordpress/data', () => ( {
+	useSelect: jest.fn( ( selector ) =>
+		selector( ( store ) => {
+			if ( store !== 'mock-block-editor' ) {
+				throw new Error( 'Unexpected store' );
+			}
+			return { getSettings: () => mockEditorSettings };
+		} )
+	),
 } ) );
 jest.mock( '@wordpress/components', () => ( {
 	PanelBody: () => null,
@@ -27,6 +40,8 @@ import '../index';
 const {
 	useBlockProps: mockUseBlockProps,
 } = require( '@wordpress/block-editor' );
+const mockEditorSettings = { gradients: [] };
+const { useSelect: mockUseSelect } = require( '@wordpress/data' );
 const { addFilter: mockAddFilter } = require( '@wordpress/hooks' );
 // eslint-disable-next-line import/no-extraneous-dependencies -- React is already installed by the WordPress test dependencies.
 const { act } = require( 'react' );
@@ -58,6 +73,8 @@ const getFilter = ( hook, namespace ) =>
 describe( 'editor filters', () => {
 	beforeEach( () => {
 		mockUseBlockProps.mockClear();
+		mockUseSelect.mockClear();
+		mockEditorSettings.gradients = [];
 	} );
 
 	it( 'keeps the direct legacy save output byte-stable', () => {
@@ -97,6 +114,7 @@ describe( 'editor filters', () => {
 
 		expect( markup ).toContain( 'data-block-edit="paragraph"' );
 		expect( mockUseBlockProps ).not.toHaveBeenCalled();
+		expect( mockUseSelect ).not.toHaveBeenCalled();
 	} );
 
 	it( 'renders every parsed stop in the separator editor preview', async () => {
@@ -168,5 +186,43 @@ describe( 'editor filters', () => {
 
 		await act( async () => root.unmount() );
 		mountPoint.remove();
+	} );
+	it( 'resolves presets from the selected editor palette and follows its value', async () => {
+		const enhance = getFilter(
+			'editor.BlockEdit',
+			'awesome-squiggle/squiggle-controls'
+		);
+		const Enhanced = enhance( () => null );
+		const mountPoint = document.createElement( 'div' );
+		document.body.appendChild( mountPoint );
+		const root = createRoot( mountPoint );
+		const props = {
+			name: 'core/separator',
+			attributes: { ...separatorAttributes, gradient: 'fixture-preset' },
+			setAttributes: jest.fn(),
+			clientId: 'preset-fixture',
+		};
+		try {
+			for ( const color of [ '#123456', '#abcdef' ] ) {
+				mockEditorSettings.gradients = [
+					{
+						slug: 'fixture-preset',
+						gradient: `linear-gradient(${ color } 0%, #ffffff 100%)`,
+					},
+				];
+				await act( async () =>
+					root.render( createElement( Enhanced, props ) )
+				);
+				expect(
+					mountPoint
+						.querySelector( 'stop' )
+						.getAttribute( 'stop-color' )
+				).toBe( color );
+			}
+			expect( mockUseSelect ).toHaveBeenCalled();
+		} finally {
+			await act( async () => root.unmount() );
+			mountPoint.remove();
+		}
 	} );
 } );

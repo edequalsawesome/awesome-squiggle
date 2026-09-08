@@ -54,4 +54,5 @@ add_action( 'init', 'awesome_squiggle_init' );
  * Filter separator block content on frontend — PHP dynamic render generates
  * all SVG markup from block attributes, replacing JS save output entirely.
  */
-add_filter( 'render_block_core/separator', array( 'Awesome_Squiggle_Renderer', 'render_block' ), 10, 2 );
+// Let core's priority-10 block supports apply visibility to the final SVG wrapper.
+add_filter( 'render_block', array( 'Awesome_Squiggle_Renderer', 'render_block' ), 9, 2 );

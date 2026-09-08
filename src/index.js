@@ -1,5 +1,11 @@
 import { registerBlockStyle } from '@wordpress/blocks';
-import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
+import {
+	useBlockProps,
+	InspectorControls,
+	store as blockEditorStore,
+	getGradientValueBySlug,
+} from '@wordpress/block-editor';
+import { useSelect } from '@wordpress/data';
 import {
 	PanelBody,
 	RangeControl,
@@ -23,7 +29,11 @@ import {
 } from './validators';
 
 import { generateLongWavePath, generatePixelWavePath } from './wave-path';
-import { parseGradientStops } from './gradient-utils';
+import {
+	parseGradientStops,
+	presetSlugFromGradientValue,
+	isParserSafeGradientCss,
+} from './gradient-utils';
 
 // Cache for resolved CSS variable values — avoids repeated DOM element creation
 const resolvedCssVarCache = new Map();
@@ -187,6 +197,31 @@ const wpDefaultGradients = {
 	'electric-grass':
 		'linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%)',
 	midnight: 'linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%)',
+};
+
+// Editor-preview-only fast path: answer a preset gradient from the editor's own
+// settings instead of creating a throwaway element and forcing a style recalc.
+//
+// This deliberately does NOT live inside resolveGradientToCss(). That resolver is
+// also reached by deprecatedFullSvgSave(), whose whole job is regenerating
+// byte-identical markup so block validation recognises existing posts. Authored
+// CSS and computed CSS differ in spacing and color format, so routing the legacy
+// path through this would invalidate saved blocks on open.
+// The palette is passed in rather than read from the store here, so the caller
+// can subscribe to it. Reading it imperatively inside a useMemo would leave the
+// preview stale when the palette changes but the gradient value does not.
+const resolvePresetGradientForPreview = ( value, gradients ) => {
+	const slug = presetSlugFromGradientValue( value );
+	if ( ! slug ) {
+		return null;
+	}
+
+	if ( ! Array.isArray( gradients ) ) {
+		return null;
+	}
+
+	const css = getGradientValueBySlug( gradients, slug );
+	return isParserSafeGradientCss( css ) ? css : null;
 };
 
 // Resolve a gradient slug/var/custom to a concrete CSS linear-gradient string when possible
@@ -965,10 +1000,28 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 		] );
 
 		// Memoize gradient parsing to avoid re-parsing on every render
-		const parsedGradientData = useMemo(
-			() => ( finalGradient ? parseGradient( finalGradient ) : null ),
-			[ finalGradient ]
+		// Subscribed, not read imperatively: switching theme or editing global
+		// styles changes the palette while the block's own gradient value stays
+		// the same, and the preview has to follow.
+		const editorGradients = useSelect(
+			( s ) => s( blockEditorStore ).getSettings()?.gradients,
+			[]
 		);
+
+		const parsedGradientData = useMemo( () => {
+			if ( ! finalGradient ) {
+				return null;
+			}
+
+			// Presets resolve from settings; everything else (and any authored
+			// form our parser handles differently from the computed one) falls
+			// through to the original resolution path.
+			const preset = resolvePresetGradientForPreview(
+				finalGradient,
+				editorGradients
+			);
+			return parseGradient( preset || finalGradient );
+		}, [ finalGradient, editorGradients ] );
 
 		// If not a custom style, just return the normal block edit but still use our gradient wrapper
 		if ( ! isCustom ) {

@@ -1,4 +1,138 @@
 /**
+ * Extract a preset gradient slug from a block's stored gradient value.
+ *
+ * Accepts either a bare slug ("vivid-cyan-blue-to-vivid-purple") or a preset
+ * custom property reference ("var(--wp--preset--gradient--<slug>)"). Anything
+ * else — a concrete gradient, a non-preset custom property — returns null.
+ *
+ * @param {string} value Stored gradient attribute value.
+ * @return {string|null} The preset slug, or null.
+ */
+export function presetSlugFromGradientValue( value ) {
+	if ( ! value || typeof value !== 'string' ) {
+		return null;
+	}
+
+	const trimmed = value.trim();
+
+	const varMatch = trimmed.match(
+		/^var\(\s*--wp--preset--gradient--([^)\s]+)\s*\)$/
+	);
+	if ( varMatch ) {
+		return varMatch[ 1 ];
+	}
+
+	if ( ! trimmed.includes( 'gradient(' ) && ! trimmed.startsWith( 'var(' ) ) {
+		return trimmed;
+	}
+
+	return null;
+}
+
+/**
+ * Is this authored gradient CSS safe to use instead of a computed-style read?
+ *
+ * Keep the existing conservative fast path: explicit percentage stops without
+ * nested variables, interpolation hints, or alternate position syntax. Other
+ * authored forms use the computed-style fallback. Current stop parsing also
+ * supports implicit positions and CSS fixup, but widening this fast path is a
+ * separate change from preserving gradient output.
+ *
+ * @param {string} css Authored gradient CSS from editor settings.
+ * @return {boolean} True when the authored form parses like the computed one.
+ */
+export function isParserSafeGradientCss( css ) {
+	if ( ! css || typeof css !== 'string' ) {
+		return false;
+	}
+
+	if ( ! css.startsWith( 'linear-gradient(' ) ) {
+		return false;
+	}
+
+	if ( /url\(|var\(/i.test( css ) || /[\r\n]/.test( css ) ) {
+		return false;
+	}
+
+	const inner = css.match( /linear-gradient\((.*)\)$/s );
+	if ( ! inner ) {
+		return false;
+	}
+
+	// Walk the stops exactly the way parseGradientStops does, and accept only
+	// what it can represent faithfully. Counting offsets across the whole
+	// string is not enough: a percentage-channel color like rgb(100% 0% 0%)
+	// contributes percentages of its own, and an aggregate count cannot tell
+	// `#f00 0% 25%, #0f0, #00f 100%` (one stop with two offsets, one with
+	// none) from three evenly-offset stops.
+	const COLOR = /(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/;
+	const stops = [];
+	let seenColor = false;
+	for ( const rawPart of splitTopLevel( inner[ 1 ] ) ) {
+		const part = rawPart.trim();
+		const colorMatch = part.match( COLOR );
+		if ( ! colorMatch ) {
+			// Before any color this is a direction token ("135deg",
+			// "to bottom"), which the parser skips harmlessly. After one it is
+			// a color interpolation hint — a bare position that shifts the
+			// midpoint between its neighbours. The parser skips that too, and
+			// dropping it changes the gradient.
+			if ( seenColor ) {
+				return false;
+			}
+			continue;
+		}
+		seenColor = true;
+		// Whatever is left after the color IS the stop position. Accept only
+		// an empty position or a single percentage, because those are the only
+		// forms parseGradientStops reads. linear-gradient() also takes lengths
+		// (`10px`, unitless `0`) and double positions (`0% 25%`); the parser's
+		// percentage-only parser cannot preserve those browser positions.
+		const position = part.replace( colorMatch[ 1 ], '' ).trim();
+		if ( position !== '' && ! /^\d+(?:\.\d+)?%$/.test( position ) ) {
+			return false;
+		}
+		stops.push( position );
+	}
+
+	if ( stops.length < 2 ) {
+		return false;
+	}
+
+	// Fill the ends the parser defaults, then judge the sequence as a whole.
+	const resolved = stops.slice();
+	if ( resolved[ 0 ] === '' ) {
+		resolved[ 0 ] = '0%';
+	}
+	if ( resolved[ resolved.length - 1 ] === '' ) {
+		resolved[ resolved.length - 1 ] = '100%';
+	}
+
+	// A missing position is only safe at those ends. In the middle the browser
+	// distributes evenly; retain the conservative explicit-position contract.
+	for ( let i = 1; i < resolved.length - 1; i++ ) {
+		if ( resolved[ i ] === '' ) {
+			return false;
+		}
+	}
+
+	// CSS runs a fix-up pass that advances any stop which would sit before its
+	// predecessor, so `#f00 0%, #0f0 120%, #00f` paints its last stop at 120%,
+	// not 100%. Although current parsing applies fixup, this fast
+	// path remains limited to an already-nondecreasing sequence.
+	let previous = -Infinity;
+	for ( const position of resolved ) {
+		const value = parseFloat( position );
+		if ( value < previous ) {
+			return false;
+		}
+		previous = value;
+	}
+
+	return true;
+}
+
+/**
  * Minimal linear-gradient → stops parser for editor previews.
  *
  * Mirrors the stop-extraction half of the PHP renderer's parse_gradient()

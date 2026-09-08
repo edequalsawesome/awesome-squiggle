@@ -260,7 +260,7 @@ class RendererTest extends TestCase {
 	// ───────────────────────────────────────────────
 
 	public function test_render_block_array_classname_does_not_fatal() {
-		// render_block_{name} filters receive RAW attrs; an array className
+		// Block rendering filters receive raw attrs; an array className
 		// used to hit explode() and fatal on PHP 8+.
 		$block = array(
 			'blockName' => 'core/separator',

@@ -39,6 +39,7 @@
 		"@wordpress/components": "^25.0.0",
 		"@wordpress/dom-ready": "^4.0.0",
 		"@wordpress/i18n": "^4.0.0",
-		"@wordpress/scripts": "^30.17.0"
+		"@wordpress/scripts": "^30.17.0",
+		"@wordpress/data": "9.28.0"
 	}
 }

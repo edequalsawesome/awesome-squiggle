@@ -65,7 +65,7 @@ class Awesome_Squiggle_Renderer {
 	/**
 	 * Coerce a block attribute to a string.
 	 *
-	 * render_block_{name} filters receive RAW comment-delimiter attributes —
+	 * Block rendering filters receive raw comment-delimiter attributes —
 	 * WordPress does NOT run prepare_attributes_for_render() on that path, so a
 	 * hand-edited block comment can deliver an array where a string is expected.
 	 * On PHP 8+ explode()/preg_match()/md5() throw a fatal TypeError on arrays,
@@ -858,7 +858,7 @@ class Awesome_Squiggle_Renderer {
 	 * @return string
 	 */
 	public static function render_block( $block_content, $block ) {
-		if ( $block['blockName'] !== 'core/separator' ) {
+		if ( ( $block['blockName'] ?? '' ) !== 'core/separator' ) {
 			return $block_content;
 		}
 
