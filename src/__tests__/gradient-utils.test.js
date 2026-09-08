@@ -29,13 +29,22 @@ describe( 'parseGradientStops', () => {
 			).map( ( stop ) => stop.color )
 		).toEqual( [ '#f00', '#f00', '#0f0', '#00f' ] );
 	} );
-	it( 'rejects unsupported position remainders without partial success', () => {
+	it( 'rejects unsupported stops and hints without partial success', () => {
 		for ( const input of stopFixtures.invalid ) {
 			expect(
 				parseGradientStops(
 					`linear-gradient(#fff 0%, ${ input }, #000 100%)`
 				)
 			).toEqual( [
+				{ color: '#667eea', offset: '0%' },
+				{ color: '#764ba2', offset: '100%' },
+			] );
+		}
+		for ( const css of [
+			'linear-gradient(#f00,#00f,30%)',
+			'linear-gradient(#f00,#00f,\u00a0)',
+		] ) {
+			expect( parseGradientStops( css ) ).toEqual( [
 				{ color: '#667eea', offset: '0%' },
 				{ color: '#764ba2', offset: '100%' },
 			] );
@@ -342,14 +351,18 @@ describe( 'isParserSafeGradientCss', () => {
 	} );
 
 	it( 'rejects color interpolation hints', () => {
-		// A bare position between two colors shifts the midpoint. Both this
-		// guard and parseGradientStops skip colorless parts, so honouring the
-		// gradient means refusing it rather than silently dropping the hint.
+		// A bare position between two colors shifts the midpoint. Both paths
+		// reject the hint rather than silently changing the gradient.
 		expect(
 			isParserSafeGradientCss( 'linear-gradient(#f00,30%,#0f0 50%,#00f)' )
 		).toBe( false );
 		expect(
 			isParserSafeGradientCss( 'linear-gradient(#f00,30%,#00f)' )
+		).toBe( false );
+		expect(
+			isParserSafeGradientCss(
+				'linear-gradient(#f00 0%,#00f 100%,\u00a0)'
+			)
 		).toBe( false );
 		// A leading direction token is not a hint and must still pass.
 		expect(

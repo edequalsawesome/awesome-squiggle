@@ -73,10 +73,9 @@ export function isParserSafeGradientCss( css ) {
 		const colorMatch = part.match( COLOR );
 		if ( ! colorMatch ) {
 			// Before any color this is a direction token ("135deg",
-			// "to bottom"), which the parser skips harmlessly. After one it is
-			// a color interpolation hint — a bare position that shifts the
-			// midpoint between its neighbours. The parser skips that too, and
-			// dropping it changes the gradient.
+			// "to bottom"), which the parser skips harmlessly. Later colorless
+			// parts are unsupported colors or interpolation hints. A hint shifts
+			// the midpoint; both paths reject it rather than changing the gradient.
 			if ( seenColor ) {
 				return false;
 			}
@@ -141,7 +140,8 @@ export function isParserSafeGradientCss( css ) {
  * side effects.
  * Unsupported/non-finite positions use the PHP renderer’s fallback gradient.
  * Returns [] for unrecognized gradients or no recognized colors, fallback stops
- * for rejected positions, and parsed stops otherwise. Colorless parts are skipped.
+ * for rejected stops or hints, and parsed stops otherwise. Leading direction
+ * tokens are skipped; colorless parts after a recognized stop are rejected.
  *
  * @param {string} css A concrete `linear-gradient(...)` CSS string.
  * @return {Array<{color: string, offset: string}>} Ordered color stops (possibly empty).
@@ -160,19 +160,25 @@ export function parseGradientStops( css ) {
 	for ( const rawPart of splitTopLevel( match[ 1 ] ) ) {
 		const part = trimCssWhitespace( rawPart );
 
-		// Parts without a color token (direction tokens like "135deg" /
-		// "to bottom") are skipped. Checking for the color FIRST — instead of
+		// Leading direction tokens like "135deg" / "to bottom" are skipped.
+		// Checking for the color FIRST — instead of
 		// substring-matching "deg" — keeps valid stops like
 		// hsl(30deg 100% 50%) from being dropped.
 		const colorMatch = part.match(
 			/(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/
 		);
 		if ( ! colorMatch ) {
+			if ( stops.length ) {
+				return [
+					{ color: '#667eea', offset: '0%' },
+					{ color: '#764ba2', offset: '100%' },
+				];
+			}
 			continue;
 		}
 
 		// Only positions outside the matched color belong to the stop. Unsupported
-		// positions reject the gradient; colorless parts still follow the skip above.
+		// positions reject the gradient.
 		const remainder = trimCssWhitespace(
 			part.slice( colorMatch.index + colorMatch[ 1 ].length )
 		);
@@ -322,7 +328,7 @@ function splitTopLevel( content ) {
 		}
 	}
 
-	if ( current.trim() !== '' ) {
+	if ( trimCssWhitespace( current ) !== '' ) {
 		parts.push( current );
 	}
 

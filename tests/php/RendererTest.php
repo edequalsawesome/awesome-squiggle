@@ -196,6 +196,13 @@ class RendererTest extends TestCase {
 				array( 'color' => '#764ba2', 'offset' => '100%' ),
 			), $result['stops'], $input );
 		}
+		foreach ( array( 'linear-gradient(#f00,#00f,30%)', "linear-gradient(#f00,#00f,\u{00a0})" ) as $css ) {
+			$result = Awesome_Squiggle_Renderer::parse_gradient( $css );
+			$this->assertSame( array(
+				array( 'color' => '#667eea', 'offset' => '0%' ),
+				array( 'color' => '#764ba2', 'offset' => '100%' ),
+			), $result['stops'], $css );
+		}
 		$html = Awesome_Squiggle_Renderer::render_block( '', array(
 			'blockName' => 'core/separator',
 			'attrs' => array( 'className' => 'is-style-squiggle', 'gradient' => 'linear-gradient(#f00 0% 25%, #0f0, #00f 100%)' ),

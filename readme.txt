@@ -102,7 +102,7 @@ An opaque nested Group background will cover the wave. Two options: (1) add padd
 
 = Unreleased =
 * Fix: preserve double-position color stops and leading-dot percentage positions; keep very close gradient offsets ordered without rounding away authored boundaries.
-* Compatibility: unsupported position syntax (lengths, unitless values, calc, signed/exponent offsets, extra positions or stray text) now uses the fallback gradient instead of guessed offsets. Unsupported colors and colorless hints remain outside the parser’s supported subset.
+* Compatibility: unsupported position syntax (lengths, unitless values, calc, signed/exponent offsets, extra positions, stray text or non-CSS whitespace) uses the fallback gradient instead of guessed offsets. Colorless items after a recognized stop, including midpoint hints and unsupported colors such as red or transparent, also fall back; leading direction tokens remain accepted. Unsupported leading colors remain outside the supported subset.
 * Fix: Separator and Backdrop gradients preserve all recognized color stops, including existing gradients with more than three stops. Omitted percentage positions are distributed and decreasing positions clamped consistently in the editor and frontend.
 * Fix: Core block and viewport visibility apply after separator SVG replacement, so hidden separators remain hidden.
 * Fix: Separator editor hooks retain stable component ownership across parent renders and skip unrelated blocks.

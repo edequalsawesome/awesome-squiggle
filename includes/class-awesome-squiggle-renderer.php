@@ -520,15 +520,15 @@ class Awesome_Squiggle_Renderer {
 			$stops = array();
 
 			foreach ( $parts as $part ) {
-				// Match color: rgb(), rgba(), hsl(), hsla(), or hex. Parts without a
-				// color token (direction tokens like "135deg" / "to bottom") are skipped.
+				// Match color: rgb(), rgba(), hsl(), hsla(), or hex. Leading direction
+				// tokens like "135deg" / "to bottom" are skipped; later colorless parts reject.
 				// Checking for the color FIRST — instead of substring-matching "deg" —
 				// keeps valid stops like hsl(30deg 100% 50%) from being dropped.
 				if ( preg_match( '/(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/', $part, $color_match, PREG_OFFSET_CAPTURE ) ) {
 					$color = $color_match[1][0];
 					$color_start = $color_match[1][1];
 					// Consume this color token once; channel percentages are not positions.
-					// Unsupported positions reject the gradient; colorless parts remain skipped.
+					// Unsupported positions reject the gradient.
 					$remainder = trim( substr( $part, $color_start + strlen( $color ) ), " \t\n\r\f" );
 					$positions = '' === $remainder ? array( null ) : preg_split( '/[ \t\n\r\f]+/', $remainder );
 					if ( '' !== trim( substr( $part, 0, $color_start ), " \t\n\r\f" ) || count( $positions ) > 2 ) {
@@ -540,6 +540,8 @@ class Awesome_Squiggle_Renderer {
 						}
 						$stops[] = array( 'color' => $color, 'offset' => $offset );
 					}
+				} elseif ( ! empty( $stops ) ) {
+					return self::$fallback_gradient;
 				}
 			}
 
