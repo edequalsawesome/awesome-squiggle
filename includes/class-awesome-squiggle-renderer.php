@@ -507,14 +507,14 @@ class Awesome_Squiggle_Renderer {
 					$paren_depth--;
 				}
 				if ( $char === ',' && $paren_depth === 0 ) {
-					$parts[] = trim( $current );
+					$parts[] = trim( $current, " \t\n\r\f" );
 					$current = '';
 				} else {
 					$current .= $char;
 				}
 			}
-			if ( trim( $current ) !== '' ) {
-				$parts[] = trim( $current );
+			if ( trim( $current, " \t\n\r\f" ) !== '' ) {
+				$parts[] = trim( $current, " \t\n\r\f" );
 			}
 
 			$stops = array();
@@ -524,25 +524,22 @@ class Awesome_Squiggle_Renderer {
 				// color token (direction tokens like "135deg" / "to bottom") are skipped.
 				// Checking for the color FIRST — instead of substring-matching "deg" —
 				// keeps valid stops like hsl(30deg 100% 50%) from being dropped.
-				if ( preg_match( '/(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/', $part, $color_match ) ) {
-					$color = $color_match[1];
-
-					// Match the stop position in the part WITH THE COLOR REMOVED, so
-					// percentages inside the color function (rgb(100% 0% 0%)) are not
-					// mistaken for the offset. Supports decimal offsets (12.5%).
-					$remainder = str_replace( $color, '', $part );
-					$offset    = null;
-					if ( preg_match( '/(\d+(?:\.\d+)?%)/', $remainder, $pct_match ) ) {
-						if ( ! is_finite( (float) $pct_match[1] ) ) {
+				if ( preg_match( '/(rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8})/', $part, $color_match, PREG_OFFSET_CAPTURE ) ) {
+					$color = $color_match[1][0];
+					$color_start = $color_match[1][1];
+					// Consume this color token once; channel percentages are not positions.
+					// Unsupported positions reject the gradient; colorless parts remain skipped.
+					$remainder = trim( substr( $part, $color_start + strlen( $color ) ), " \t\n\r\f" );
+					$positions = '' === $remainder ? array( null ) : preg_split( '/[ \t\n\r\f]+/', $remainder );
+					if ( '' !== trim( substr( $part, 0, $color_start ), " \t\n\r\f" ) || count( $positions ) > 2 ) {
+						return self::$fallback_gradient;
+					}
+					foreach ( $positions as $offset ) {
+						if ( null !== $offset && ( ! preg_match( '/^(?:\d+(?:\.\d+)?|\.\d+)%$/D', $offset ) || ! is_finite( (float) $offset ) ) ) {
 							return self::$fallback_gradient;
 						}
-						$offset = $pct_match[1];
+						$stops[] = array( 'color' => $color, 'offset' => $offset );
 					}
-
-					$stops[] = array(
-						'color'  => $color,
-						'offset' => $offset,
-					);
 				}
 			}
 
@@ -579,6 +576,7 @@ class Awesome_Squiggle_Renderer {
 		}
 
 		$previous = 0.0;
+		$previous_offset = '0%';
 		foreach ( $stops as $index => $stop ) {
 			if ( null === $stop['offset'] ) {
 				continue;
@@ -586,9 +584,10 @@ class Awesome_Squiggle_Renderer {
 
 			$position = (float) $stop['offset'];
 			if ( $position < $previous ) {
-				$stops[ $index ]['offset'] = self::format_gradient_offset( $previous );
+				$stops[ $index ]['offset'] = $previous_offset;
 			} else {
 				$previous = $position;
+				$previous_offset = $stop['offset'];
 			}
 		}
 
@@ -603,9 +602,16 @@ class Awesome_Squiggle_Renderer {
 				$start = (float) $stops[ $previous_index ]['offset'];
 				$end   = (float) $stops[ $index ]['offset'];
 				for ( $run_index = 1; $run_index <= $run_length; $run_index++ ) {
-					$stops[ $previous_index + $run_index ]['offset'] = self::format_gradient_offset(
+					$candidate = self::format_gradient_offset(
 						$start + ( $end - $start ) * ( $run_index / ( $run_length + 1 ) )
 					);
+					$rounded = (float) $candidate;
+					if ( $start === $end || $rounded < $start ) {
+						$candidate = $stops[ $previous_index ]['offset'];
+					} elseif ( $rounded > $end ) {
+						$candidate = $stops[ $index ]['offset'];
+					}
+					$stops[ $previous_index + $run_index ]['offset'] = $candidate;
 				}
 			}
 			$previous_index = $index;

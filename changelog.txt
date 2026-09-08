@@ -3,6 +3,8 @@
 This file contains the complete version history for the Awesome Squiggle WordPress plugin.
 
 = Unreleased =
+* Fix: preserve double-position color stops and leading-dot percentage positions; keep very close gradient offsets ordered without rounding away authored boundaries.
+* Compatibility: unsupported position syntax (lengths, unitless values, calc, signed/exponent offsets, extra positions or stray text) now uses the fallback gradient instead of guessed offsets. Unsupported colors and colorless hints remain outside the parser’s supported subset.
 * Fix: Separator and Backdrop gradients preserve all recognized color stops, including existing gradients with more than three stops. Omitted percentage positions are distributed and decreasing positions clamped consistently in the editor and frontend.
 * Fix: Core block and viewport visibility apply after separator SVG replacement, so hidden separators remain hidden.
 * Fix: Separator editor hooks retain stable component ownership across parent renders and skip unrelated blocks.

@@ -84,10 +84,9 @@ export function isParserSafeGradientCss( css ) {
 		}
 		seenColor = true;
 		// Whatever is left after the color IS the stop position. Accept only
-		// an empty position or a single percentage, because those are the only
-		// forms parseGradientStops reads. linear-gradient() also takes lengths
-		// (`10px`, unitless `0`) and double positions (`0% 25%`); the parser's
-		// percentage-only parser cannot preserve those browser positions.
+		// an empty position or a single percentage. Keep this preset fast path
+		// conservative even though the shared parser also reads double positions.
+		// Lengths (`10px`, unitless `0`) still need browser resolution.
 		const position = part.replace( colorMatch[ 1 ], '' ).trim();
 		if ( position !== '' && ! /^\d+(?:\.\d+)?%$/.test( position ) ) {
 			return false;
@@ -140,7 +139,9 @@ export function isParserSafeGradientCss( css ) {
  * the same gradient the frontend paints. Kept tiny and dependency-free so it
  * can be shared by block editors without dragging in a block's registration
  * side effects.
- * Non-finite positions use the same fallback gradient as the PHP renderer.
+ * Unsupported/non-finite positions use the PHP renderer’s fallback gradient.
+ * Returns [] for unrecognized gradients or no recognized colors, fallback stops
+ * for rejected positions, and parsed stops otherwise. Colorless parts are skipped.
  *
  * @param {string} css A concrete `linear-gradient(...)` CSS string.
  * @return {Array<{color: string, offset: string}>} Ordered color stops (possibly empty).
@@ -157,7 +158,7 @@ export function parseGradientStops( css ) {
 
 	const stops = [];
 	for ( const rawPart of splitTopLevel( match[ 1 ] ) ) {
-		const part = rawPart.trim();
+		const part = trimCssWhitespace( rawPart );
 
 		// Parts without a color token (direction tokens like "135deg" /
 		// "to bottom") are skipped. Checking for the color FIRST — instead of
@@ -170,24 +171,52 @@ export function parseGradientStops( css ) {
 			continue;
 		}
 
-		// Match the stop position in the part WITH THE COLOR REMOVED, so
-		// percentages inside the color function (rgb(100% 0% 0%)) are not
-		// mistaken for the offset. Supports decimal offsets (12.5%).
-		const remainder = part.replace( colorMatch[ 1 ], '' );
-		const pctMatch = remainder.match( /(\d+(?:\.\d+)?)%/ );
-		if ( pctMatch && ! Number.isFinite( Number( pctMatch[ 1 ] ) ) ) {
+		// Only positions outside the matched color belong to the stop. Unsupported
+		// positions reject the gradient; colorless parts still follow the skip above.
+		const remainder = trimCssWhitespace(
+			part.slice( colorMatch.index + colorMatch[ 1 ].length )
+		);
+		const positions =
+			remainder === '' ? [ null ] : remainder.split( /[ \t\n\r\f]+/ );
+		if (
+			trimCssWhitespace( part.slice( 0, colorMatch.index ) ) !== '' ||
+			positions.length > 2 ||
+			positions.some(
+				( position ) =>
+					position !== null &&
+					( ! /^(?:\d+(?:\.\d+)?|\.\d+)%$/.test( position ) ||
+						! Number.isFinite( Number.parseFloat( position ) ) )
+			)
+		) {
 			return [
 				{ color: '#667eea', offset: '0%' },
 				{ color: '#764ba2', offset: '100%' },
 			];
 		}
-		stops.push( {
-			color: colorMatch[ 1 ],
-			offset: pctMatch ? `${ pctMatch[ 1 ] }%` : null,
-		} );
+		for ( const offset of positions ) {
+			stops.push( { color: colorMatch[ 1 ], offset } );
+		}
 	}
 
 	return fixupStopPositions( stops );
+}
+
+/**
+ * Match the PHP parser's CSS whitespace set, preserving non-ASCII characters.
+ *
+ * @param {string} value Part of a color stop.
+ * @return {string} Value with CSS whitespace trimmed.
+ */
+function trimCssWhitespace( value ) {
+	let start = 0;
+	let end = value.length;
+	while ( start < end && ' \t\n\r\f'.includes( value[ start ] ) ) {
+		start++;
+	}
+	while ( end > start && ' \t\n\r\f'.includes( value[ end - 1 ] ) ) {
+		end--;
+	}
+	return value.slice( start, end );
 }
 
 /**
@@ -211,6 +240,7 @@ function fixupStopPositions( stops ) {
 	}
 
 	let previous = 0;
+	let previousOffset = '0%';
 	for ( const stop of fixedStops ) {
 		if ( stop.offset === null ) {
 			continue;
@@ -218,9 +248,10 @@ function fixupStopPositions( stops ) {
 
 		const position = Number.parseFloat( stop.offset );
 		if ( position < previous ) {
-			stop.offset = formatOffset( previous );
+			stop.offset = previousOffset;
 		} else {
 			previous = position;
+			previousOffset = stop.offset;
 		}
 	}
 
@@ -237,9 +268,17 @@ function fixupStopPositions( stops ) {
 			);
 			const end = Number.parseFloat( fixedStops[ index ].offset );
 			for ( let runIndex = 1; runIndex <= runLength; runIndex++ ) {
-				fixedStops[ previousIndex + runIndex ].offset = formatOffset(
+				const candidate = formatOffset(
 					start + ( end - start ) * ( runIndex / ( runLength + 1 ) )
 				);
+				const rounded = Number.parseFloat( candidate );
+				let offset = candidate;
+				if ( start === end || rounded < start ) {
+					offset = fixedStops[ previousIndex ].offset;
+				} else if ( rounded > end ) {
+					offset = fixedStops[ index ].offset;
+				}
+				fixedStops[ previousIndex + runIndex ].offset = offset;
 			}
 		}
 		previousIndex = index;

@@ -1,3 +1,4 @@
+import stopFixtures from '../../tests/fixtures/gradient-stops.json';
 import {
 	parseGradientStops,
 	presetSlugFromGradientValue,
@@ -5,6 +6,41 @@ import {
 } from '../gradient-utils';
 
 describe( 'parseGradientStops', () => {
+	it( 'preserves exact ordered offsets and expands double positions', () => {
+		for ( const [ input, expected ] of [
+			...stopFixtures.valid,
+			[
+				`#f00 0%${ ' '.repeat( 16000 ) }25%, #00f 100%`,
+				[ '0%', '25%', '100%' ],
+			],
+		] ) {
+			const stops = parseGradientStops( `linear-gradient(${ input })` );
+			expect( stops.map( ( stop ) => stop.offset ) ).toEqual( expected );
+			const offsets = stops.map( ( stop ) =>
+				Number.parseFloat( stop.offset )
+			);
+			expect( offsets ).toEqual(
+				[ ...offsets ].sort( ( a, b ) => a - b )
+			);
+		}
+		expect(
+			parseGradientStops(
+				'linear-gradient(#f00 0% 25%, #0f0, #00f 100%)'
+			).map( ( stop ) => stop.color )
+		).toEqual( [ '#f00', '#f00', '#0f0', '#00f' ] );
+	} );
+	it( 'rejects unsupported position remainders without partial success', () => {
+		for ( const input of stopFixtures.invalid ) {
+			expect(
+				parseGradientStops(
+					`linear-gradient(#fff 0%, ${ input }, #000 100%)`
+				)
+			).toEqual( [
+				{ color: '#667eea', offset: '0%' },
+				{ color: '#764ba2', offset: '100%' },
+			] );
+		}
+	} );
 	it( 'rejects non-finite positions and interpolates large finite positions', () => {
 		expect(
 			parseGradientStops(
@@ -201,6 +237,19 @@ describe( 'presetSlugFromGradientValue', () => {
 } );
 
 describe( 'isParserSafeGradientCss', () => {
+	it( 'only takes the preset fast path for gradients the shared parser preserves', () => {
+		for ( const css of [
+			'linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%)',
+			'linear-gradient(135deg,#0693e3,#9b51e0)',
+			'linear-gradient(#f00 0%,#0f0 50%,#00f 100%)',
+		] ) {
+			expect( isParserSafeGradientCss( css ) ).toBe( true );
+			const stops = parseGradientStops( css );
+			expect( stops.length ).toBeGreaterThanOrEqual( 2 );
+			expect( stops[ 0 ].color ).not.toBe( '#667eea' );
+		}
+	} );
+
 	it( 'accepts a two-stop authored gradient', () => {
 		expect(
 			isParserSafeGradientCss(
@@ -273,8 +322,8 @@ describe( 'isParserSafeGradientCss', () => {
 	} );
 
 	it( 'rejects a stop carrying two offsets (double-position hard stop)', () => {
-		// parseGradientStops keeps only the first offset, so the 25% hard stop
-		// would be silently dropped and the preview would not match the render.
+		// Keep the preset fast path conservative even though the shared parser
+		// now expands both positions.
 		expect(
 			isParserSafeGradientCss(
 				'linear-gradient(90deg,#f00 0% 25%,#0f0 50%,#00f 100%)'

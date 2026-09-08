@@ -179,6 +179,32 @@ class RendererTest extends TestCase {
 		}
 	}
 
+	public function test_exact_stop_positions_match_shared_fixtures() {
+		$fixtures = json_decode( file_get_contents( __DIR__ . '/../fixtures/gradient-stops.json' ), true );
+		foreach ( $fixtures['valid'] as $fixture ) {
+			$result = Awesome_Squiggle_Renderer::parse_gradient( 'linear-gradient(' . $fixture[0] . ')' );
+			$this->assertSame( $fixture[1], array_column( $result['stops'], 'offset' ), $fixture[0] );
+			$offsets = array_map( 'floatval', array_column( $result['stops'], 'offset' ) );
+			$sorted = $offsets;
+			sort( $sorted, SORT_NUMERIC );
+			$this->assertSame( $sorted, $offsets );
+		}
+		foreach ( $fixtures['invalid'] as $input ) {
+			$result = Awesome_Squiggle_Renderer::parse_gradient( 'linear-gradient(#fff 0%, ' . $input . ', #000 100%)' );
+			$this->assertSame( array(
+				array( 'color' => '#667eea', 'offset' => '0%' ),
+				array( 'color' => '#764ba2', 'offset' => '100%' ),
+			), $result['stops'], $input );
+		}
+		$html = Awesome_Squiggle_Renderer::render_block( '', array(
+			'blockName' => 'core/separator',
+			'attrs' => array( 'className' => 'is-style-squiggle', 'gradient' => 'linear-gradient(#f00 0% 25%, #0f0, #00f 100%)' ),
+		) );
+		$this->assertSame( 4, substr_count( $html, '<stop ' ) );
+		$this->assertStringContainsString( '<stop offset="25%" stop-color="#f00"', $html );
+		$this->assertStringContainsString( '<stop offset="62.5%" stop-color="#0f0"', $html );
+	}
+
 	public function test_parse_gradient_fixes_implicit_stop_positions() {
 		$fixtures = array(
 			array(

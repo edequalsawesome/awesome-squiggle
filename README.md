@@ -162,6 +162,10 @@ npm run build:production
 
 ## Changelog
 
+### Unreleased
+* Fix: preserve double-position color stops and leading-dot percentage positions; keep very close gradient offsets ordered without rounding away authored boundaries.
+* Compatibility: unsupported position syntax (lengths, unitless values, calc, signed/exponent offsets, extra positions or stray text) now uses the fallback gradient instead of guessed offsets. Unsupported colors and colorless hints remain outside the parser’s supported subset.
+
 ### Version 2026.06.29
 - **New: Squiggle Backdrop block** (`awesome-squiggle/backdrop`) — a new additive InnerBlocks container that places an animated wave band behind nested content (heading or section). Existing Separator styles unchanged.
 - **New: "Wrap in Squiggle Backdrop" block transform** — select any block and nest it inside a Backdrop in one click
