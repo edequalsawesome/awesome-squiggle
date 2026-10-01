@@ -74,6 +74,9 @@ const setSecureAttributes = ( setAttributes, updates ) => {
 					0
 				);
 				break;
+			case 'animationRepeat':
+				secureUpdates[ key ] = value === 'once' ? 'once' : 'loop';
+				break;
 			case 'isAnimated':
 				secureUpdates[ key ] = value === true;
 				break;
@@ -579,11 +582,12 @@ addFilter(
 					type: 'number',
 					default: undefined, // Set by style selection (0 for squiggle/zigzag, 40 for lightning)
 				},
-				// NEW: Animation as toggle (replaces style-based animated/static)
+				// NEW: Animation playback control (replaces style-based animated/static)
 				isAnimated: {
 					type: 'boolean',
 					default: true, // Animation on by default
 				},
+				animationRepeat: { type: 'string', default: 'loop' },
 				// EXISTING: Core wave attributes
 				strokeWidth: {
 					type: 'number',
@@ -635,6 +639,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 			isReversed = false,
 			// NEW: Parametric wave controls (with defaults based on style)
 			isAnimated: isAnimatedAttr,
+			animationRepeat = 'loop',
 			pointiness: pointinessAttr,
 			angle: angleAttr,
 		} = attributes || {};
@@ -794,7 +799,6 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 					),
 					pointiness: defaultPointiness,
 					angle: defaultAngle,
-					isAnimated: true,
 				} );
 			} else {
 				// Ensure IDs exist for existing blocks
@@ -1067,7 +1071,7 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 						<svg
 							key={ `svg-${ gradientId || 'default' }-${
 								animationId || 'default'
-							}` }
+							}-${ finalPaused ? 'off' : animationRepeat }` }
 							viewBox={ `0 0 ${ viewBoxWidth } ${ waveHeight }` }
 							preserveAspectRatio="xMinYMid slice"
 							aria-hidden="true"
@@ -1156,7 +1160,11 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 													: 'wave-flow'
 										  } ${
 												animationSpeed || 1.6
-										  }s linear infinite`,
+										  }s linear ${
+												animationRepeat === 'once'
+													? '1 forwards'
+													: 'infinite'
+										  }`,
 								} }
 							/>
 						</svg>
@@ -1267,21 +1275,37 @@ const withSquiggleControls = createHigherOrderComponent( ( BlockEdit ) => {
 							} )() }
 						/>
 
-						{ /* Animation toggle */ }
-						<ToggleControl
-							label={ __( 'Animate', 'awesome-squiggle' ) }
-							checked={ isAnimated }
+						<SelectControl
+							label={ __( 'Animation', 'awesome-squiggle' ) }
+							value={
+								isAnimated
+									? ( animationRepeat === 'once' &&
+											'once' ) ||
+									  'loop'
+									: 'off'
+							}
+							options={ [
+								{
+									label: __( 'Off', 'awesome-squiggle' ),
+									value: 'off',
+								},
+								{
+									label: __( 'Once', 'awesome-squiggle' ),
+									value: 'once',
+								},
+								{
+									label: __( 'Loop', 'awesome-squiggle' ),
+									value: 'loop',
+								},
+							] }
 							onChange={ ( value ) =>
 								setSecureAttributes( setAttributes, {
-									isAnimated: value,
+									isAnimated: value !== 'off',
+									animationRepeat:
+										value === 'once' ? 'once' : 'loop',
 								} )
 							}
-							help={ __(
-								'Enable or disable wave animation',
-								'awesome-squiggle'
-							) }
 						/>
-
 						{ /* Animation controls - only shown when animated */ }
 						{ isAnimated && (
 							<>
@@ -1827,7 +1851,7 @@ addFilter(
 	20
 );
 
-// Register block styles - shape presets only, animation is now a toggle
+// Register block styles - shape presets only, animation uses playback controls
 domReady( () => {
 	// Squiggle Style (smooth curves, pointiness: 0)
 	registerBlockStyle( 'core/separator', {

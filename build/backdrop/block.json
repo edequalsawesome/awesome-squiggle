@@ -60,6 +60,10 @@
       "type": "boolean",
       "default": true
     },
+    "animationRepeat": {
+      "type": "string",
+      "default": "loop"
+    },
     "isReversed": {
       "type": "boolean",
       "default": false

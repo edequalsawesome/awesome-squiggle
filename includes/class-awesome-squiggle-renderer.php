@@ -749,6 +749,7 @@ class Awesome_Squiggle_Renderer {
 	 *     @type float      $angle
 	 *     @type float      $stroke_width
 	 *     @type float      $animation_speed
+	 *     @type string     $animation_repeat 'once'|'loop' (defaults to loop)
 	 *     @type bool       $is_animated
 	 *     @type bool       $is_reversed
 	 *     @type string     $line_color       Pre-resolved CSS color or url(#…)
@@ -811,7 +812,8 @@ class Awesome_Squiggle_Renderer {
 
 		// No inner esc_attr() here — the final sprintf below escapes these once.
 		// ($animation_name is a fixed keyword, $animation_speed/$animation_id are validated.)
-		$path_style = $is_paused ? 'animation:none;' : sprintf( 'animation:%s %ss linear infinite;', $animation_name, $animation_speed );
+		$repeat = ( $args['animation_repeat'] ?? 'loop' ) === 'once' ? '1 forwards' : 'infinite';
+		$path_style = $is_paused ? 'animation:none;' : sprintf( 'animation:%s %ss linear %s;', $animation_name, $animation_speed, $repeat );
 		$path_class = 'wave-path ' . ( $animation_id ? 'wave-path-' . $animation_id : 'wave-path-default' );
 
 		return sprintf(
@@ -982,6 +984,7 @@ class Awesome_Squiggle_Renderer {
 			'stroke_width'     => $stroke_width,
 			'animation_speed'  => $animation_speed,
 			'is_animated'      => $is_animated,
+			'animation_repeat' => $attrs['animationRepeat'] ?? 'loop',
 			'is_reversed'      => $is_reversed,
 			'line_color'       => $line_color,
 			'gradient_data'    => $gradient_data,

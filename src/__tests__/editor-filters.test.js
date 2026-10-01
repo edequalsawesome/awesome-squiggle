@@ -1,6 +1,7 @@
 jest.mock( '@wordpress/blocks', () => ( { registerBlockStyle: jest.fn() } ) );
 jest.mock( '@wordpress/block-editor', () => ( {
 	useBlockProps: jest.fn( ( props ) => props ),
+	useInnerBlocksProps: ( props ) => props,
 	InspectorControls: () => null,
 	store: 'mock-block-editor',
 	getGradientValueBySlug: ( gradients, slug ) =>
@@ -9,7 +10,10 @@ jest.mock( '@wordpress/block-editor', () => ( {
 jest.mock( '@wordpress/data', () => ( {
 	useSelect: jest.fn( ( selector ) =>
 		selector( ( store ) => {
-			if ( store !== 'mock-block-editor' ) {
+			if (
+				store !== 'mock-block-editor' &&
+				store !== 'core/block-editor'
+			) {
 				throw new Error( 'Unexpected store' );
 			}
 			return { getSettings: () => mockEditorSettings };
@@ -75,6 +79,138 @@ describe( 'editor filters', () => {
 		mockUseBlockProps.mockClear();
 		mockUseSelect.mockClear();
 		mockEditorSettings.gradients = [];
+	} );
+
+	it.each( [ 'loop', 'once' ] )(
+		'previews %s animation without changing saved markup',
+		async ( repeat ) => {
+			const enhance = getFilter(
+				'editor.BlockEdit',
+				'awesome-squiggle/squiggle-controls'
+			)( () => null );
+			const mountPoint = document.createElement( 'div' );
+			const root = createRoot( mountPoint );
+			await act( async () => {
+				root.render(
+					createElement( enhance, {
+						name: 'core/separator',
+						attributes: {
+							...separatorAttributes,
+							animationRepeat: repeat,
+							isAnimated: true,
+						},
+						setAttributes: jest.fn(),
+						clientId: 'playback-fixture',
+					} )
+				);
+			} );
+			const markup = mountPoint.innerHTML;
+			await act( async () => root.unmount() );
+			expect( markup ).toContain(
+				repeat === 'once' ? 'linear 1 forwards' : 'linear infinite'
+			);
+			const save = getFilter(
+				'blocks.getSaveElement',
+				'awesome-squiggle/separator-squiggle-save'
+			);
+			const element = createElement( 'hr', {
+				className: 'is-style-squiggle',
+			} );
+			expect(
+				renderToString(
+					save(
+						element,
+						{ name: 'core/separator' },
+						{
+							...separatorAttributes,
+							isAnimated: true,
+							animationRepeat: repeat,
+						}
+					)
+				)
+			).toBe(
+				renderToString(
+					save(
+						element,
+						{ name: 'core/separator' },
+						{ ...separatorAttributes, isAnimated: true }
+					)
+				)
+			);
+		}
+	);
+
+	it.each( [ 'separator', 'backdrop' ] )(
+		'restarts the %s preview when playback changes',
+		async ( kind ) => {
+			const Edit =
+				kind === 'separator'
+					? getFilter(
+							'editor.BlockEdit',
+							'awesome-squiggle/squiggle-controls'
+					  )( () => null )
+					: require( '../backdrop/edit' ).default;
+			const container = document.createElement( 'div' );
+			const root = createRoot( container );
+			let previousPath;
+			for ( const mode of [ 'loop', 'once', 'off', 'once' ] ) {
+				await act( async () =>
+					root.render(
+						createElement( Edit, {
+							name: 'core/separator',
+							attributes: {
+								...separatorAttributes,
+								shape: 'squiggle',
+								bandHeight: 100,
+								verticalPosition: 'center',
+								isAnimated: mode !== 'off',
+								animationRepeat:
+									mode === 'once' ? 'once' : 'loop',
+							},
+							setAttributes: jest.fn(),
+							clientId: 'replay-fixture',
+						} )
+					)
+				);
+				const path = container.querySelector( 'path.wave-path' );
+				expect( path ).not.toBe( previousPath );
+				expect( path.style.animation ).toContain(
+					{ off: 'none', once: '1 forwards', loop: 'infinite' }[
+						mode
+					]
+				);
+				previousPath = path;
+			}
+			await act( async () => root.unmount() );
+		}
+	);
+
+	it( 'preserves explicit Off when initializing missing geometry', async () => {
+		const enhance = getFilter(
+			'editor.BlockEdit',
+			'awesome-squiggle/squiggle-controls'
+		)( () => null );
+		const setAttributes = jest.fn();
+		const root = createRoot( document.createElement( 'div' ) );
+		await act( async () =>
+			root.render(
+				createElement( enhance, {
+					name: 'core/separator',
+					attributes: {
+						...separatorAttributes,
+						strokeWidth: undefined,
+						animationRepeat: 'once',
+					},
+					setAttributes,
+					clientId: 'off-fixture',
+				} )
+			)
+		);
+		expect( setAttributes ).toHaveBeenCalled();
+		for ( const [ update ] of setAttributes.mock.calls ) {
+			expect( update.isAnimated ).not.toBe( true );
+		}
+		await act( async () => root.unmount() );
 	} );
 
 	it( 'keeps the direct legacy save output byte-stable', () => {

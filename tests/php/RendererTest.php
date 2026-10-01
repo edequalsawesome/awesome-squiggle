@@ -13,6 +13,23 @@ class RendererTest extends TestCase {
 	// generate_long_wave_path
 	// ───────────────────────────────────────────────
 
+	public function test_animation_repeat_modes() {
+		foreach ( array( 'squiggle', 'zigzag', 'lightning', 'pixel' ) as $shape ) {
+			foreach ( array( null, 'loop', 'once', 'unsafe; color:red', array() ) as $repeat ) {
+				$html = Awesome_Squiggle_Renderer::render_block( '', array(
+					'blockName' => 'core/separator',
+					'attrs' => array( 'className' => 'is-style-' . $shape, 'animationRepeat' => $repeat ),
+				) );
+				$this->assertStringContainsString( $repeat === 'once' ? 'linear 1 forwards;' : 'linear infinite;', $html );
+			}
+		}
+		$html = Awesome_Squiggle_Renderer::render_block( '', array(
+			'blockName' => 'core/separator',
+			'attrs' => array( 'className' => 'is-style-squiggle', 'animationRepeat' => 'once', 'isAnimated' => false ),
+		) );
+		$this->assertStringContainsString( 'animation:none;', $html );
+	}
+
 	public function test_wave_path_returns_expected_keys() {
 		$result = Awesome_Squiggle_Renderer::generate_long_wave_path( 10, 0, 0, 1, 10, 100 );
 

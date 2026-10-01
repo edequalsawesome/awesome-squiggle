@@ -12,7 +12,7 @@ A WordPress plugin that adds parametric wave styles to the core Separator block.
 - Parametric wave controls:
   - **Pointiness** (0-100%): Smooth curves to sharp angles
   - **Angle** (-60 to +60): Lean the wave peaks for lightning effects
-  - **Animation toggle**: Enable or disable animation on any shape
+  - **Animation**: Off, Once, or Loop on any shape
   - Wave amplitude (5-25px)
   - Animation speed (0.5-5 seconds)
   - Stroke width (1-8px)
@@ -48,7 +48,7 @@ A WordPress plugin that adds parametric wave styles to the core Separator block.
    - **Lightning** — Sharp angles with a dynamic lean
    - **Pixel** — 8-bit staircase wave (Scott Pilgrim aesthetic)
 4. Use the **Wave Settings** panel in the block sidebar to fine-tune:
-   - Pointiness, angle, amplitude, animation toggle, speed, and direction
+   - Pointiness, angle, amplitude, animation playback, speed, and direction
 5. Apply colors using WordPress's standard color controls, including gradient support
 
 ## Customization Options
@@ -59,7 +59,7 @@ When a wave style is applied, the block sidebar shows two panels:
 - **Amplitude** (5-25px): Height of wave peaks
 - **Pointiness** (0-100%): Smooth curves to sharp angles
 - **Angle** (-60 to +60): Lean wave peaks left or right
-- **Animate**: Toggle animation on/off
+- **Animation**: Off / Once / Loop
 - **Animation Speed** (1-10): Higher = faster
 - **Reverse Direction**: Flip animation direction
 
@@ -103,7 +103,7 @@ The block sidebar has three panels:
 - **Padding** — standard WordPress spacing controls; this drives the padding-frame use case described below
 
 **Animation**
-- **Animate** (toggle, on by default)
+- **Animation** — Off / Once / Loop (Loop by default)
 - **Speed** (0.5–5s) — animation cycle duration
 - **Reverse direction** (toggle)
 
@@ -163,6 +163,7 @@ npm run build:production
 ## Changelog
 
 ### Unreleased
+* Add Off / Once / Loop animation controls to Separator and Backdrop. Once runs one cycle per page load and holds the final position; existing animated blocks continue looping and reduced motion remains static.
 * Fix: preserve double-position color stops and leading-dot percentage positions; keep very close gradient offsets ordered without rounding away authored boundaries.
 * Compatibility: unsupported position syntax (lengths, unitless values, calc, signed/exponent offsets, extra positions, stray text or non-CSS whitespace) uses the fallback gradient instead of guessed offsets. Colorless items after a recognized stop, including midpoint hints and unsupported colors such as red or transparent, also fall back; leading direction tokens remain accepted. Unsupported leading colors remain outside the supported subset.
 

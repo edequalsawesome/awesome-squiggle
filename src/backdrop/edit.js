@@ -38,6 +38,7 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 		strokeWidth,
 		animationSpeed,
 		isAnimated,
+		animationRepeat,
 		isReversed,
 		bandHeight,
 		verticalPosition,
@@ -293,10 +294,35 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 					</p>
 				</PanelBody>
 				<PanelBody title={ __( 'Animation', 'awesome-squiggle' ) }>
-					<ToggleControl
-						label={ __( 'Animate', 'awesome-squiggle' ) }
-						checked={ isAnimated }
-						onChange={ ( v ) => set( { isAnimated: !! v } ) }
+					<SelectControl
+						label={ __( 'Animation', 'awesome-squiggle' ) }
+						value={
+							isAnimated
+								? ( animationRepeat === 'once' && 'once' ) ||
+								  'loop'
+								: 'off'
+						}
+						options={ [
+							{
+								label: __( 'Off', 'awesome-squiggle' ),
+								value: 'off',
+							},
+							{
+								label: __( 'Once', 'awesome-squiggle' ),
+								value: 'once',
+							},
+							{
+								label: __( 'Loop', 'awesome-squiggle' ),
+								value: 'loop',
+							},
+						] }
+						onChange={ ( value ) =>
+							set( {
+								isAnimated: value !== 'off',
+								animationRepeat:
+									value === 'once' ? 'once' : 'loop',
+							} )
+						}
 					/>
 					{ isAnimated && (
 						<>
@@ -381,6 +407,7 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 							</defs>
 						) }
 						<path
+							key={ `${ isAnimated ? animationRepeat : 'off' }` }
 							d={ wave.d }
 							fill="none"
 							stroke={ waveStroke }
@@ -391,7 +418,11 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 							className="wave-path"
 							style={ {
 								animation: isAnimated
-									? `${ animationName } ${ animationSpeed }s linear infinite`
+									? `${ animationName } ${ animationSpeed }s linear ${
+											animationRepeat === 'once'
+												? '1 forwards'
+												: 'infinite'
+									  }`
 									: 'none',
 							} }
 						/>
