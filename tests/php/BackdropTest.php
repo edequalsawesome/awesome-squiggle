@@ -3,6 +3,17 @@ use PHPUnit\Framework\TestCase;
 
 class BackdropTest extends TestCase {
 
+    public function test_animation_playback_modes() {
+        foreach ( array( 'squiggle', 'zigzag', 'lightning', 'pixel' ) as $shape ) {
+            foreach ( array( 'loop', 'once' ) as $repeat ) {
+                $svg = Awesome_Squiggle_Renderer::build_wave_svg( array( 'shape' => $shape, 'is_animated' => true, 'animation_repeat' => $repeat ) );
+                $this->assertStringContainsString( $repeat === 'once' ? 'linear 1 forwards;' : 'linear infinite;', $svg );
+            }
+        }
+        $svg = Awesome_Squiggle_Renderer::build_wave_svg( array( 'is_animated' => false, 'animation_repeat' => 'once' ) );
+        $this->assertStringContainsString( 'animation:none;', $svg );
+    }
+
     public function test_resolve_shape_whitelists() {
         $this->assertSame( 'pixel', Awesome_Squiggle_Renderer::backdrop_resolve_shape( 'pixel' ) );
         $this->assertSame( 'squiggle', Awesome_Squiggle_Renderer::backdrop_resolve_shape( 'bogus' ) );

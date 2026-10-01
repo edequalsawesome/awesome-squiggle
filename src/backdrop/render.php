@@ -20,6 +20,7 @@ $svg = Awesome_Squiggle_Renderer::build_wave_svg( array(
 	'stroke_width'     => $attributes['strokeWidth'] ?? 2,
 	'animation_speed'  => $attributes['animationSpeed'] ?? 2.5,
 	'is_animated'      => $attributes['isAnimated'] ?? true,
+	'animation_repeat' => $attributes['animationRepeat'] ?? 'loop',
 	'is_reversed'      => $attributes['isReversed'] ?? false,
 	'line_color'       => $color['line_color'],
 	'gradient_data'    => $color['gradient_data'],

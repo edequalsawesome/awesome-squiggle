@@ -1,5 +1,6 @@
 # Squiggle Backdrop Block — Design Spec
 
+> Playback update: the original animation toggle and infinite-only preview below are superseded by the native Off / Once / Loop controls. Once plays one cycle per page load and holds the final position.
 **Date:** 2026-06-29
 **Status:** Approved (brainstorming) — pending implementation plan
 **Plugin:** `awesome-squiggle`

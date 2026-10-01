@@ -26,7 +26,7 @@ Transform boring horizontal separators into beautiful, flowing wave dividers! Aw
 * **Parametric wave controls:**
   * Pointiness (0-100%): Smooth curves to sharp angles
   * Angle (-60 to +60): Lean the wave peaks for lightning effects
-  * Animation toggle: Enable or disable animation on any shape
+  * Animation playback: Off, Once, or Loop on any shape
   * Wave amplitude (5-25px)
   * Animation speed (0.5-5 seconds)
   * Stroke width (1-8px)
@@ -101,6 +101,7 @@ An opaque nested Group background will cover the wave. Two options: (1) add padd
 == Changelog ==
 
 = Unreleased =
+* Add Off, Once, and Loop playback controls for separators and backdrops.
 * Fix: preserve double-position color stops and leading-dot percentage positions; keep very close gradient offsets ordered without rounding away authored boundaries.
 * Compatibility: unsupported position syntax (lengths, unitless values, calc, signed/exponent offsets, extra positions, stray text or non-CSS whitespace) uses the fallback gradient instead of guessed offsets. Colorless items after a recognized stop, including midpoint hints and unsupported colors such as red or transparent, also fall back; leading direction tokens remain accepted. Unsupported leading colors remain outside the supported subset.
 * Fix: Separator and Backdrop gradients preserve all recognized color stops, including existing gradients with more than three stops. Omitted percentage positions are distributed and decreasing positions clamped consistently in the editor and frontend.

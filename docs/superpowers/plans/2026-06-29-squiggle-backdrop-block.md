@@ -1,5 +1,6 @@
 # Squiggle Backdrop Block Implementation Plan
 
+> Playback update: the original animation toggle and infinite-only preview below are superseded by the native Off / Once / Loop controls. Once plays one cycle per page load and holds the final position.
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a new additive block `awesome-squiggle/backdrop` that paints a single animated wave band behind nested content (a heading or a whole section), reusing the plugin's existing wave-path generator and SVG-assembly machinery.
