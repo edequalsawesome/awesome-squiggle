@@ -2,10 +2,10 @@
 Contributors: eDThomas
 Donate link: https://edequalsaweso.me
 Tags: separator, block, blocks, gutenberg, gutenberg blocks
-Requires at least: 6.3
-Tested up to: 6.8
+Requires at least: 6.6
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2026.07.001
+Stable tag: 2026.11.001
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -100,7 +100,11 @@ An opaque nested Group background will cover the wave. Two options: (1) add padd
 
 == Changelog ==
 
-= Unreleased =
+= 2026.11.001 =
+* Require WordPress 6.6 or newer, matching the editor bundle's JSX runtime dependency.
+* Remove an unused editor stylesheet reference and declare the build minimizer dependency.
+* Include the build configuration and production build helper in the plugin package.
+* Tested with WordPress 7.1.4.
 * Add Off, Once, and Loop playback controls for separators and backdrops.
 * Fix: preserve double-position color stops and leading-dot percentage positions; keep very close gradient offsets ordered without rounding away authored boundaries.
 * Compatibility: unsupported position syntax (lengths, unitless values, calc, signed/exponent offsets, extra positions, stray text or non-CSS whitespace) uses the fallback gradient instead of guessed offsets. Colorless items after a recognized stop, including midpoint hints and unsupported colors such as red or transparent, also fall back; leading direction tokens remain accepted. Unsupported leading colors remain outside the supported subset.
@@ -266,10 +270,10 @@ This plugin includes compiled/minified JavaScript and CSS files in the `build/` 
 **Build Process:**
 This plugin uses WordPress Scripts (@wordpress/scripts) and Webpack for building. To build from source:
 
-1. Install Node.js (version 18 or higher recommended)
+1. Install Node.js (version 22 or higher recommended)
 2. Navigate to the plugin directory
 3. Run `npm install` to install dependencies
-4. Run `npm run build` for development build or `npm run build:production` for production build
+4. Run `npm start` for a development/watch build, `npm run build` for a production build, or `npm run build:production` to also strip debug logging.
 
 **Source Code Location:**
 - JavaScript source: `src/index.js`

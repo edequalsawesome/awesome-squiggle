@@ -46,8 +46,8 @@ $wrapper_attributes = get_block_wrapper_attributes( array(
 
 printf(
 	'<div %1$s><div class="asquig-backdrop__wave" aria-hidden="true" style="%2$s">%3$s</div><div class="asquig-backdrop__content">%4$s</div></div>',
-	$wrapper_attributes,        // get_block_wrapper_attributes() returns escaped output.
+	$wrapper_attributes,        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Core returns escaped wrapper attributes.
 	esc_attr( $wave_style ),
-	$svg,                       // build_wave_svg() output is internally escaped.
-	$content                    // InnerBlocks output: WP renders each inner block through its own render/wp_kses_post on save (same convention as core/group render.php). Trusted; not re-sanitized here.
+	$svg,                       // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- build_wave_svg() escapes each SVG attribute internally.
+	$content                    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- InnerBlocks have already been rendered by WordPress, as in core/group.
 );

@@ -7,6 +7,10 @@
  *   wp awesome-squiggle migrate-legacy
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 	return;
 }
