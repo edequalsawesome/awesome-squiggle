@@ -162,10 +162,34 @@ npm run build:production
 
 ## Changelog
 
-### Unreleased
-* Add Off / Once / Loop animation controls to Separator and Backdrop. Once runs one cycle per page load and holds the final position; existing animated blocks continue looping and reduced motion remains static.
+### Version 2026.11.001
+* Require WordPress 6.6 or newer, matching the editor bundle's JSX runtime dependency.
+* Remove an unused editor stylesheet reference and declare the build minimizer dependency.
+* Include the build configuration and production build helper in the plugin package.
+* Tested with WordPress 7.1.4.
+* Add Off, Once, and Loop playback controls for separators and backdrops.
 * Fix: preserve double-position color stops and leading-dot percentage positions; keep very close gradient offsets ordered without rounding away authored boundaries.
 * Compatibility: unsupported position syntax (lengths, unitless values, calc, signed/exponent offsets, extra positions, stray text or non-CSS whitespace) uses the fallback gradient instead of guessed offsets. Colorless items after a recognized stop, including midpoint hints and unsupported colors such as red or transparent, also fall back; leading direction tokens remain accepted. Unsupported leading colors remain outside the supported subset.
+* Fix: Separator and Backdrop gradients preserve all recognized color stops, including existing gradients with more than three stops. Omitted percentage positions are distributed and decreasing positions clamped consistently in the editor and frontend.
+* Fix: Core block and viewport visibility apply after separator SVG replacement, so hidden separators remain hidden.
+* Fix: Separator editor hooks retain stable component ownership across parent renders and skip unrelated blocks.
+* Performance: Editor gradient previews resolve supported WordPress preset gradients from reactive editor settings before using computed-style resolution. Other CSS variables and conservatively excluded preset shapes keep the existing fallback.
+* Compatibility: The direct deprecated full-SVG save output retains its historical parser and snapshot; current rendering uses the shared parser.
+* Tests: Cover gradient stop fixup, finite offsets, editor hook ownership, preset lookup, and core visibility.
+
+### Version 2026.07.001
+* Security: Block attributes are now type-guarded in the PHP renderer — a hand-edited block comment delivering an array where a string is expected (className, colors, gradient) could fatal the whole page on PHP 8+ (render_block filters receive raw, un-coerced attributes)
+* Security: PHP validate_color() now short-circuits on inputs longer than 4096 chars, matching the JS validators' pathology guard
+* Fix: Gradient stop parsing no longer drops valid hsl(30deg …) color stops (substring "deg" was mistaken for a direction token) — applies to frontend PHP, editor preview, and backdrop preview parsers
+* Fix: Gradient stop offsets are now read outside the color function — rgb(100% 0% 0%) 25% used to parse as offset 100%
+* Fix: Gradient stop offsets support decimal percentages (12.5% no longer truncates to 5%)
+* Fix: Backdrop Shape dropdown now applies the shape's pointiness/angle so Zig-Zag and Lightning are visibly different from Squiggle without manual slider work
+* Fix: WP-CLI migrate-legacy matches legacy class names as exact class tokens — custom classes merely containing a legacy name are no longer rewritten
+* Fix: Lightning/Pixel blocks now get the correct amplitude fallback and gradient ID prefix in the editor init path
+* Quality: Removed dead .wave-fill and data-motion-preference CSS selectors (never emitted by any renderer)
+* Accessibility: Backdrop wave now thickens under prefers-contrast: high, matching the Separator's rule
+* Quality: Escape-once discipline in build_wave_svg() (removed double esc_attr), corrected misleading wrapper-class comment in backdrop render, documented the backdrop editor-script coupling
+* Compatibility: Deprecated full-SVG save keeps the historical gradient parsing (legacy mode) so existing saved markup still validates
 
 ### Version 2026.06.29
 - **New: Squiggle Backdrop block** (`awesome-squiggle/backdrop`) — a new additive InnerBlocks container that places an animated wave band behind nested content (heading or section). Existing Separator styles unchanged.

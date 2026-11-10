@@ -2,7 +2,12 @@
 
 This file contains the complete version history for the Awesome Squiggle WordPress plugin.
 
-= Unreleased =
+= 2026.11.001 =
+* Require WordPress 6.6 or newer, matching the editor bundle's JSX runtime dependency.
+* Remove an unused editor stylesheet reference and declare the build minimizer dependency.
+* Include the build configuration and production build helper in the plugin package.
+* Tested with WordPress 7.1.4.
+* Add Off, Once, and Loop playback controls for separators and backdrops.
 * Fix: preserve double-position color stops and leading-dot percentage positions; keep very close gradient offsets ordered without rounding away authored boundaries.
 * Compatibility: unsupported position syntax (lengths, unitless values, calc, signed/exponent offsets, extra positions, stray text or non-CSS whitespace) uses the fallback gradient instead of guessed offsets. Colorless items after a recognized stop, including midpoint hints and unsupported colors such as red or transparent, also fall back; leading direction tokens remain accepted. Unsupported leading colors remain outside the supported subset.
 * Fix: Separator and Backdrop gradients preserve all recognized color stops, including existing gradients with more than three stops. Omitted percentage positions are distributed and decreasing positions clamped consistently in the editor and frontend.

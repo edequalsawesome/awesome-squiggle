@@ -1,6 +1,6 @@
 {
 	"name": "awesome-squiggle",
-	"version": "2026.07.001",
+	"version": "2026.11.001",
 	"description": "WordPress plugin that adds animated squiggle styles to the core Separator block",
 	"files": [
 		"build",
@@ -8,6 +8,8 @@
 		"src",
 		"!src/__tests__/**",
 		"scripts/migrate-legacy-blocks.php",
+		"scripts/strip-debug.js",
+		"webpack.config.js",
 		"awesome-squiggle.php",
 		"readme.txt",
 		"README.md",
@@ -40,6 +42,7 @@
 		"@wordpress/dom-ready": "^4.0.0",
 		"@wordpress/i18n": "^4.0.0",
 		"@wordpress/scripts": "^30.17.0",
-		"@wordpress/data": "9.28.0"
+		"@wordpress/data": "9.28.0",
+		"terser-webpack-plugin": "^5.3.14"
 	}
 }
